@@ -1,0 +1,314 @@
+<UserControl x:Class="ArcGISProMCP.AddIn.McpDockPaneView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="720"
+             d:DesignWidth="320"
+             MinWidth="280"
+             FontSize="12"
+             KeyboardNavigation.TabNavigation="Continue"
+             AutomationProperties.Name="ArcGIS MCP control panel">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
+
+        <Style TargetType="Button">
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="MinWidth" Value="26" />
+            <Setter Property="Padding" Value="7,2" />
+            <Setter Property="Margin" Value="2,0,0,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="SectionBorder" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="8,6" />
+        </Style>
+        <Style x:Key="SectionHeading" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style x:Key="MutedText" TargetType="TextBlock">
+            <Setter Property="Opacity" Value="0.72" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Style="{StaticResource SectionBorder}" Padding="8,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="ArcGIS MCP" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Border Margin="8,0,0,0" Padding="6,2" BorderThickness="1" CornerRadius="8"
+                            BorderBrush="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                            AutomationProperties.Name="{Binding Connection.StatusText}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="●" Margin="0,0,4,0" AutomationProperties.Name="Status" />
+                            <TextBlock Text="{Binding Connection.StatusText}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                <ProgressBar Grid.Column="1" Width="38" Height="3" Margin="6,0"
+                             IsIndeterminate="True"
+                             Visibility="{Binding Connection.IsBusy, Converter={StaticResource BooleanToVisibility}}"
+                             AutomationProperties.Name="Connection operation in progress" />
+                <Button Grid.Column="2" Content="⚙" Command="{Binding OpenSettingsCommand}"
+                        ToolTip="MCP settings" AutomationProperties.Name="Open MCP settings" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Padding="8,5" BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="{Binding Connection.Endpoint}" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Connection.SessionText}" Style="{StaticResource MutedText}" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="Connect" Command="{Binding Connection.ConnectCommand}"
+                        AutomationProperties.Name="Connect to the MCP server" />
+                <Button Grid.Column="2" Content="Stop" Command="{Binding Connection.DisconnectCommand}"
+                        AutomationProperties.Name="Disconnect from the MCP server" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="2" Padding="8,5"
+                Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibility}}"
+                BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                AutomationProperties.LiveSetting="Assertive">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="!" FontWeight="Bold" Margin="0,0,6,0" />
+                <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3" Style="{StaticResource SectionBorder}">
+            <Grid Grid.IsSharedSizeScope="True">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="ContextLabels" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="Workspace"
+                           Style="{StaticResource SectionHeading}" />
+                <TextBlock Grid.Row="1" Text="Project" Margin="0,4,8,0" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Workspace.ProjectName}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                           AutomationProperties.Name="{Binding Workspace.ProjectName}" />
+                <Button Grid.Row="1" Grid.Column="2" Content="Open…" Command="{Binding OpenProjectCommand}"
+                        ToolTip="Open or switch ArcGIS Pro project"
+                        AutomationProperties.Name="Open or switch ArcGIS Pro project" />
+
+                <TextBlock Grid.Row="2" Text="Map" Margin="0,5,8,0" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="2" Grid.Column="1" Margin="0,3,0,0"
+                          ItemsSource="{Binding Workspace.Maps}"
+                          SelectedItem="{Binding Workspace.SelectedMap}"
+                          DisplayMemberPath="Name"
+                          AutomationProperties.Name="Map to activate" />
+                <Button Grid.Row="2" Grid.Column="2" Content="Switch"
+                        Command="{Binding Workspace.ActivateMapCommand}"
+                        AutomationProperties.Name="Activate selected map" />
+
+                <TextBlock Grid.Row="3" Text="Layout" Margin="0,5,8,0" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="3" Grid.Column="1" Margin="0,3,0,0"
+                          ItemsSource="{Binding Workspace.Layouts}"
+                          SelectedItem="{Binding Workspace.SelectedLayout}"
+                          DisplayMemberPath="Name"
+                          AutomationProperties.Name="Layout to activate" />
+                <Button Grid.Row="3" Grid.Column="2" Content="Switch"
+                        Command="{Binding Workspace.ActivateLayoutCommand}"
+                        AutomationProperties.Name="Activate selected layout" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="4" Style="{StaticResource SectionBorder}"
+                AutomationProperties.LiveSetting="Assertive">
+            <StackPanel>
+                <DockPanel LastChildFill="True">
+                    <TextBlock Text="{Binding Approvals.Heading}" Style="{StaticResource SectionHeading}" />
+                    <TextBlock DockPanel.Dock="Right" Text="User action required"
+                               Style="{StaticResource MutedText}"
+                               Visibility="{Binding Approvals.HasPending, Converter={StaticResource BooleanToVisibility}}" />
+                </DockPanel>
+                <ScrollViewer MaxHeight="145" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Focusable="False">
+                    <ItemsControl ItemsSource="{Binding Approvals.Items}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="1" CornerRadius="2" Padding="6" Margin="0,2"
+                                        BorderBrush="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" />
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding RequestedAtText}"
+                                                       Style="{StaticResource MutedText}" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,2" />
+                                        <TextBlock Text="{Binding Target, StringFormat=Target: {0}}"
+                                                   Style="{StaticResource MutedText}" />
+                                        <Expander Header="Details" IsExpanded="{Binding IsExpanded}">
+                                            <TextBox Text="{Binding ArgumentsPreview, Mode=OneWay}" IsReadOnly="True"
+                                                     TextWrapping="Wrap" MaxHeight="90"
+                                                     VerticalScrollBarVisibility="Auto"
+                                                     AutomationProperties.Name="Approval request arguments" />
+                                        </Expander>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                                            <Button Content="Reject" Command="{Binding RejectCommand}"
+                                                    IsCancel="True" AutomationProperties.Name="Reject request" />
+                                            <Button Content="Approve once" Command="{Binding ApproveCommand}"
+                                                    AutomationProperties.Name="Approve this request once" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Expander Grid.Row="0" Header="Latest visual evidence" Padding="8,3"
+                      AutomationProperties.Name="Latest visual evidence shared with the LLM">
+                <StackPanel Margin="0,4,0,4">
+                    <Border MinHeight="72" MaxHeight="165" BorderThickness="1"
+                            BorderBrush="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}">
+                        <Grid>
+                            <Image Source="{Binding VisualEvidence.ImagePath}" Stretch="Uniform"
+                                   AutomationProperties.Name="{Binding VisualEvidence.Caption}" />
+                            <TextBlock Text="{Binding VisualEvidence.Caption}" TextWrapping="Wrap"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Style="{StaticResource MutedText}" />
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="{Binding VisualEvidence.ContextText}" Margin="0,3,0,0"
+                               Style="{StaticResource MutedText}" />
+                    <DockPanel Margin="0,3,0,0">
+                        <TextBlock Text="{Binding VisualEvidence.CapturedAtText}" VerticalAlignment="Center"
+                                   Style="{StaticResource MutedText}" />
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Content="Clear cue" Command="{Binding VisualEvidence.ClearCueCommand}"
+                                    AutomationProperties.Name="Clear active map visual cue" />
+                            <Button Content="Open" Command="{Binding VisualEvidence.RevealCommand}"
+                                    AutomationProperties.Name="Open the latest visual evidence" />
+                            <Button Content="Capture" Command="{Binding VisualEvidence.CaptureCommand}"
+                                    AutomationProperties.Name="Capture current map or layout for the LLM" />
+                        </StackPanel>
+                    </DockPanel>
+                </StackPanel>
+            </Expander>
+
+            <Border Grid.Row="1" Padding="8,4,8,0" BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <DockPanel>
+                        <TextBlock Text="Activity" Style="{StaticResource SectionHeading}" />
+                        <Button DockPanel.Dock="Right" Content="↻" Command="{Binding RefreshCommand}"
+                                ToolTip="Refresh panel state" AutomationProperties.Name="Refresh panel state" />
+                    </DockPanel>
+                    <ListBox Grid.Row="1" ItemsSource="{Binding Activity.Items}"
+                             BorderThickness="0" Background="Transparent"
+                             ScrollViewer.CanContentScroll="True"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             AutomationProperties.Name="MCP activity"
+                             AutomationProperties.LiveSetting="Polite">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,2" ToolTip="{Binding Detail}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="18" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Glyph}" FontWeight="SemiBold"
+                                               AutomationProperties.Name="{Binding Level}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Message}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Grid.Column="2" Text="{Binding TimestampText}" Margin="6,0,0,0"
+                                               Style="{StaticResource MutedText}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Expander Grid.Row="6" Padding="8,3">
+            <Expander.Header>
+                <TextBlock>
+                    <Run Text="Skills " /><Run Text="{Binding SkillCount, Mode=OneWay}" />
+                    <Run Text=" · Workflows " /><Run Text="{Binding Workflows.Count, Mode=OneWay}" />
+                </TextBlock>
+            </Expander.Header>
+            <Grid Margin="0,4,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ComboBox ItemsSource="{Binding Workflows.Items}"
+                          SelectedItem="{Binding Workflows.SelectedWorkflow}"
+                          DisplayMemberPath="Name"
+                          AutomationProperties.Name="Saved workflow" />
+                <Button Grid.Column="1" Content="Save current" Command="{Binding Workflows.SaveCommand}"
+                        AutomationProperties.Name="Save the current operation as a workflow" />
+                <Button Grid.Column="2" Content="Replay" Command="{Binding Workflows.ReplayCommand}"
+                        AutomationProperties.Name="Replay selected workflow" />
+            </Grid>
+        </Expander>
+
+        <Border Grid.Row="7" Padding="8,4" BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}">
+            <DockPanel>
+                <TextBlock Text="{Binding FooterStatus}" VerticalAlignment="Center"
+                           Style="{StaticResource MutedText}" />
+                <Button DockPanel.Dock="Right" Content="Cancel operation"
+                        Command="{Binding CancelOperationCommand}"
+                        AutomationProperties.Name="Cancel current MCP operation" />
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

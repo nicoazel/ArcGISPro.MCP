@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.22621.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <RootNamespace>ArcGISProMCP.AddIn</RootNamespace>
+    <AssemblyName>ArcGISProMCP.AddIn</AssemblyName>
+    <NoWarn>$(NoWarn);CA1852</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../ArcGISProMCP.Core/ArcGISProMCP.Core.csproj" />
+    <ProjectReference Include="../ArcGISProMCP.Bridge/ArcGISProMCP.Bridge.csproj" />
+    <PackageReference Include="Esri.ArcGISPro.Extensions30" ExcludeAssets="runtime;build;buildTransitive" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Config.daml" />
+  </ItemGroup>
+</Project>

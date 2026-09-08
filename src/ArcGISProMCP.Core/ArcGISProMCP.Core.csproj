@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ArcGISProMCP.Core</RootNamespace>
+    <AssemblyName>ArcGISProMCP.Core</AssemblyName>
+  </PropertyGroup>
+</Project>

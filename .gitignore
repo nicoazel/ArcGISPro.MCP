@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+.idea/
+TestResults/
+artifacts/
+*.user
+*.suo
+*.esriAddInX
+*.pfx
+*.snk
+*.log
+.DS_Store

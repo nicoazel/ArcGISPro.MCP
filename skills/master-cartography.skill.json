@@ -1,0 +1,56 @@
+{
+  "id": "arcgis.cartography.master-plan",
+  "version": "1.0.1",
+  "title": "Master Cartography and Rhino Handoff",
+  "summary": "Create a reviewable three-map planning presentation and coordinate site-design work with the child Rhino instance through McNeel's MCP peer.",
+  "tags": ["cartography", "multi-map", "layout", "labels", "rhino", "visual-verification"],
+  "requiredCapabilities": ["maps", "layouts", "visual-observations"],
+  "allowedOperations": [
+    "project.get",
+    "project.save",
+    "map.ensure",
+    "map.activate",
+    "map.clear-selection",
+    "layer.add",
+    "layer.set-appearance",
+    "symbology.set-simple",
+    "symbology.set-unique-values",
+    "label.configure",
+    "layout.ensure",
+    "layout.add-map-frame",
+    "layout.set-text",
+    "layout.set-frame-extent",
+    "layout.ensure-surround",
+    "layout.activate",
+    "view.capture",
+    "rhino.peer-state",
+    "rhino.start",
+    "rhino.pull",
+    "rhino.preview",
+    "rhino.sync",
+    "rhino.handoff"
+  ],
+  "preconditions": [
+    "An ArcGIS Pro project is open and licensed.",
+    "Each source path or service URL is readable by the ArcGIS Pro process.",
+    "The caller has obtained the current workspace revision.",
+    "Rhino.Inside and McNeel's Rhino MCP platform are running before the handoff step when Rhino editing is required."
+  ],
+  "visualChecks": [
+    "All three maps are represented in the multi-map layout.",
+    "The basemap remains subordinate to thematic layers.",
+    "Zoning and transit labels remain legible at the target layout scale.",
+    "The proposed site design is distinguishable from existing-building context.",
+    "The final layout capture has balanced margins and no blank map frames."
+  ],
+  "recoveryGuidance": [
+    "Clear feature selections before exporting presentation images.",
+    "Use GlobalID-enabled feature classes for durable identity; do not raw-pull repeatedly into an already-linked Rhino layer. Preview and locally approve sync instead.",
+    "After saving GIS edits and reopening documents, inspect sync preview before applying changes. Never auto-resolve unexpected deletions or duplicate identities.",
+    "Refresh system state and retry a failed write with the new workspace revision.",
+    "Use layer.list to resolve an ambiguous or renamed layer before replaying cartography steps.",
+    "Start Rhino.Inside and verify rhino.peer-state before retrying a handoff.",
+    "Inspect the final PNG and adjust individual registry operations before saving a new workflow version."
+  ],
+  "workflowId": "workflow.master-cartography-rhino-handoff"
+}

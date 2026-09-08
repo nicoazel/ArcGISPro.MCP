@@ -1,0 +1,42 @@
+<ArcGIS defaultAssembly="ArcGISProMCP.AddIn.dll"
+        defaultNamespace="ArcGISProMCP.AddIn"
+        xmlns="http://schemas.esri.com/DADF/Registry"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
+  <AddInInfo id="{D48E59D8-23D2-44C1-B3E2-39196360DA7A}" version="0.1.0" desktopVersion="3.7.1901">
+    <Name>ArcGIS Pro MCP Studio</Name>
+    <Description>Production-oriented MCP control plane for live ArcGIS Pro maps, layers, cartography, layouts, analysis, visual observations, and reusable workflows.</Description>
+    <Author>Nicolas Azel</Author>
+    <Company>Thornton Tomasetti</Company>
+    <Date>9/8/2026</Date>
+    <Subject>Framework, Map Authoring, Map Exploration, Layouts, Geoprocessing</Subject>
+  </AddInInfo>
+  <modules>
+    <insertModule id="ArcGISProMCP_AddIn_Module" className="ArcGISProMcpModule" autoLoad="true" caption="ArcGIS Pro MCP">
+      <groups>
+        <group id="ArcGISProMCP_AddIn_Group" caption="ArcGIS MCP" appearsOnAddInTab="true">
+          <button refID="ArcGISProMCP_AddIn_ShowDockPaneButton" size="large" />
+        </group>
+      </groups>
+      <controls>
+        <button id="ArcGISProMCP_AddIn_ShowDockPaneButton"
+                caption="MCP Studio"
+                className="ShowDockPaneButton"
+                loadOnClick="true"
+                smallImage="GenericButtonBlue16"
+                largeImage="GenericButtonBlue32">
+          <tooltip heading="ArcGIS Pro MCP Studio">Open connection, approvals, observations, activity, and workflow controls.<disabledText /></tooltip>
+        </button>
+      </controls>
+      <dockPanes>
+        <dockPane id="ArcGISProMCP_AddIn_DockPane"
+                  caption="ArcGIS MCP"
+                  className="McpDockPaneViewModel"
+                  dock="group"
+                  dockWith="esri_core_projectDockPane">
+          <content className="McpDockPaneView" />
+        </dockPane>
+      </dockPanes>
+    </insertModule>
+  </modules>
+</ArcGIS>

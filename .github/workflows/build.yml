@@ -1,0 +1,24 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build ArcGISPro.MCP.slnx -c Release
+      - run: dotnet test tests/ArcGISProMCP.Core.Tests -c Release --no-build
+      - run: dotnet test tests/ArcGISProMCP.Bridge.Tests -c Release --no-build
+      - shell: pwsh
+        run: ./tools/pack-addin.ps1 -Configuration Release -SkipBuild
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arcgis-pro-mcp-development-preview
+          path: artifacts/ArcGISProMCP.AddIn.esriAddinX
+          retention-days: 7
