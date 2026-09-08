@@ -58,6 +58,15 @@ public sealed class OperationExecutorTests
         Assert.Single(fixture.Audit.Events);
     }
 
+    [Fact]
+    public async Task Risky_dry_run_does_not_request_approval_or_execute()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.Destructive);
+        var result = await fixture.ExecuteAsync(expectedRevision: null, dryRun: true);
+        Assert.True(result.Success);
+        Assert.Equal(0, fixture.Operation.CallCount);
+    }
+
     private sealed class ExecutorFixture
     {
         internal const string Revision = "revision-1";
@@ -101,7 +110,7 @@ public sealed class OperationExecutorTests
             "Test execute",
             "Exercises the operation safety boundary.",
             JsonSchemas.EmptyObject,
-            risk: risk);
+            risk: risk, requiresConfirmation: risk == OperationRisk.Destructive);
 
         public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
         {

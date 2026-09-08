@@ -2,7 +2,7 @@
 
 A C# ArcGIS Pro 3.7 add-in with a small MCP gateway, searchable operation registry, thin WPF/MVVM panel, visual observations, and versioned workflows.
 
-The model searches the registry, reads the few relevant schemas, and invokes operations by stable id. The gateway exposes 13 entry points rather than the entire operation catalog.
+The model searches the registry, reads the few relevant schemas, and invokes operations by stable id. The gateway exposes 16 entry points rather than the entire operation catalog, including a three-tool local-review lifecycle.
 
 ## Implemented
 
@@ -12,8 +12,9 @@ The model searches the registry, reads the few relevant schemas, and invokes ope
 - SDK geoprocessing execution with ordered parameters and environments.
 - Layout creation, map frames and extents, named text, map surrounds, activation and PNG export; map-view PNG capture.
 - Immutable parameterized workflows, run history/ranking, and searchable bundled skill guidance.
-- Same-user named-pipe transport, correlation, message limits, audit records and write revisions.
-- Optional Rhino.Inside discovery, spatial handoff, startup, McNeel endpoint reconnect, create-only pull, preview and locally approved sync. Modeling uses McNeel's shipped Rhino MCP in the same Pro process. GIS-to-Rhino geometry updates are not yet supported by the existing sync engine.
+- Same-user concurrent named-pipe transport, bounded connection slots/framing timeouts, exclusive pipe ownership, serialized host operations, audit records and write revisions.
+- Expiring modeless local review, exact argument/version/revision binding, and single-use approval tokens. Remote clients cannot approve their own requests.
+- Optional Rhino.Inside discovery, spatial handoff, startup, McNeel endpoint reconnect, create-only pull, preview and locally approved sync. Modeling uses McNeel's shipped Rhino MCP in the same Pro process. The companion add-in now implements existing-object GIS-to-Rhino geometry replacement; live replacement acceptance remains a release gate.
 
 This is a working development preview, not full coverage of the ArcGIS SDK. See the operation registry for the actual installed capability set. Advanced cartography, workspace connection management, PDF export, durable background jobs, complete cancellation, unattended approval grants and arbitrary ArcPy execution are not release features.
 
@@ -38,6 +39,10 @@ The MCP transport is stdio; diagnostic logging goes to stderr. The gateway uses 
 
 ## Live verification
 
+To build the complete unsigned preview bundle (add-in, Windows x64 gateway, skills, workflows, documentation and checksums), run `./tools/package-release.ps1`. It smoke-tests the published gateway's MCP handshake and skill lookup without Pro. See [deployment and rollback](docs/deployment.md). The unresolved [native host crash](docs/native-crash-2026-09-08.md) blocks production distribution.
+
+For a fail-fast Release build, both portable suites, whitespace checks and package-content inspection, run `./tools/verify-release.ps1`. Add `-Live` for actual MCP discovery/state and a pending/cancelled local-review probe (it never approves or runs a geoprocessing tool). Pass `-ImageUri` to verify native image content. This does not replace human approval UI or embedded-sync acceptance.
+
 ```powershell
 ./tools/test-mcp.ps1
 ```
@@ -48,7 +53,7 @@ This performs a real MCP handshake, tool discovery, live state request, registry
 
 The local demonstration artifacts are in `artifacts/demo` (git-ignored). Its land-use parcels and street centerlines are test fixtures, not authoritative zoning designations or transit-service data. The proposed development is illustrative.
 
-The detailed [live demo report](docs/master-plan-demo.md) records the successful 42-step presentation, 33 registry operations, 25 automated tests, and remaining production limitations.
+The [live demo report](docs/master-plan-demo.md) records the earlier successful 42-step presentation and its validation boundaries. The [production readiness checklist](docs/production-readiness.md) tracks subsequent hardening separately from that historical demo.
 
 ## Design and limits
 

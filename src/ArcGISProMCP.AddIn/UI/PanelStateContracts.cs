@@ -94,12 +94,15 @@ internal sealed record WorkspaceSnapshot(
 
 internal sealed record ApprovalSnapshot(
     string Id,
+    string OperationId,
+    string OperationVersion,
     string ToolName,
     string Summary,
-    string Target,
+    string WorkspaceRevision,
     string ArgumentsPreview,
     ApprovalRisk Risk,
     string RequestedAtText,
+    string ExpiresAtText,
     bool IsDeciding);
 
 internal sealed record VisualEvidenceSnapshot(

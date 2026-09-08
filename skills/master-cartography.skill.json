@@ -1,6 +1,6 @@
 {
   "id": "arcgis.cartography.master-plan",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "title": "Master Cartography and Rhino Handoff",
   "summary": "Create a reviewable three-map planning presentation and coordinate site-design work with the child Rhino instance through McNeel's MCP peer.",
   "tags": ["cartography", "multi-map", "layout", "labels", "rhino", "visual-verification"],
@@ -47,7 +47,8 @@
     "Clear feature selections before exporting presentation images.",
     "Use GlobalID-enabled feature classes for durable identity; do not raw-pull repeatedly into an already-linked Rhino layer. Preview and locally approve sync instead.",
     "After saving GIS edits and reopening documents, inspect sync preview before applying changes. Never auto-resolve unexpected deletions or duplicate identities.",
-    "Refresh system state and retry a failed write with the new workspace revision.",
+    "After a workspace_revision_mismatch rejection, refresh state and revalidate before issuing a new request. After outcome_unknown, inspect the workspace and replay only the exact original idempotency key, arguments, immutable workflow version and original revision; do not blindly rerun with a fresh revision.",
+    "Request risky-operation review through approval_request, poll approval_status, then invoke unchanged arguments and revision with the single-use token. Only a person in the ArcGIS panel can approve; no remote approval is available.",
     "Use layer.list to resolve an ambiguous or renamed layer before replaying cartography steps.",
     "Start Rhino.Inside and verify rhino.peer-state before retrying a handoff.",
     "Inspect the final PNG and adjust individual registry operations before saving a new workflow version."

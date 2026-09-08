@@ -47,8 +47,8 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
                     $"Workspace changed: expected '{request.ExpectedWorkspaceRevision}', current '{startSnapshot.Revision}'. Refresh state before writing.",
                     startSnapshot.Revision);
             }
-            else if (descriptor.RequiresConfirmation ||
-                descriptor.Risk is OperationRisk.Destructive or OperationRisk.ExternalSideEffect)
+            else if (!request.DryRun && (descriptor.RequiresConfirmation ||
+                descriptor.Risk is OperationRisk.Destructive or OperationRisk.ExternalSideEffect))
             {
                 if (string.IsNullOrWhiteSpace(request.ConfirmationToken) ||
                     !await context.Confirmation.IsValidAsync(
@@ -88,17 +88,27 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
 
         if (descriptor is not null)
         {
-            await context.Audit.WriteAsync(new OperationAuditEvent(
-                correlationId,
-                descriptor.Id,
-                descriptor.Version,
-                start,
-                DateTimeOffset.UtcNow,
-                result.Success,
-                startSnapshot.Revision,
-                result.WorkspaceRevision,
-                result.ErrorCode,
-                Hash(request.Arguments)), CancellationToken.None).ConfigureAwait(false);
+            try
+            {
+                await context.Audit.WriteAsync(new OperationAuditEvent(
+                    correlationId,
+                    descriptor.Id,
+                    descriptor.Version,
+                    start,
+                    DateTimeOffset.UtcNow,
+                    result.Success,
+                    startSnapshot.Revision,
+                    result.WorkspaceRevision,
+                    result.ErrorCode,
+                    Hash(request.Arguments)), CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception exception)
+            {
+                // Observability failure must not hide the known outcome of an accepted mutation.
+                System.Diagnostics.Trace.TraceError("Operation audit write failed: {0}", exception);
+                result = result with { Notices = result.Notices.Add(new OperationNotice(
+                    "audit_write_failed", "Operation result is known, but the audit record could not be persisted. Inspect host diagnostics before further work.", "warning")) };
+            }
         }
 
         return result;

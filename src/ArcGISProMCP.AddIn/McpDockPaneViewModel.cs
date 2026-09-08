@@ -353,12 +353,15 @@ internal sealed class ApprovalItemViewModel : ObservableViewModel
         Action<Exception> reportError)
     {
         Id = snapshot.Id;
+        OperationId = snapshot.OperationId;
+        OperationVersion = snapshot.OperationVersion;
         ToolName = snapshot.ToolName;
         Summary = snapshot.Summary;
-        Target = snapshot.Target;
+        WorkspaceRevision = snapshot.WorkspaceRevision;
         ArgumentsPreview = snapshot.ArgumentsPreview;
         Risk = snapshot.Risk;
         RequestedAtText = snapshot.RequestedAtText;
+        ExpiresAtText = snapshot.ExpiresAtText;
         IsDeciding = snapshot.IsDeciding;
         ApproveCommand = new AsyncCommand(
             token => resolve(Id, ApprovalDecision.ApproveOnce, token),
@@ -371,12 +374,15 @@ internal sealed class ApprovalItemViewModel : ObservableViewModel
     }
 
     public string Id { get; }
+    public string OperationId { get; }
+    public string OperationVersion { get; }
     public string ToolName { get; }
     public string Summary { get; }
-    public string Target { get; }
+    public string WorkspaceRevision { get; }
     public string ArgumentsPreview { get; }
     public ApprovalRisk Risk { get; }
     public string RequestedAtText { get; }
+    public string ExpiresAtText { get; }
     public bool IsDeciding { get; }
     public bool IsExpanded { get => _isExpanded; set => Set(ref _isExpanded, value); }
     public ICommand ApproveCommand { get; }

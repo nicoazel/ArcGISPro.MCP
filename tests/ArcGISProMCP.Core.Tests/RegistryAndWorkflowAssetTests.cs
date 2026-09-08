@@ -46,7 +46,7 @@ public sealed class RegistryAndWorkflowAssetTests
         using var json = JsonDocument.Parse(ReadAsset("skills", "master-cartography.skill.json"));
         var root = json.RootElement;
         Assert.Equal("arcgis.cartography.master-plan", root.GetProperty("id").GetString());
-        Assert.Equal("1.0.1", root.GetProperty("version").GetString());
+        Assert.Equal("1.0.2", root.GetProperty("version").GetString());
         Assert.NotEmpty(root.GetProperty("requiredCapabilities").EnumerateArray());
         Assert.NotEmpty(root.GetProperty("allowedOperations").EnumerateArray());
         Assert.NotEmpty(root.GetProperty("preconditions").EnumerateArray());

@@ -42,6 +42,10 @@ public sealed class NamedPipeBridgeClient(
             {
                 throw new BridgeException("arcgis_unavailable", "ArcGIS Pro MCP add-in is not accepting bridge connections.", true);
             }
+            catch (IOException exception)
+            {
+                throw new BridgeException("arcgis_unavailable", "Could not connect to the ArcGIS Pro bridge.", true, exception);
+            }
         }
 
         var request = new BridgeRequest(
@@ -50,8 +54,21 @@ public sealed class NamedPipeBridgeClient(
             method,
             parameters is null ? null : JsonSerializer.SerializeToElement(parameters),
             DateTimeOffset.UtcNow);
-        await LengthPrefixedJson.WriteAsync(pipe, request, requestLifetime.Token).ConfigureAwait(false);
-        var response = await LengthPrefixedJson.ReadAsync<BridgeResponse>(pipe, requestLifetime.Token).ConfigureAwait(false);
+        BridgeResponse response;
+        cancellationToken.ThrowIfCancellationRequested();
+        try
+        {
+            await LengthPrefixedJson.WriteAsync(pipe, request, requestLifetime.Token).ConfigureAwait(false);
+            response = await LengthPrefixedJson.ReadAsync<BridgeResponse>(pipe, requestLifetime.Token).ConfigureAwait(false);
+        }
+        catch (IOException exception)
+        {
+            throw new BridgeException("outcome_unknown", "The bridge disconnected after transmission began. The operation may have run; inspect workspace state before retrying a mutation.", false, exception);
+        }
+        catch (OperationCanceledException exception)
+        {
+            throw new BridgeException("outcome_unknown", "Waiting for the bridge result was cancelled or timed out. This does not cancel an accepted host write; inspect workspace state before retrying a mutation.", false, exception);
+        }
 
         if (response.ProtocolVersion != BridgeProtocol.Version || response.RequestId != request.RequestId)
         {

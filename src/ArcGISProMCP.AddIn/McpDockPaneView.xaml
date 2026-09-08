@@ -174,23 +174,32 @@
                                     <StackPanel>
                                         <DockPanel>
                                             <TextBlock Text="{Binding ToolName}" FontWeight="SemiBold" />
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding RequestedAtText}"
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding ExpiresAtText}"
                                                        Style="{StaticResource MutedText}" />
                                         </DockPanel>
+                                        <TextBlock Style="{StaticResource MutedText}">
+                                            <Run Text="{Binding OperationId, Mode=OneWay}" /><Run Text=" · v" />
+                                            <Run Text="{Binding OperationVersion, Mode=OneWay}" /><Run Text=" · " />
+                                            <Run Text="{Binding Risk, Mode=OneWay}" />
+                                        </TextBlock>
                                         <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,2" />
-                                        <TextBlock Text="{Binding Target, StringFormat=Target: {0}}"
-                                                   Style="{StaticResource MutedText}" />
-                                        <Expander Header="Details" IsExpanded="{Binding IsExpanded}">
+                                        <TextBlock Style="{StaticResource MutedText}">
+                                            <Run Text="Revision " /><Run Text="{Binding WorkspaceRevision, Mode=OneWay}" />
+                                            <Run Text=" · " /><Run Text="{Binding RequestedAtText, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <Expander Header="Review full arguments" IsExpanded="{Binding IsExpanded}">
                                             <TextBox Text="{Binding ArgumentsPreview, Mode=OneWay}" IsReadOnly="True"
-                                                     TextWrapping="Wrap" MaxHeight="90"
+                                                     FontFamily="Consolas" TextWrapping="NoWrap"
+                                                     MinHeight="52" MaxHeight="140"
+                                                     HorizontalScrollBarVisibility="Auto"
                                                      VerticalScrollBarVisibility="Auto"
-                                                     AutomationProperties.Name="Approval request arguments" />
+                                                     AutomationProperties.Name="Full approval request arguments" />
                                         </Expander>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
-                                            <Button Content="Reject" Command="{Binding RejectCommand}"
-                                                    IsCancel="True" AutomationProperties.Name="Reject request" />
+                                            <Button Content="Deny" Command="{Binding RejectCommand}"
+                                                    IsCancel="True" AutomationProperties.Name="Deny request" />
                                             <Button Content="Approve once" Command="{Binding ApproveCommand}"
-                                                    AutomationProperties.Name="Approve this request once" />
+                                                    AutomationProperties.Name="Approve this exact request once" />
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>

@@ -143,9 +143,16 @@ public sealed class FileWorkflowLibrary : IWorkflowLibrary, IDisposable
 
     public async Task<IReadOnlyList<WorkflowRanking>> RankAsync(CancellationToken cancellationToken)
     {
-        if (!File.Exists(_runsPath)) return [];
+        string[] lines;
+        await _writeGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (!File.Exists(_runsPath)) return [];
+            lines = await File.ReadAllLinesAsync(_runsPath, cancellationToken).ConfigureAwait(false);
+        }
+        finally { _writeGate.Release(); }
         var summaries = new List<WorkflowRunSummary>();
-        foreach (var line in await File.ReadAllLinesAsync(_runsPath, cancellationToken).ConfigureAwait(false))
+        foreach (var line in lines)
         {
             if (string.IsNullOrWhiteSpace(line)) continue;
             var summary = JsonSerializer.Deserialize<WorkflowRunSummary>(line, JsonOptions);

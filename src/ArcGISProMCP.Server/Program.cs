@@ -14,7 +14,7 @@ builder.Services.AddSingleton<IBridgeClient>(_ => new NamedPipeBridgeClient(
 builder.Services
     .AddMcpServer(options =>
     {
-        options.ServerInfo = new() { Name = "arcgis-pro-mcp", Version = "0.1.0" };
+        options.ServerInfo = new() { Name = "arcgis-pro-mcp", Version = typeof(KernelTools).Assembly.GetName().Version!.ToString(3) };
     })
     .WithStdioServerTransport()
     .WithTools<KernelTools>()

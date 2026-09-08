@@ -5,6 +5,8 @@ using ArcGISProMCP.AddIn.Bridge;
 using ArcGISProMCP.AddIn.Operations;
 using ArcGISProMCP.AddIn.Services;
 using ArcGISProMCP.AddIn.UI;
+using ArcGISProMCP.Bridge.Protocol;
+using ArcGISProMCP.Core.Approvals;
 using ArcGISProMCP.Bridge.Transport;
 using ArcGISProMCP.Core.Infrastructure;
 using ArcGISProMCP.Core.Operations;
@@ -18,8 +20,13 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
 {
     private readonly CancellationTokenSource _applicationStopping = new();
     private NamedPipeBridgeServer? _bridge;
+    private ProBridgeRequestHandler? _handler;
+    private IApprovalService? _approvals;
+    private ProWorkspaceEventMonitor? _workspaceEvents;
+    private FileResourceStore? _resources;
     private FileWorkflowLibrary? _workflows;
     private JsonLineAuditLog? _audit;
+    private Task? _cleanupTask;
 
     internal static ArcGISProMcpModule? Instance { get; private set; }
     internal IOperationRegistry? Registry { get; private set; }
@@ -41,6 +48,11 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
             }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
+            _applicationStopping.Cancel();
+            BeginCleanup();
+            Registry = null;
+            PanelStateSourceProvider.Factory = static () => new UnavailablePanelStateSource();
+            Instance = null;
             return false;
         }
     }
@@ -51,50 +63,103 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
         var registry = new OperationRegistry();
         var dispatcher = new ProDispatcher();
         var workspace = new ProWorkspaceStateProvider(dispatcher);
+        _workspaceEvents = new ProWorkspaceEventMonitor(workspace);
         var appRoot = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ArcGISProMCP");
-        var resources = new FileResourceStore(Path.Combine(appRoot, "resources"));
-        _workflows = new FileWorkflowLibrary(Path.Combine(appRoot, "workflows"), registry);
-        _audit = new JsonLineAuditLog(Path.Combine(appRoot, "audit", "operations.jsonl"));
+        var resources = _resources = new FileResourceStore(Path.Combine(appRoot, "resources"));
+        var workflows = _workflows = new FileWorkflowLibrary(Path.Combine(appRoot, "workflows"), registry);
+        var audit = _audit = new JsonLineAuditLog(Path.Combine(appRoot, "audit", "operations.jsonl"));
+        var approvals = _approvals = new LocalApprovalService();
 
         foreach (var operation in ProOperationCatalog.Create(resources)) registry.Register(operation);
         Registry = registry;
         var context = new OperationContext(
             dispatcher,
             workspace,
-            new LocalWpfConfirmationValidator(dispatcher, workspace),
-            _audit,
+            approvals,
+            audit,
             "startup",
             _applicationStopping.Token);
         var access = new BridgeAccessState();
-        _bridge = new NamedPipeBridgeServer(new ProBridgeRequestHandler(registry, context, _workflows, resources, access));
+        var handler = _handler = new ProBridgeRequestHandler(registry, context, workflows, resources, access);
+        var configuredPipe = Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_PIPE");
+        var pipeName = string.IsNullOrWhiteSpace(configuredPipe)
+            ? BridgeProtocol.DefaultPipeName
+            : configuredPipe.Trim();
+        _bridge = new NamedPipeBridgeServer(handler, pipeName);
         _bridge.Start();
-        PanelStateSourceProvider.Factory = () => new ProPanelStateSource(registry, context, _workflows, resources, access);
+        PanelStateSourceProvider.Factory = () => new ProPanelStateSource(context, handler, workflows, resources, access);
         return true;
     }
 
-    protected override bool CanUnload() => true;
+    protected override bool CanUnload() => _handler?.RunningOperationCount is not > 0;
 
     protected override void Uninitialize()
     {
         _applicationStopping.Cancel();
-        if (_bridge is not null)
-        {
-            try
-            {
-                _bridge.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        }
-        _workflows?.Dispose();
-        _audit?.Dispose();
+        BeginCleanup();
         Registry = null;
         PanelStateSourceProvider.Factory = static () => new UnavailablePanelStateSource();
         Instance = null;
-        _applicationStopping.Dispose();
         base.Uninitialize();
+    }
+
+    private void BeginCleanup()
+    {
+        if (_cleanupTask is not null) return;
+        var bridge = _bridge;
+        var handler = _handler;
+        var approvals = _approvals;
+        var workspaceEvents = _workspaceEvents;
+        var resources = _resources;
+        var workflows = _workflows;
+        var audit = _audit;
+        _bridge = null;
+        _handler = null;
+        _approvals = null;
+        _workspaceEvents = null;
+        _resources = null;
+        _workflows = null;
+        _audit = null;
+        _cleanupTask = DrainAndDisposeAsync(
+            bridge,
+            handler,
+            approvals,
+            workspaceEvents,
+            resources,
+            workflows,
+            audit,
+            _applicationStopping);
+    }
+
+    private static async Task DrainAndDisposeAsync(
+        NamedPipeBridgeServer? bridge,
+        ProBridgeRequestHandler? handler,
+        IApprovalService? approvals,
+        ProWorkspaceEventMonitor? workspaceEvents,
+        FileResourceStore? resources,
+        FileWorkflowLibrary? workflows,
+        JsonLineAuditLog? audit,
+        CancellationTokenSource applicationStopping)
+    {
+        try
+        {
+            if (bridge is not null) await bridge.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceError("ArcGIS Pro MCP shutdown drain failed: {0}", exception);
+        }
+        finally
+        {
+            handler?.Dispose();
+            workspaceEvents?.Dispose();
+            approvals?.Dispose();
+            resources?.Dispose();
+            workflows?.Dispose();
+            audit?.Dispose();
+            applicationStopping.Dispose();
+        }
     }
 }

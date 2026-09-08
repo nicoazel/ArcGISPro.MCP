@@ -5,7 +5,7 @@ using System.IO;
 using System.Text.Json;
 using ArcGISProMCP.AddIn.UI;
 using ArcGISProMCP.Bridge.Protocol;
-using ArcGISProMCP.Core.Execution;
+using ArcGISProMCP.Core.Approvals;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Workflows;
 using Microsoft.Win32;
@@ -13,16 +13,20 @@ using Microsoft.Win32;
 namespace ArcGISProMCP.AddIn.Services;
 
 internal sealed class ProPanelStateSource(
-    IOperationRegistry registry,
     OperationContext context,
+    IBridgeRequestHandler handler,
     IWorkflowLibrary workflows,
     FileResourceStore resources,
     BridgeAccessState access) : IPanelStateSource
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions IndentedJson = new(JsonOptions) { WriteIndented = true };
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private readonly IApprovalService? _approvals = context.Confirmation as IApprovalService;
     private readonly object _stateGate = new();
     private readonly List<ActivitySnapshot> _activity = [];
     private PanelStateSnapshot _current = PanelStateSnapshot.Unavailable;
+    private int _approvalSubscribed;
     private bool _disposed;
 
     public event EventHandler<PanelStateSnapshot>? StateChanged;
@@ -46,6 +50,7 @@ internal sealed class ProPanelStateSource(
     {
         cancellationToken.ThrowIfCancellationRequested();
         access.Enabled = false;
+        _approvals?.RevokeAll();
         Publish(Current with
         {
             Connection = Connection(ConnectionStatus.Disconnected, "Disconnected", false)
@@ -56,6 +61,7 @@ internal sealed class ProPanelStateSource(
     public async Task RefreshAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureApprovalSubscription();
         await _refreshGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -68,6 +74,7 @@ internal sealed class ProPanelStateSource(
                 definition.Title,
                 definition.Summary,
                 definition.Parameters.All(parameter => !parameter.Required || parameter.DefaultValue is not null))).ToArray();
+            var approvalSnapshots = CreateApprovalSnapshots();
             var projectName = workspace.Project.IsOpen ? workspace.Project.Name ?? "Untitled project" : "No ArcGIS Pro project";
             var shortRevision = workspace.Revision.Length > 8 ? workspace.Revision[..8] : workspace.Revision;
 
@@ -85,6 +92,7 @@ internal sealed class ProPanelStateSource(
                     layoutChoices,
                     workspace.Layouts.FirstOrDefault(layout => layout.IsOpen)?.Id,
                     $"{workspace.Maps.Length} maps • {workspace.Layouts.Length} layouts • revision {shortRevision}"),
+                Approvals = approvalSnapshots,
                 Workflows = workflowChoices,
                 SkillCount = 1,
                 Activity = _activity.ToArray(),
@@ -120,7 +128,17 @@ internal sealed class ProPanelStateSource(
     public Task ResolveApprovalAsync(string approvalId, ApprovalDecision decision, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        AddActivity(ActivityLevel.Information, "No pending approval", "No risky operation is waiting for a decision.");
+        var approvals = _approvals ?? throw new InvalidOperationException("The local approval service is unavailable.");
+        var resolution = decision == ApprovalDecision.ApproveOnce
+            ? ApprovalResolution.ApproveOnce
+            : ApprovalResolution.Deny;
+        if (!approvals.TryResolve(approvalId, resolution))
+            throw new InvalidOperationException("This approval request is no longer pending. Refresh before deciding.");
+
+        AddActivity(
+            decision == ApprovalDecision.ApproveOnce ? ActivityLevel.Success : ActivityLevel.Warning,
+            decision == ApprovalDecision.ApproveOnce ? "Approved once" : "Request denied",
+            $"Approval request {approvalId} was resolved locally.");
         return Task.CompletedTask;
     }
 
@@ -173,23 +191,20 @@ internal sealed class ProPanelStateSource(
 
     public async Task ReplayWorkflowAsync(string workflowId, CancellationToken cancellationToken)
     {
-        var workflow = await workflows.GetAsync(workflowId, null, cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"Workflow '{workflowId}' was not found.");
-        var bound = WorkflowBinder.BindParameters(workflow, JsonSerializer.SerializeToElement(new { }));
         var workspace = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        var revision = workspace.Revision;
-        foreach (var step in workflow.Steps)
-        {
-            var result = await ExecuteAsync(
-                step.Operation,
-                WorkflowBinder.ResolveArguments(step.Arguments, bound),
-                revision,
-                cancellationToken).ConfigureAwait(false);
-            revision = result.WorkspaceRevision;
-            if (!result.Success && !step.ContinueOnError)
-                throw new InvalidOperationException(result.Message ?? $"Workflow step '{step.Id}' failed.");
-        }
-        AddActivity(ActivityLevel.Success, "Workflow completed", workflow.Title);
+        var result = await CallBridgeAsync(
+            "workflow.run",
+            new
+            {
+                workflowId,
+                parameters = new { },
+                expectedRevision = workspace.Revision
+            },
+            cancellationToken).ConfigureAwait(false);
+        if (!result.TryGetProperty("success", out var success) || success.ValueKind != JsonValueKind.True)
+            throw new InvalidOperationException($"Workflow '{workflowId}' did not complete successfully. Review its step results in the audit log.");
+
+        AddActivity(ActivityLevel.Success, "Workflow completed", workflowId);
         await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -217,14 +232,77 @@ internal sealed class ProPanelStateSource(
         await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private Task<OperationResult> ExecuteAsync(
+    private async Task<OperationResult> ExecuteAsync(
         string id,
         JsonElement arguments,
         string revision,
-        CancellationToken cancellationToken) =>
-        new OperationExecutor(registry, context with { CorrelationId = Guid.NewGuid().ToString("N") })
-            .ExecuteAsync(new OperationRequest(id, arguments, revision), cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        var result = await CallBridgeAsync(
+            "registry.invoke",
+            new { operationId = id, arguments, expectedRevision = revision },
+            cancellationToken).ConfigureAwait(false);
+        return result.Deserialize<OperationResult>(JsonOptions)
+            ?? throw new InvalidOperationException($"Operation '{id}' returned an invalid result.");
+    }
 
+    private async Task<JsonElement> CallBridgeAsync(
+        string method,
+        object parameters,
+        CancellationToken cancellationToken)
+    {
+        var requestId = Guid.NewGuid().ToString("N");
+        var response = await handler.HandleAsync(
+            new BridgeRequest(
+                BridgeProtocol.Version,
+                requestId,
+                method,
+                JsonSerializer.SerializeToElement(parameters, JsonOptions),
+                DateTimeOffset.UtcNow),
+            cancellationToken).ConfigureAwait(false);
+        if (!response.Success)
+            throw new InvalidOperationException(
+                $"{response.Error?.Code ?? "bridge_request_failed"}: {response.Error?.Message ?? "The local bridge request failed."}");
+        return response.Result?.Clone()
+            ?? throw new InvalidOperationException($"Bridge method '{method}' returned no result.");
+    }
+
+    private ApprovalSnapshot[] CreateApprovalSnapshots()
+    {
+        if (_approvals is null) return [];
+        return _approvals.GetPending()
+            .Select(approval => new ApprovalSnapshot(
+                approval.Id,
+                approval.OperationId,
+                approval.OperationVersion,
+                approval.OperationTitle,
+                approval.OperationSummary,
+                approval.WorkspaceRevision,
+                JsonSerializer.Serialize(approval.Arguments, IndentedJson),
+                approval.Risk == OperationRisk.SafeWrite ? ApprovalRisk.Moderate : ApprovalRisk.High,
+                $"Requested {approval.RequestedAt.ToLocalTime():g}",
+                $"Expires {approval.ExpiresAt.ToLocalTime():g}",
+                false))
+            .ToArray();
+    }
+
+    private void EnsureApprovalSubscription()
+    {
+        if (_approvals is null || Interlocked.CompareExchange(ref _approvalSubscribed, 1, 0) != 0) return;
+        _approvals.Changed += OnApprovalsChanged;
+    }
+
+    private void OnApprovalsChanged(object? sender, EventArgs eventArgs)
+    {
+        if (_disposed) return;
+        try
+        {
+            Publish(Current with { Approvals = CreateApprovalSnapshots() });
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
     private void AddActivity(ActivityLevel level, string message, string detail)
     {
         lock (_stateGate)
@@ -251,7 +329,7 @@ internal sealed class ProPanelStateSource(
         new(
             status,
             statusText,
-            $"Named pipe: {BridgeProtocol.DefaultPipeName}",
+            $"Named pipe: {(Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_PIPE")?.Trim() is { Length: > 0 } configured ? configured : BridgeProtocol.DefaultPipeName)}",
             sessionText ?? $"PID {Environment.ProcessId}",
             busy);
 
@@ -265,6 +343,8 @@ internal sealed class ProPanelStateSource(
     {
         if (_disposed) return;
         _disposed = true;
+        if (_approvals is not null && Interlocked.Exchange(ref _approvalSubscribed, 0) != 0)
+            _approvals.Changed -= OnApprovalsChanged;
         _refreshGate.Dispose();
     }
 }

@@ -27,7 +27,7 @@ The gateway exposes discovery, validation, invocation, workflow, skill, and reso
 2. Search or browse the registry by intent/domain.
 3. Describe only the candidate operations needed for the task.
 4. Validate arguments against the descriptor and live state.
-5. Invoke with the expected revision. Confirmed operations require `confirmationToken: "interactive"` and a fresh local Yes decision; otherwise they fail closed. Unattended approval grants are not implemented.
+5. For risky operations, call `approval_request` with the exact arguments and revision. A person reviews the dockpane; poll `approval_status` for the single-use token, then invoke unchanged arguments/revision. Remote approval grants are not implemented.
 6. Read returned resource handles for images or larger observations.
 
 Every ArcGIS object exposed across the bridge uses a stable URI-derived handle. Handles are resolved on each call and are expected to become invalid when a project closes or replaces the referenced object.
@@ -35,6 +35,8 @@ Every ArcGIS object exposed across the bridge uses a stable URI-derived handle. 
 ## Threading
 
 ArcGIS mapping, layout, data, and CIM work is routed through one `IOperationDispatcher` onto the Main CIM Thread. Pane activation and bitmap capture use the WPF UI dispatcher. Results crossing the process boundary are plain records or JSON.
+
+Concurrent pipe connections keep discovery and review accessible, while one execution gate serializes host operations and entire workflows. Panel actions use the same handler rather than a second executor. Short accepted SDK writes drain to a known outcome. Client cancellation/disconnection does not prove that a write was cancelled; post-transmission failures return `outcome_unknown`. Workflows support pinned-version process-local retry keys; they are not crash-recoverable jobs.
 
 ## Extension rules
 

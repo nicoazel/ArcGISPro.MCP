@@ -14,5 +14,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/ArcGISProMCP.Bridge/ArcGISProMCP.Bridge.csproj" />
+    <Compile Include="../../src/ArcGISProMCP.AddIn/Bridge/ProBridgeRequestHandler.cs" Link="Host/ProBridgeRequestHandler.cs" />
+    <Compile Include="../../src/ArcGISProMCP.AddIn/Services/BridgeAccessState.cs" Link="Host/BridgeAccessState.cs" />
+    <Compile Include="../../src/ArcGISProMCP.AddIn/Services/FileResourceStore.cs" Link="Host/FileResourceStore.cs" />
   </ItemGroup>
 </Project>

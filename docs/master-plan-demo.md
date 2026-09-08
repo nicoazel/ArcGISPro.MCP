@@ -1,5 +1,7 @@
 # Live master-plan demonstration
 
+Historical 0.1.0 milestone. Subsequent 0.2.0 hardening and its live acceptance status are tracked in [production readiness](production-readiness.md); limitations below describe the original run.
+
 Validated locally on 2026-09-08 with ArcGIS Pro 3.7.1.1904, embedded Rhino 8.34.26223.11001, and McNeel Rhino-MCP-Platform 0.1.5. This is a development-preview milestone, not a production release certification.
 
 ## Result

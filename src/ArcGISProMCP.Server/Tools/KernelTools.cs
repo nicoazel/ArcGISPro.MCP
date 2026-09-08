@@ -68,6 +68,32 @@ public sealed class KernelTools
     public static Task<string> WorkflowList(IBridgeClient bridge, CancellationToken cancellationToken) =>
         CallAsync(bridge, "workflow.list", null, cancellationToken);
 
+    [McpServerTool(Name = "approval_request", Title = "Request local review", Destructive = false)]
+    [Description("Queues review of one exact risky operation in the ArcGIS Pro panel without blocking other requests. A person must approve there; this tool cannot grant approval. Poll approval_status, then invoke with the returned token and unchanged revision/arguments.")]
+    public static Task<string> RequestApproval(
+        IBridgeClient bridge,
+        [Description("Stable operation id requiring approval.")] string operationId,
+        [Description("Exact arguments to be reviewed.")] JsonElement arguments,
+        [Description("Current workspace revision from system_get_state.")] string expectedRevision,
+        CancellationToken cancellationToken = default) =>
+        CallAsync(bridge, "approval.request", new { operationId, arguments, expectedRevision }, cancellationToken);
+
+    [McpServerTool(Name = "approval_status", Title = "Check local review", ReadOnly = true, Destructive = false)]
+    [Description("Returns pending, approved, denied, expired, cancelled or consumed. Only approved requests include a short-lived, single-use token. Unknown ids fail closed. No remote approval is possible.")]
+    public static Task<string> ApprovalStatus(
+        IBridgeClient bridge,
+        [Description("Opaque id returned by approval_request.")] string requestId,
+        CancellationToken cancellationToken = default) =>
+        CallAsync(bridge, "approval.status", new { requestId }, cancellationToken);
+
+    [McpServerTool(Name = "approval_cancel", Title = "Cancel local review", Destructive = false)]
+    [Description("Cancels a pending or approved review request and revokes its token. Does not stop an operation that already consumed the token.")]
+    public static Task<string> CancelApproval(
+        IBridgeClient bridge,
+        [Description("Opaque approval request id.")] string requestId,
+        CancellationToken cancellationToken = default) =>
+        CallAsync(bridge, "approval.cancel", new { requestId }, cancellationToken);
+
     [McpServerTool(Name = "workflow_get", Title = "Get an ArcGIS workflow", ReadOnly = true, Destructive = false)]
     [Description("Gets one immutable workflow version, including parameters, steps, dependencies and observation hints. Read the linked skill for visual checks and recovery guidance.")]
     public static Task<string> WorkflowGet(
@@ -92,8 +118,10 @@ public sealed class KernelTools
         [Description("Workflow id.")] string workflowId,
         [Description("Workflow parameter values.")] JsonElement parameters,
         [Description("Workspace revision from system_get_state.")] string? expectedRevision = null,
+        [Description("Immutable workflow version; required with idempotencyKey.")] string? version = null,
+        [Description("Process-lifetime retry key. Retry only the exact version, parameters and initial revision; never replay completed steps blindly.")] string? idempotencyKey = null,
         CancellationToken cancellationToken = default) =>
-        CallAsync(bridge, "workflow.run", new { workflowId, parameters, expectedRevision }, cancellationToken);
+        CallAsync(bridge, "workflow.run", new { workflowId, parameters, expectedRevision, version, idempotencyKey }, cancellationToken);
 
     [McpServerTool(Name = "resource_read", Title = "Read ArcGIS observation", ReadOnly = true, Destructive = false)]
     [Description("Reads a bounded semantic or image observation previously returned as an arcgis:// resource handle.")]
