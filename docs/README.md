@@ -22,7 +22,6 @@ flowchart LR
 | Decide whether it is safe to run on a workstation | [Security and operational limits](security.md) |
 | Enable the optional Python escape hatch | [ArcPy configuration](arcpy.md) |
 | Sign off a build on a live ArcGIS Pro install | [Manual acceptance](manual-acceptance.md), then [production readiness](production-readiness.md) |
-| Pick up development in a new session | [Fresh-context handoff](FRESH_CONTEXT_HANDOFF.md) |
 
 ## Guides
 
