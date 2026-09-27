@@ -1,0 +1,8 @@
+{
+    "map": {
+        "title": "Geocode Online",
+        "description": "Geocodes addresses with an online service.",
+        "in_table.title": "Input Table",
+        "out_features.title": "Output Features"
+    }
+}

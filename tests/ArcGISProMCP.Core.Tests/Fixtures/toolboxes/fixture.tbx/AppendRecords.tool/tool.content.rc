@@ -1,0 +1,8 @@
+{
+    "map": {
+        "title": "Append Records",
+        "description": "Appends records to an existing target table.",
+        "inputs.title": "Input Datasets",
+        "target.title": "Target Dataset"
+    }
+}

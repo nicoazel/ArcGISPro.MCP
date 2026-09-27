@@ -1,0 +1,41 @@
+{
+    "type": "FunctionTool",
+    "displayname": "$rc:title",
+    "description": "$rc:description",
+    "product": "100",
+    "params": {
+        "in_table": {
+            "displayname": "$rc:in_table.title",
+            "datatype": {
+                "type": "GPTableView"
+            }
+        },
+        "expression": {
+            "displayname": "$rc:expression.title",
+            "datatype": {
+                "type": "GPSQLExpression"
+            }
+        },
+        "expression_type": {
+            "type": "optional",
+            "displayname": "$rc:expression_type.title",
+            "datatype": {
+                "type": "GPString"
+            },
+            "domain": {
+                "type": "GPCodedValueDomain",
+                "items": [
+                    {
+                        "value": "PYTHON3",
+                        "code": "$rc:expression_type.domain.PYTHON3"
+                    },
+                    {
+                        "value": "ARCADE",
+                        "code": "$rc:expression_type.domain.ARCADE"
+                    }
+                ]
+            },
+            "value": "PYTHON3"
+        }
+    }
+}

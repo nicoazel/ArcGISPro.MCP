@@ -1,0 +1,26 @@
+{
+    "type": "FunctionTool",
+    "displayname": "$rc:title",
+    "description": "$rc:description",
+    "product": "100",
+    "attributes": [
+        "no_data_change"
+    ],
+    "params": {
+        "in_rows": {
+            "displayname": "$rc:in_rows.title",
+            "datatype": {
+                "type": "GPTableView"
+            }
+        },
+        "row_count": {
+            "type": "derived",
+            "direction": "out",
+            "displayname": "$rc:row_count.title",
+            "datatype": {
+                "type": "GPLong"
+            },
+            "value": "0"
+        }
+    }
+}

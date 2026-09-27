@@ -1,0 +1,8 @@
+{
+    "map": {
+        "descr": "Synthetic toolbox used by unit tests.",
+        "title": "Fixture Tools",
+        "toolset1.name": "Proximity",
+        "toolset2.name": "Scripted"
+    }
+}

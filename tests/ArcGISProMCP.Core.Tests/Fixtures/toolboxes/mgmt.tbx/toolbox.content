@@ -1,0 +1,14 @@
+{
+    "version": "1.0",
+    "alias": "management",
+    "displayname": "$rc:title",
+    "toolsets": {
+        "$rc:toolset1.name": {
+            "tools": [
+                "GetCount",
+                "Delete",
+                "RasterCopy:..\\fixture.tbx\\FastRaster.tool"
+            ]
+        }
+    }
+}

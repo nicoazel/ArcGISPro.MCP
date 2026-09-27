@@ -1,0 +1,30 @@
+{
+    "type": "FunctionTool",
+    "displayname": "$rc:title",
+    "description": "$rc:description",
+    "product": "100",
+    "attributes": [
+        "input_data_change",
+        "block_add_to_map",
+        "param_nocount:in_rows"
+    ],
+    "params": {
+        "in_rows": {
+            "displayname": "$rc:in_rows.title",
+            "datatype": {
+                "type": "GPTableView"
+            }
+        },
+        "out_rows": {
+            "type": "derived",
+            "direction": "out",
+            "displayname": "$rc:out_rows.title",
+            "datatype": {
+                "type": "GPTableView"
+            }
+        }
+    },
+    "environments": [
+        "workspace"
+    ]
+}
