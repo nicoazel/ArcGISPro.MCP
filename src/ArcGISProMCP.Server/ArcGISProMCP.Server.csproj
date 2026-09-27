@@ -7,12 +7,39 @@
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained>
   </PropertyGroup>
+
+  <!--
+    MCP registry package (registryType nuget, runtimeHint dnx). `dotnet pack` produces a
+    framework-dependent, RID-agnostic dotnet tool with PackageType McpServer; the single-file
+    publish used by tools/package-release.ps1 is unaffected. Keep PackageVersion in sync with
+    .mcp/server.json (tools/pack-gateway.ps1 enforces this).
+  -->
+  <PropertyGroup>
+    <PackAsTool>true</PackAsTool>
+    <PackageType>McpServer</PackageType>
+    <ToolCommandName>arcgis-pro-mcp</ToolCommandName>
+    <PackageId>ArcGISProMCP.Gateway</PackageId>
+    <Title>ArcGIS Pro MCP gateway</Title>
+    <Authors>nicoazel</Authors>
+    <Description>Windows-only stdio MCP gateway for ArcGIS Pro. Requires the ArcGIS Pro add-in (ArcGISProMCP.AddIn.esriAddinX) from the GitHub release: https://github.com/nicoazel/ArcGISPro.MCP/releases</Description>
+    <PackageTags>AI;MCP;server;stdio;ArcGIS;ArcGIS-Pro;GIS</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/nicoazel/ArcGISPro.MCP</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/nicoazel/ArcGISPro.MCP.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../ArcGISProMCP.Bridge/ArcGISProMCP.Bridge.csproj" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="ModelContextProtocol" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="../../skills/*.skill.json" Link="skills/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../skills/*.skill.json" Pack="false" Link="skills/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".mcp/server.json" Pack="true" PackagePath="/.mcp/" />
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

@@ -131,6 +131,54 @@ The evidence from that pass (result JSON, hashes and images under `artifacts/`) 
 
 Rollback does not undo map, geodatabase, layout, metadata, geoprocessing, or ArcPy mutations. Restore user data from its own backup/version history, and do not retry an uncertain mutation without checking its recorded outcome.
 
+## MCP registry package
+
+**Draft, not published.** The gateway can also be packed as a NuGet `McpServer` dotnet tool for the [MCP registry](https://github.com/modelcontextprotocol/registry) (`registryType: nuget`, `runtimeHint: dnx`). The zip bundle above stays the primary distribution: the NuGet package contains only the gateway, so the ArcGIS Pro add-in must still be installed from the GitHub release, and the gateway is Windows-only in practice.
+
+| Item | Value |
+| --- | --- |
+| Registry name | `io.github.nicoazel/arcgis-pro-mcp` |
+| NuGet package id | `ArcGISProMCP.Gateway` |
+| Tool command | `arcgis-pro-mcp` |
+| Registry metadata | `src/ArcGISProMCP.Server/.mcp/server.json`, packed at `/.mcp/server.json` |
+
+Build and verify the package locally:
+
+```powershell
+./tools/pack-gateway.ps1
+```
+
+This runs `dotnet pack` into `artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg` and fails unless the package declares the `McpServer` package type, contains `.mcp/server.json` identical to source, exposes the `arcgis-pro-mcp` command, and bundles every `skills/*.skill.json` byte-for-byte under the tool's `skills` directory. It also fails if either version in `server.json` differs from `Directory.Build.props`, so bump all three together. The package is framework-dependent and RID-agnostic (`tools/net10.0/any`) and needs the .NET 10 runtime; `PublishSingleFile` only affects `dotnet publish`, so `package-release.ps1` still produces the single-file executable.
+
+Try the package without publishing it:
+
+```powershell
+dotnet tool install --tool-path "$env:TEMP\arcgis-pro-mcp-tool" --add-source artifacts/packages ArcGISProMCP.Gateway --version 0.2.0
+# or, with .NET 10: dnx ArcGISProMCP.Gateway --version 0.2.0 --add-source artifacts/packages --yes
+```
+
+### Environment variables in `server.json`
+
+Registry clients set environment variables on the gateway process only. `server.json` therefore declares only the gateway-side variables; host-side variables must be set in the environment ArcGIS Pro starts in (see [reference](reference.md#environment-variables)).
+
+| Variable | Side | In `server.json` |
+| --- | --- | --- |
+| `ARCGIS_PRO_MCP_HOST_PID` | Gateway | Yes, optional |
+| `ARCGIS_PRO_MCP_PIPE` | Gateway and Pro (must match) | Yes, optional; set the same value for ArcGIS Pro |
+| `ARCGIS_PRO_MCP_AUTONOMOUS_MODE` | Pro | No |
+| `ARCGIS_PRO_MCP_ENABLE_ARCPY` and `ARCGIS_PRO_MCP_ARCPY_*` | Pro | No |
+
+### Publishing (maintainer, later)
+
+Not automated and not done by any script in this repository. It requires the maintainer's nuget.org account and GitHub identity:
+
+1. Bump `Version` in `Directory.Build.props` and both `version` fields in `.mcp/server.json`, then run `./tools/pack-gateway.ps1`.
+2. Push the package: `dotnet nuget push artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg --api-key <key> --source https://api.nuget.org/v3/index.json`, and wait for nuget.org validation and indexing.
+3. Install the registry publisher (`mcp-publisher`, from the modelcontextprotocol/registry releases), run `mcp-publisher login github` as `nicoazel`, then run `mcp-publisher validate` and `mcp-publisher publish` from `src/ArcGISProMCP.Server/.mcp` (both read `server.json` from the current directory).
+4. Confirm the entry at `https://registry.modelcontextprotocol.io/v0/servers?search=io.github.nicoazel/arcgis-pro-mcp`.
+
+The registry verifies NuGet ownership by finding `mcp-name: io.github.nicoazel/arcgis-pro-mcp` in the package README. The packed README is the repository `README.md`, so add `<!-- mcp-name: io.github.nicoazel/arcgis-pro-mcp -->` on its own line there and repack before the first registry publish.
+
 ## Release boundaries
 
 - The packaging script does not install, sign, or upload anything.

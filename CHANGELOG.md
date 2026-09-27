@@ -28,6 +28,7 @@ All notable changes to this project are documented here. The format is based on 
 - Geoprocessing risk tiers (UserCode, Destructive, ConsumesCredits, ReadOnlyQuery, Standard). Approval cards for `gp.run` say "Modifies/deletes input data in place" or "Consumes ArcGIS Online credits"; results carry `gp_mutates_input`, `gp_consumes_credits` or `gp_tool_not_indexed` notices.
 - Static `gp.run` dry runs: operations can implement `IDryRunnableOperation`; `gp.run` dry runs validate parameters against the catalog and report the tier, confirmation, user-code and autonomous-refusal flags without executing. ArcGIS Pro has no validate-only geoprocessing API, so this is static validation, not the tool's own validation.
 - The registry now has 41 operations (39 without the opt-in ArcPy pair); the MCP tool count stays 16.
+- Draft MCP registry packaging: `dotnet pack` on `ArcGISProMCP.Server` now produces the `ArcGISProMCP.Gateway` NuGet dotnet tool (package type `McpServer`, command `arcgis-pro-mcp`) with `.mcp/server.json` for `io.github.nicoazel/arcgis-pro-mcp` and the bundled skills. `tools/pack-gateway.ps1` packs into `artifacts/packages` and verifies the package; nothing is published. The single-file release bundle is unchanged. See [deployment](docs/deployment.md#mcp-registry-package).
 
 ### Changed
 
