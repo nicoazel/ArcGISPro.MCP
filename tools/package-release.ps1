@@ -9,6 +9,8 @@ $rid = 'win-x64'
 $status = 'development-preview'
 
 function Remove-ReleaseTemporaryPath {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Private cleanup helper; it removes only validated staging paths under artifacts/releases.')]
     param([string]$Path, [string]$Prefix)
     $resolved = [IO.Path]::GetFullPath($Path)
     $parent = [IO.Directory]::GetParent($resolved)
