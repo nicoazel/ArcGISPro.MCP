@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="../ArcGISProMCP.Core/ArcGISProMCP.Core.csproj" />
     <ProjectReference Include="../ArcGISProMCP.Bridge/ArcGISProMCP.Bridge.csproj" />
+    <ProjectReference Include="../ArcGISProMCP.Operations/ArcGISProMCP.Operations.csproj" />
     <PackageReference Include="Esri.ArcGISPro.Extensions30" ExcludeAssets="runtime;build;buildTransitive" />
   </ItemGroup>
   <ItemGroup>

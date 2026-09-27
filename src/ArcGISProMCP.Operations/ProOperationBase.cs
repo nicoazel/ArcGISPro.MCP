@@ -1,8 +1,8 @@
 using System.Text.Json;
-using ArcGISProMCP.AddIn.ArcGIS;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Core.Workspaces;
 
-namespace ArcGISProMCP.AddIn.Operations;
+namespace ArcGISProMCP.Operations;
 
 internal abstract class ProOperationBase(OperationDescriptor descriptor) : IOperation
 {
@@ -15,7 +15,7 @@ internal abstract class ProOperationBase(OperationDescriptor descriptor) : IOper
         // abandoning a queued mutation when the transport caller cancels.
         var executionToken = Descriptor.Risk == OperationRisk.SafeWrite ? CancellationToken.None : cancellationToken;
         var result = await ExecuteCoreAsync(arguments, context, executionToken).ConfigureAwait(false);
-        if (Descriptor.Risk != OperationRisk.ReadOnly && context.Workspace is ProWorkspaceStateProvider workspace)
+        if (Descriptor.Risk != OperationRisk.ReadOnly && context.Workspace is IRevisionPublishingWorkspace workspace)
         {
             workspace.AdvanceRevision();
             // A successful write must publish its new revision even if the request was cancelled

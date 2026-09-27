@@ -4,6 +4,7 @@ using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Layouts;
 using ArcGISProMCP.AddIn.ArcGIS;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
 

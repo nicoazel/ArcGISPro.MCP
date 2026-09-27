@@ -1,4 +1,4 @@
-using ArcGISProMCP.AddIn.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.Core.Tests;
 

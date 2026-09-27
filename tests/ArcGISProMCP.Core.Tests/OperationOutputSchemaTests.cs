@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using ArcGISProMCP.AddIn.Operations;
+using ArcGISProMCP.Operations;
 using ArcGISProMCP.Core.Operations;
 
 namespace ArcGISProMCP.Core.Tests;

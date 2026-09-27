@@ -1,7 +1,7 @@
 using System.Text.Json;
 using S = ArcGISProMCP.Core.Operations.JsonSchemas;
 
-namespace ArcGISProMCP.AddIn.Operations;
+namespace ArcGISProMCP.Operations;
 
 internal static class MapSelectionOperationSchemas
 {

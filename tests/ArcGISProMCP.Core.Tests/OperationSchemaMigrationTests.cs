@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using ArcGISProMCP.AddIn.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.Core.Tests;
 
@@ -9,8 +9,8 @@ namespace ArcGISProMCP.Core.Tests;
 /// Guards the migration of add-in operation input schemas from hand-written JSON strings
 /// (the since-removed <c>JsonSchemas.ObjectSchema</c>) to the typed builder. Fixtures/operation-input-schemas.json
 /// was generated from the original source strings before any call site changed. The migrated
-/// schemas live in src/ArcGISProMCP.AddIn/Operations/Schemas, which depends only on Core and is
-/// compiled into this test assembly, so the exact production schema objects are compared here.
+/// schemas live in src/ArcGISProMCP.Operations/Schemas, which depends only on Core and is
+/// referenced by this test assembly, so the exact production schema objects are compared here.
 /// </summary>
 public sealed class OperationSchemaMigrationTests
 {
@@ -91,8 +91,9 @@ public sealed class OperationSchemaMigrationTests
     public void No_operation_declares_a_string_schema()
     {
         // The string-based JsonSchemas.ObjectSchema helper was removed once gp.run migrated.
-        foreach (var path in Directory.GetFiles(OperationsDirectory(), "*.cs", SearchOption.AllDirectories))
-            Assert.DoesNotContain("ObjectSchema(", File.ReadAllText(path), StringComparison.Ordinal);
+        foreach (var directory in OperationsDirectories())
+            foreach (var path in Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories))
+                Assert.DoesNotContain("ObjectSchema(", File.ReadAllText(path), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -154,16 +155,18 @@ public sealed class OperationSchemaMigrationTests
         return string.Empty;
     }
 
+    /// <summary>Operation sources: the host-neutral Operations project and the add-in-only operations.</summary>
     internal static IReadOnlyList<string> ReadOperationSources() =>
-        Directory.GetFiles(OperationsDirectory(), "*.cs").Select(File.ReadAllText).ToArray();
+        OperationsDirectories().SelectMany(directory => Directory.GetFiles(directory, "*.cs")).Select(File.ReadAllText).ToArray();
 
-    internal static string OperationsDirectory()
+    internal static IReadOnlyList<string> OperationsDirectories()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
-            var candidate = Path.Combine(directory.FullName, "src", "ArcGISProMCP.AddIn", "Operations");
-            if (Directory.Exists(candidate)) return candidate;
+            var portable = Path.Combine(directory.FullName, "src", "ArcGISProMCP.Operations");
+            var addIn = Path.Combine(directory.FullName, "src", "ArcGISProMCP.AddIn", "Operations");
+            if (Directory.Exists(portable) && Directory.Exists(addIn)) return [portable, addIn];
         }
-        throw new DirectoryNotFoundException("Could not locate src/ArcGISProMCP.AddIn/Operations from the test output tree.");
+        throw new DirectoryNotFoundException("Could not locate src/ArcGISProMCP.Operations and src/ArcGISProMCP.AddIn/Operations from the test output tree.");
     }
 }

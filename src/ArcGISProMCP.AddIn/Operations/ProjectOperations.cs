@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using ArcGIS.Desktop.Core;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
 

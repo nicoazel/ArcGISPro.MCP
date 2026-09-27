@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
 

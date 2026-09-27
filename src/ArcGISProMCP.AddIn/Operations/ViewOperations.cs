@@ -7,6 +7,7 @@ using ArcGIS.Desktop.Mapping;
 using ArcGISProMCP.AddIn.ArcGIS;
 using ArcGISProMCP.AddIn.Services;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
 

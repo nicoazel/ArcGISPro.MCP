@@ -1,9 +1,9 @@
 using System.Text.Json;
 using S = ArcGISProMCP.Core.Operations.JsonSchemas;
 
-namespace ArcGISProMCP.AddIn.Operations;
+namespace ArcGISProMCP.Operations;
 
-// Schema files in this folder depend only on Core so Core.Tests can compile them.
+// Operation schemas depend only on Core; every host and test project shares these instances.
 internal static class ArcPyOperationSchemas
 {
     private static readonly JsonElement ScriptPath = S.String(minLength: 1, maxLength: 512);

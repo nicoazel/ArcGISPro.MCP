@@ -4,6 +4,7 @@ using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGISProMCP.Core.Execution;
 using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
 
