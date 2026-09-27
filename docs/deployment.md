@@ -6,7 +6,7 @@ By default, risky operations require a short-lived approval issued from the ArcG
 
 ## Build the bundle
 
-Prerequisites are Windows x64, .NET SDK 10, a licensed ArcGIS Pro 3.7.1 installation, and access to the referenced ArcGIS Pro 3.7 SDK package. Rhino and Rhino.Inside are not prerequisites.
+Prerequisites are Windows x64, .NET SDK 10, a licensed ArcGIS Pro 3.7.1 installation, and access to the referenced ArcGIS Pro 3.7 SDK package.
 
 From the repository root:
 

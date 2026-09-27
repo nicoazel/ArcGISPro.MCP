@@ -33,7 +33,7 @@ This is a working development preview, not full coverage of the ArcGIS SDK. See 
 
 ## Build and install
 
-Requires Windows, a licensed ArcGIS Pro 3.7.1 installation, and .NET SDK 10. Rhino and Rhino.Inside are not dependencies of this repository or package.
+Requires Windows, a licensed ArcGIS Pro 3.7.1 installation, and .NET SDK 10. This repository has no Rhino dependency.
 
 ```powershell
 dotnet build ArcGISPro.MCP.slnx -c Debug
@@ -70,11 +70,9 @@ The local demonstration artifacts are in `artifacts/demo` (git-ignored). Its lan
 
 The final standalone showcase is `workflows/pittsburgh-block-mixed-use-showcase.workflow.json`. It composes a plausible Pittsburgh mixed-use block concept into 3D massing, program and public-realm maps with live layout surrounds and dynamic text. Generated evidence is under `artifacts/pittsburgh-showcase`.
 
-The [live demo report](docs/master-plan-demo.md) records the earlier integrated presentation as historical evidence only. The [production readiness checklist](docs/production-readiness.md) tracks the current ArcGIS-only acceptance boundary.
-
 ## Design and limits
 
-See [architecture](docs/architecture.md), [security](docs/security.md), [ArcPy configuration](docs/arcpy.md), the [reference](docs/reference.md), and the [historical integrated demo](docs/master-plan-demo.md).
+See [architecture](docs/architecture.md), [security](docs/security.md), [ArcPy configuration](docs/arcpy.md), and the [reference](docs/reference.md).
 
 ArcPy is an optional, explicitly enabled external-worker escape hatch; it is not a core dependency. Normal geoprocessing continues through the ArcGIS Pro SDK.
 

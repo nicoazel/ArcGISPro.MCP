@@ -50,13 +50,3 @@ The gateway exposes only 16 tools. The full catalog of GIS operations stays serv
 6. `resource_read`: fetch returned images and larger observations by `arcgis://` handle.
 
 Reusable multi-step recipes go through `workflow_list` → `workflow_get` → `workflow_run`, and `skill_search` / `skill_get` supply the guidance for them. See the [reference](reference.md) for every tool and operation.
-
-## Historical records
-
-These documents come from the earlier combined ArcGIS + Rhino.Inside product. They are kept as evidence and **do not describe the current ArcGIS-only package**.
-
-- [Live master-plan demonstration](master-plan-demo.md): the 0.1.0 integrated presentation run.
-- [Integrated production readiness](integrated-rhino-production-readiness.md)
-- [Integrated manual acceptance](integrated-rhino-manual-acceptance.md)
-- [Integrated native-host crash, 2026-09-08](integrated-rhino-native-crash-2026-09-08.md)
-- [Integrated East Liberty presentation workflow](integrated-rhino-east-liberty-presentation.workflow.json)

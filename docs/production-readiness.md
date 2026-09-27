@@ -1,6 +1,6 @@
 # Production readiness
 
-Target: standalone ArcGIS Pro 3.7.1 workstation automation. Rhino.Inside-ArcGIS and McNeel Rhino MCP are separate products and are not dependencies of this repository or package.
+Target: standalone ArcGIS Pro 3.7.1 workstation automation.
 
 Status on 2026-09-09: **accepted for a trusted, same-user, autonomous workstation deployment within the documented feature scope.** It remains an unsigned development-preview distribution, not a signed public release. Durable jobs, explicit remote cancellation of an accepted SDK geoprocessing call, and several broader editing/catalog capabilities remain outside the current contract.
 
@@ -51,5 +51,3 @@ Status on 2026-09-09: **accepted for a trusted, same-user, autonomous workstatio
 - `artifacts/urban-stress/final-package-mixed-10x/`
 - `artifacts/pittsburgh-showcase/`
 - `workflows/pittsburgh-block-mixed-use-showcase.workflow.json`
-
-Historical embedded-Rhino evidence is retained in `integrated-rhino-*` documents. It belongs to the companion product and is not acceptance evidence for this standalone ArcGIS MCP.
