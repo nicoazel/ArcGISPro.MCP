@@ -1,0 +1,30 @@
+{"id":"rs-01","group":"project-maps","task":"What project is open right now and does it have unsaved changes?","expected":["project.get"]}
+{"id":"rs-02","group":"project-maps","task":"Save my work before I close ArcGIS Pro","expected":["project.save"]}
+{"id":"rs-03","group":"project-maps","task":"Which maps and scenes does this project contain?","expected":["map.list"]}
+{"id":"rs-04","group":"project-maps","task":"Set up a local 3D scene called Massing Study","expected":["map.ensure"]}
+{"id":"rs-05","group":"project-maps","task":"Bring the Transit map to the front so I can work in it","expected":["map.activate"]}
+{"id":"rs-06","group":"project-maps","task":"Use satellite imagery as the background of the map","expected":["basemap.set"]}
+{"id":"rs-07","group":"layers-cartography","task":"What layers are in the Zoning map and what order are they drawn in?","expected":["layer.list"]}
+{"id":"rs-08","group":"layers-cartography","task":"Load the county parcels shapefile into the current map","expected":["layer.add"]}
+{"id":"rs-09","group":"layers-cartography","task":"Make the flood zone layer 60 percent see-through","expected":["layer.set-appearance"]}
+{"id":"rs-10","group":"layers-cartography","task":"Drape the building footprints onto the terrain in the scene","expected":["layer.set-elevation"]}
+{"id":"rs-11","group":"layers-cartography","task":"Draw all the parks in one solid green fill","expected":["symbology.set-simple"]}
+{"id":"rs-12","group":"layers-cartography","task":"Give each zoning district type its own color","expected":["symbology.set-unique-values"]}
+{"id":"rs-13","group":"layers-cartography","task":"Show street names on the roads using the NAME field in 10 pt Arial","expected":["label.configure"]}
+{"id":"rs-14","group":"features-tables-metadata","task":"What fields does the parcels layer have and is it points, lines or polygons?","expected":["feature.layer.describe"]}
+{"id":"rs-15","group":"features-tables-metadata","task":"Find vacant parcels inside the downtown bounding box","expected":["feature.query"]}
+{"id":"rs-16","group":"features-tables-metadata","task":"Highlight every fire hydrant within the study area","expected":["feature.select"]}
+{"id":"rs-17","group":"features-tables-metadata","task":"Add a new bus stop point at these coordinates","expected":["feature.create"]}
+{"id":"rs-18","group":"features-tables-metadata","task":"Change the owner name on parcel 1542","expected":["feature.update"]}
+{"id":"rs-19","group":"features-tables-metadata","task":"Remove the duplicate building with this GlobalID","expected":["feature.delete"]}
+{"id":"rs-20","group":"features-tables-metadata","task":"What is the average and maximum building height?","expected":["table.statistics"],"filters":{"maxRisk":"ReadOnly"}}
+{"id":"rs-21","group":"features-tables-metadata","task":"Show me the first 20 rows of the roads attribute table","expected":["table.query","feature.query"]}
+{"id":"rs-22","group":"features-tables-metadata","task":"Write a new summary and tags into the zoning layer's metadata","expected":["metadata.update"]}
+{"id":"rs-23","group":"layouts-observation","task":"Create a letter-size landscape page named Council Exhibit","expected":["layout.ensure"]}
+{"id":"rs-24","group":"layouts-observation","task":"Put a legend and a north arrow on the exhibit page","expected":["layout.ensure-surround"]}
+{"id":"rs-25","group":"layouts-observation","task":"Add the heading Proposed Rezoning across the top of the layout","expected":["layout.set-text"]}
+{"id":"rs-26","group":"layouts-observation","task":"Zoom the main map frame to the study area with a little padding","expected":["layout.set-frame-extent"]}
+{"id":"rs-27","group":"layouts-observation","task":"Check where every element sits on the page","expected":["layout.inspect"],"filters":{"maxRisk":"ReadOnly"}}
+{"id":"rs-28","group":"layouts-observation","task":"Show me a picture of what the map looks like now","expected":["view.capture"]}
+{"id":"rs-29","group":"geoprocessing-arcpy","task":"Buffer the schools by 500 meters and intersect the result with parcels","expected":["gp.run"]}
+{"id":"rs-30","group":"geoprocessing-arcpy","task":"Get the checksum of analysis.py so I can ask for approval to run it","expected":["arcpy.inspect-script"]}
