@@ -1,0 +1,36 @@
+[
+  {
+    "name": "run.workflow.master-cartography",
+    "title": "Three-map master cartography",
+    "description": "Build three maps and a layout.",
+    "arguments": [
+      {
+        "name": "zoningSource",
+        "description": "Zoning polygons. (path)",
+        "required": true
+      },
+      {
+        "name": "labelSize",
+        "description": "Label size in points. (number) Default: 9.",
+        "required": false
+      },
+      {
+        "name": "labelExpression",
+        "description": "Arcade label expression. (string) Default: \"$feature.NAME\".",
+        "required": false
+      }
+    ]
+  },
+  {
+    "name": "skill.arcgis.cartography.master-plan",
+    "title": "Master Cartography",
+    "description": "Create a reviewable three-map planning presentation from ArcGIS feature layers and verify the exported layout.",
+    "arguments": [
+      {
+        "name": "goal",
+        "description": "Optional description of what you want to achieve with this skill.",
+        "required": false
+      }
+    ]
+  }
+]

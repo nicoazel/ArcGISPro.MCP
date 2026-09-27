@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
-using ArcGISProMCP.Core.Workflows;
+using ArcGISProMCP.Server.Skills;
 using ModelContextProtocol.Server;
 
 namespace ArcGISProMCP.Server.Tools;
@@ -8,13 +8,13 @@ namespace ArcGISProMCP.Server.Tools;
 [McpServerToolType]
 public sealed class SkillTools
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = BundledSkills.JsonOptions;
 
     [McpServerTool(Name = "skill_search", Title = "Find ArcGIS skills", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Finds compact bundled skill summaries by intent; use skill_get for preconditions, allowed operations, visual checks, recovery guidance, and the linked reusable workflow.")]
     public static async Task<string> Search(string query = "", CancellationToken cancellationToken = default)
     {
-        var skills = await LoadAsync(cancellationToken).ConfigureAwait(false);
+        var skills = await BundledSkills.LoadAsync(cancellationToken).ConfigureAwait(false);
         var terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var matches = skills.Select(skill => new
         {
@@ -33,13 +33,8 @@ public sealed class SkillTools
     [Description("Returns one bundled skill manifest. Skill text is reusable guidance; live registry validation and operation permissions still apply.")]
     public static async Task<string> Get(string skillId, CancellationToken cancellationToken = default)
     {
-        var skills = await LoadAsync(cancellationToken).ConfigureAwait(false);
-        var skill = skills.FirstOrDefault(item => string.Equals(item.Id, skillId, StringComparison.Ordinal))
+        var skill = await BundledSkills.FindAsync(skillId, cancellationToken).ConfigureAwait(false)
             ?? throw new ArgumentException($"Skill '{skillId}' was not found.", nameof(skillId));
         return JsonSerializer.Serialize(skill, JsonOptions);
     }
-
-    // Manifests without a non-empty allowedOperations are skipped by the catalog.
-    private static Task<IReadOnlyList<SkillManifest>> LoadAsync(CancellationToken cancellationToken) =>
-        SkillCatalog.LoadAsync(Path.Combine(AppContext.BaseDirectory, "skills"), cancellationToken);
 }

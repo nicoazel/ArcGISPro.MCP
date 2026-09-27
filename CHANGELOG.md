@@ -15,6 +15,9 @@ All notable changes to this project are documented here. The format is based on 
 - Approval cards show a "Runs user code" warning for `arcpy.*` runs and for `gp.run` requests that use a custom toolbox (`.pyt`/`.atbx`/`.tbx`) or a Python expression; matching `gp.run` results carry a `user_code_execution` notice.
 - Audit records gain `kind` (`operation` or `approval`), `autonomousBypass`, `decision` and `actor`. Unknown operation ids and every local approve/deny decision are now audited.
 - Audit log rotation: `operations.jsonl` rotates at 16 MiB and the newest five rotated files are kept.
+- MCP resources: `arcgis://project/state` plus templates for operations, workflows (`id@version`), skills and observation handles.
+- MCP prompts: one per bundled skill (`skill.<id>`) and, while ArcGIS Pro is running, one per saved workflow (`run.<id>`) with arguments from the workflow parameters.
+- `tests/ArcGISProMCP.Server.Tests`: in-process MCP client/server harness with a scriptable fake bridge and `tools/list`, `resources/list` and `prompts/list` snapshots (`UPDATE_SNAPSHOTS=1` regenerates them).
 
 ### Changed
 

@@ -1,0 +1,36 @@
+{
+  "resources": [
+    {
+      "uri": "arcgis://project/state",
+      "name": "project_state",
+      "title": "ArcGIS Pro project state",
+      "mimeType": "application/json"
+    }
+  ],
+  "resourceTemplates": [
+    {
+      "uriTemplate": "arcgis://operations/{id}",
+      "name": "operation",
+      "title": "ArcGIS operation descriptor",
+      "mimeType": "application/json"
+    },
+    {
+      "uriTemplate": "arcgis://resource/{id}",
+      "name": "observation",
+      "title": "ArcGIS observation",
+      "mimeType": "application/octet-stream"
+    },
+    {
+      "uriTemplate": "arcgis://skills/{id}",
+      "name": "skill",
+      "title": "ArcGIS skill manifest",
+      "mimeType": "application/json"
+    },
+    {
+      "uriTemplate": "arcgis://workflows/{id}",
+      "name": "workflow",
+      "title": "ArcGIS workflow definition",
+      "mimeType": "application/json"
+    }
+  ]
+}
