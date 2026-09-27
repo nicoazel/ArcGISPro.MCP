@@ -11,6 +11,7 @@ internal sealed class TableQueryOperation() : ProOperationBase(OperationDescript
     "table.query", "Query feature attributes",
     "Runs a bounded read-only attribute query against a feature layer and returns plain JSON rows plus schema metadata.",
     TableOperationSchemas.QueryInput,
+    outputSchema: TableOperationSchemas.QueryOutput,
     capabilities: ["maps"], tags: ["table", "query", "sql", "attributes", "database"],
     aliases: ["query geodata", "select rows", "inspect attributes"], related: ["table.statistics", "gp.run"]))
 {
@@ -81,6 +82,7 @@ internal sealed class TableStatisticsOperation() : ProOperationBase(OperationDes
     "table.statistics", "Summarize numeric field",
     "Computes bounded read-only count, null count, minimum, maximum, sum, and mean statistics for one numeric feature-layer field.",
     TableOperationSchemas.StatisticsInput,
+    outputSchema: TableOperationSchemas.StatisticsOutput,
     capabilities: ["maps"], tags: ["table", "statistics", "analysis", "database"],
     aliases: ["field stats", "average", "min max", "summarize values"], related: ["table.query", "gp.run"]))
 {

@@ -14,6 +14,7 @@ internal sealed class ViewCaptureOperation(ProResourceStore resources) : ProOper
     "view.capture", "Capture map or layout view",
     "Captures the active map view or a named layout as PNG visual evidence and returns a resource handle plus semantic context.",
     ViewOperationSchemas.CaptureInput,
+    outputSchema: ViewOperationSchemas.CaptureOutput,
     executionTarget: ExecutionTarget.ArcGISUiThread, capabilities: ["visual-observations"],
     tags: ["view", "capture", "screenshot", "visual evidence"], aliases: ["see map", "inspect map", "take screenshot"],
     related: ["map.activate", "layout.activate"]))

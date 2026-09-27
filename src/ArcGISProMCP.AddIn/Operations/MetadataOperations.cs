@@ -15,6 +15,7 @@ internal sealed class MetadataGetOperation() : ProOperationBase(OperationDescrip
     "metadata.get", "Get feature-layer metadata",
     "Reads title, summary, description, tags, credits, and use limitations from a feature layer. The response identifies whether metadata is stored by the map layer or supplied by its dataset source.",
     MetadataOperationSchemas.GetInput,
+    outputSchema: MetadataOperationSchemas.GetOutput,
     capabilities: ["maps", "metadata"], tags: ["metadata", "layer", "feature", "dataset"],
     aliases: ["inspect layer metadata", "describe feature layer"], related: ["metadata.update", "layer.list"]))
 {

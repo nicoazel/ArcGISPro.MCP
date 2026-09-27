@@ -12,6 +12,7 @@ internal sealed class LayerListOperation() : ProOperationBase(OperationDescripto
     "layer.list", "List layers",
     "Lists the flattened layer tree for a map with stable handles and appearance state.",
     LayerOperationSchemas.ListInput,
+    outputSchema: LayerOperationSchemas.ListOutput,
     capabilities: ["maps"], tags: ["layer", "map", "browse"], aliases: ["table of contents", "toc"],
     related: ["layer.add", "layer.set-appearance", "layer.set-elevation", "symbology.set-simple"]))
 {

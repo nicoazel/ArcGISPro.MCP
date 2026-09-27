@@ -16,6 +16,7 @@ internal sealed class FeatureLayerDescribeOperation() : ProOperationBase(Operati
     "feature.layer.describe", "Describe editable feature layer",
     "Returns the feature layer schema, geometry type, stable identifier fields, and editability needed before a feature edit.",
     FeatureOperationSchemas.LayerDescribeInput,
+    outputSchema: FeatureOperationSchemas.LayerDescribeOutput,
     capabilities: ["maps"], tags: ["feature", "layer", "schema", "inspect", "metadata"],
     related: ["feature.query", "feature.create", "feature.update", "feature.delete"]))
 {
@@ -68,6 +69,7 @@ internal sealed class FeatureQueryOperation() : ProOperationBase(OperationDescri
     "feature.query", "Query features by attributes and extent",
     "Runs a bounded feature query with a safe where clause and optional layer-coordinate envelope/spatial relationship. Results always include ObjectID and GlobalID when available.",
     FeatureOperationSchemas.QueryInput,
+    outputSchema: FeatureOperationSchemas.QueryOutput,
     capabilities: ["maps"], tags: ["feature", "query", "spatial", "selection", "attributes"],
     related: ["feature.layer.describe", "feature.select", "table.query"]))
 {
@@ -111,6 +113,7 @@ internal sealed class FeatureSelectOperation() : ProOperationBase(OperationDescr
     "feature.select", "Select bounded features",
     "Replaces or adds to a layer selection using a bounded attribute/spatial query. This changes selection only; it does not edit feature data.",
     FeatureOperationSchemas.SelectInput,
+    outputSchema: FeatureOperationSchemas.SelectOutput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["feature", "select", "spatial", "selection"],
     related: ["feature.query", "map.clear-selection"]))
 {
@@ -146,6 +149,7 @@ internal sealed class FeatureCreateOperation() : ProOperationBase(OperationDescr
     "feature.create", "Create one feature",
     "Creates one point, single-part polyline, or single-part polygon in an editable layer using schema-validated attributes. Coordinates must use the layer spatial reference.",
     FeatureOperationSchemas.CreateInput,
+    outputSchema: FeatureOperationSchemas.CreateOutput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["feature", "create", "edit", "geometry", "attributes"],
     related: ["feature.layer.describe", "feature.update", "feature.delete"], undoable: true))
 {
@@ -177,6 +181,7 @@ internal sealed class FeatureUpdateOperation() : ProOperationBase(OperationDescr
     "feature.update", "Update one feature's attributes or geometry",
     "Updates exactly one feature selected by ObjectID or GlobalID. Attribute names and values are validated against the layer schema; coordinates use the layer spatial reference.",
     FeatureOperationSchemas.UpdateInput,
+    outputSchema: FeatureOperationSchemas.UpdateOutput,
     risk: OperationRisk.SafeWrite, requiresConfirmation: true, capabilities: ["maps"], tags: ["feature", "update", "edit", "geometry", "attributes"],
     related: ["feature.layer.describe", "feature.create", "feature.delete"], undoable: true))
 {
@@ -215,6 +220,7 @@ internal sealed class FeatureDeleteOperation() : ProOperationBase(OperationDescr
     "feature.delete", "Delete one feature",
     "Deletes exactly one editable-layer feature selected by stable ObjectID or GlobalID. This is deliberately not a where-clause or bulk-delete operation.",
     FeatureOperationSchemas.DeleteInput,
+    outputSchema: FeatureOperationSchemas.DeleteOutput,
     risk: OperationRisk.Destructive, requiresConfirmation: true, capabilities: ["maps"], tags: ["feature", "delete", "edit", "destructive"],
     related: ["feature.query", "feature.update"], undoable: true))
 {

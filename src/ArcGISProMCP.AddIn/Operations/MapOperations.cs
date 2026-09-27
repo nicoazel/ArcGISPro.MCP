@@ -11,6 +11,7 @@ internal sealed class MapListOperation() : ProOperationBase(OperationDescriptor.
     "map.list", "List maps",
     "Lists every map and scene in the current project with stable handles, view state, type, and layer counts.",
     JsonSchemas.EmptyObject,
+    outputSchema: MapOperationSchemas.ListOutput,
     tags: ["map", "project", "browse"], aliases: ["maps", "scenes", "open maps"],
     examples: ["List all maps before choosing which one to activate."],
     related: ["map.activate", "map.ensure", "layer.list"]))

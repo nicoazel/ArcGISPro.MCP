@@ -9,6 +9,7 @@ internal sealed class ProjectGetOperation() : ProOperationBase(OperationDescript
     "project.get", "Get project",
     "Returns the current ArcGIS Pro project identity, path, dirty state, and revision.",
     JsonSchemas.EmptyObject,
+    outputSchema: ProjectOperationSchemas.GetOutput,
     tags: ["project", "workspace", "state"], aliases: ["current project", "workspace state"],
     related: ["project.open", "project.save", "map.list"]))
 {

@@ -14,4 +14,17 @@ internal static class ViewOperationSchemas
             ("width", Pixels),
             ("height", Pixels),
         ]);
+
+    // Describes OperationResult.data for view.capture (default JsonSerializer names).
+    public static JsonElement CaptureOutput { get; } = S.Object(
+        [
+            ("resource", S.String(minLength: 1, description: "Resource URI of the stored PNG.")),
+            ("width", S.Integer()),
+            ("height", S.Integer()),
+            ("sourceKind", S.Enum("map", "layout")),
+            ("sourceName", S.String()),
+            ("sourceUri", S.String()),
+            ("capturedAt", S.String(description: "ISO 8601 date-time.")),
+        ],
+        ["resource", "width", "height", "sourceKind", "sourceName", "sourceUri", "capturedAt"]);
 }

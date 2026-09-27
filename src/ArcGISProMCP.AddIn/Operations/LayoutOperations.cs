@@ -12,6 +12,7 @@ internal sealed class LayoutListOperation() : ProOperationBase(OperationDescript
     "layout.list", "List layouts",
     "Lists project layouts and their map frames using stable handles.",
     JsonSchemas.EmptyObject,
+    outputSchema: LayoutOperationSchemas.ListOutput,
     capabilities: ["layouts"], tags: ["layout", "map frame", "browse"], aliases: ["layouts", "print layouts"],
     related: ["layout.inspect", "layout.ensure", "layout.add-map-frame", "layout.activate"]))
 {
@@ -38,6 +39,7 @@ internal sealed class LayoutInspectOperation() : ProOperationBase(OperationDescr
     "layout.inspect", "Inspect layout",
     "Returns a layout's page dimensions and flattened element geometry, including map-frame bindings and cameras.",
     LayoutOperationSchemas.InspectInput,
+    outputSchema: LayoutOperationSchemas.InspectOutput,
     capabilities: ["layouts"], tags: ["layout", "inspect", "map frame", "camera", "verification"],
     aliases: ["inspect layout elements", "verify layout geometry", "read map frames"],
     related: ["layout.list", "layout.add-map-frame", "layout.set-frame-extent", "view.capture"]))
