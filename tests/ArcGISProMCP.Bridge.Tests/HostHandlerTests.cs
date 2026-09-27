@@ -436,6 +436,28 @@ public sealed class HostHandlerTests
     }
 
     [Fact]
+    public async Task Describe_wraps_a_declared_top_level_array_output_schema_in_the_result_envelope()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+
+        var describe = await fixture.Call("registry.describe", new { operationId = ListingOperation.Id });
+        var invoke = await fixture.Call("registry.invoke", new { operationId = ListingOperation.Id, arguments = new { } });
+
+        var description = describe.Result!.Value.Deserialize<OperationDescription>(BridgeJson.Options)!;
+        Assert.True(JsonElement.DeepEquals(ListingOperation.OutputSchema, description.OutputSchema!.Value));
+        var properties = description.ResultSchema.GetProperty("properties");
+        // The declared schema (a top-level array, like map.list and layout.list) is the envelope's data member.
+        Assert.True(JsonElement.DeepEquals(ListingOperation.OutputSchema, properties.GetProperty("data")));
+        Assert.Contains(description.ResultSchema.GetProperty("required").EnumerateArray(), item => item.GetString() == "data");
+        Assert.Equal("array", properties.GetProperty("data").GetProperty("type").GetString());
+        Assert.Empty(OperationArgumentValidator.Validate(invoke.Result!.Value, description.ResultSchema));
+
+        var wrongData = JsonSerializer.SerializeToElement(
+            OperationResult.Ok(JsonSerializer.SerializeToElement(new { name = "not an array" }), "r1"), WebJson);
+        Assert.NotEmpty(OperationArgumentValidator.Validate(wrongData, description.ResultSchema));
+    }
+
+    [Fact]
     public async Task Bridge_results_round_trip_through_the_shared_contracts()
     {
         using var fixture = new Fixture(OperationRisk.SafeWrite);
@@ -503,6 +525,7 @@ public sealed class HostHandlerTests
             registry.Register(Operation);
             registry.Register(ReadOperation);
             registry.Register(ScriptOperation);
+            registry.Register(new ListingOperation());
             foreach (var gated in GatedOperations.Values) registry.Register(gated);
             Workflows = new FileWorkflowLibrary(WorkflowDirectory, registry);
             var context = new OperationContext(new Dispatcher(), workspace ?? new Workspace(), Approvals, new Audit(), "test", CancellationToken.None);
@@ -541,6 +564,19 @@ public sealed class HostHandlerTests
             var revision = (await context.Workspace.GetSnapshotAsync(cancellationToken)).Revision;
             return OperationResult.Ok(JsonSerializer.SerializeToElement(new { valid = true, dryRun = true }), revision);
         }
+    }
+
+    /// <summary>Declares a top-level array output schema, like map.list and layout.list.</summary>
+    private sealed class ListingOperation : IOperation
+    {
+        public const string Id = "listing.maps";
+        public static JsonElement OutputSchema { get; } = JsonSchemas.Array(JsonSchemas.Object(
+            [("name", JsonSchemas.String()), ("layerCount", JsonSchemas.Integer(minimum: 0))],
+            ["name", "layerCount"]));
+        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(Id, "Listing maps", "Lists maps.", JsonSchemas.EmptyObject,
+            outputSchema: OutputSchema);
+        public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(OperationResult.Ok(JsonSerializer.SerializeToElement(new[] { new { name = "Zoning", layerCount = 3 } }), "r1"));
     }
 
     private sealed class Workspace : IWorkspaceStateProvider
