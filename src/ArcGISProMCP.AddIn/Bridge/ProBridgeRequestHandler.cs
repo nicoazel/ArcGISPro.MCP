@@ -16,7 +16,7 @@ internal sealed class ProBridgeRequestHandler(
     IOperationRegistry registry,
     OperationContext baseContext,
     IWorkflowLibrary workflows,
-    FileResourceStore resources,
+    ProResourceStore resources,
     BridgeAccessState access) : IBridgeRequestHandler, IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)

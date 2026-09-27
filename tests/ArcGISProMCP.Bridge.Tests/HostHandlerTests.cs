@@ -214,7 +214,7 @@ public sealed class HostHandlerTests
             registry.Register(ReadOperation);
             Workflows = new FileWorkflowLibrary(Path.Combine(_root, "workflows"), registry);
             var context = new OperationContext(new Dispatcher(), workspace ?? new Workspace(), Approvals, new Audit(), "test", CancellationToken.None);
-            _handler = new ProBridgeRequestHandler(registry, context, Workflows, new FileResourceStore(Path.Combine(_root, "resources")), new BridgeAccessState());
+            _handler = new ProBridgeRequestHandler(registry, context, Workflows, new ProResourceStore(Path.Combine(_root, "resources")), new BridgeAccessState());
         }
         public Task<BridgeResponse> Call(string method, object parameters) => _handler.HandleAsync(
             new(BridgeProtocol.Version, Guid.NewGuid().ToString("N"), method, JsonSerializer.SerializeToElement(parameters), DateTimeOffset.UtcNow), TestContext.Current.CancellationToken);

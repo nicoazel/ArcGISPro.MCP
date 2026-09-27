@@ -177,7 +177,7 @@ public sealed class HostSchedulingTests
                 audit ?? new NoopAudit(), "test", CancellationToken.None);
             _handler = new ProBridgeRequestHandler(
                 registry, context, workflows,
-                new FileResourceStore(Path.Combine(_root, "resources")),
+                new ProResourceStore(Path.Combine(_root, "resources")),
                 new BridgeAccessState());
             Workflows = workflows;
         }

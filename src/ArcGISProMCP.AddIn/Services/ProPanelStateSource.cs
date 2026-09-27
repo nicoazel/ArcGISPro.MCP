@@ -17,7 +17,7 @@ internal sealed class ProPanelStateSource(
     OperationContext context,
     IBridgeRequestHandler handler,
     IWorkflowLibrary workflows,
-    FileResourceStore resources,
+    ProResourceStore resources,
     BridgeAccessState access) : IPanelStateSource
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };

@@ -27,7 +27,7 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
     private ProBridgeRequestHandler? _handler;
     private IApprovalService? _approvals;
     private ProWorkspaceEventMonitor? _workspaceEvents;
-    private FileResourceStore? _resources;
+    private ProResourceStore? _resources;
     private FileWorkflowLibrary? _workflows;
     private JsonLineAuditLog? _audit;
     private Task? _cleanupTask;
@@ -75,7 +75,7 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
         var appRoot = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ArcGISProMCP");
-        var resources = _resources = new FileResourceStore(Path.Combine(appRoot, "resources"));
+        var resources = _resources = new ProResourceStore(Path.Combine(appRoot, "resources"));
         var workflows = _workflows = new FileWorkflowLibrary(Path.Combine(appRoot, "workflows"), registry);
         var audit = _audit = new JsonLineAuditLog(Path.Combine(appRoot, "audit", "operations.jsonl"));
         var approvals = _approvals = new LocalApprovalService();
@@ -195,7 +195,7 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
         ProBridgeRequestHandler? handler,
         IApprovalService? approvals,
         ProWorkspaceEventMonitor? workspaceEvents,
-        FileResourceStore? resources,
+        ProResourceStore? resources,
         FileWorkflowLibrary? workflows,
         JsonLineAuditLog? audit,
         CancellationTokenSource applicationStopping)
