@@ -1,6 +1,6 @@
 {
   "id": "workflow.urban-mixed-use-massing",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "title": "Urban test 3 - mixed-use massing and public realm",
   "summary": "Builds a mixed-use program test with a 3D massing scene, development-program map, existing-fabric map, and exported review sheet.",
   "tags": ["urban-design", "mixed-use", "massing", "scene", "layout", "stress-test"],
@@ -55,7 +55,6 @@
     { "id": "stats-population", "operation": "table.statistics", "arguments": { "map": "UD3 Mixed Use Program", "layer": "Mixed Use Program", "field": "pop" }, "dependsOn": ["stats-area"] },
     { "id": "stats-dwellings", "operation": "table.statistics", "arguments": { "map": "UD3 Mixed Use Program", "layer": "Mixed Use Program", "field": "du" }, "dependsOn": ["stats-population"] },
     { "id": "stats-employment", "operation": "table.statistics", "arguments": { "map": "UD3 Mixed Use Program", "layer": "Mixed Use Program", "field": "emp" }, "dependsOn": ["stats-dwellings"] },
-    { "id": "capture", "operation": "view.capture", "arguments": { "view": "layout", "layout": "Urban Test 3 - Mixed Use Massing", "width": 2400, "height": 1553 }, "dependsOn": ["stats-employment"], "expectedObservation": "mixed-use-layout-png" },
-    { "id": "save", "operation": "project.save", "arguments": {}, "dependsOn": ["capture"] }
+    { "id": "capture", "operation": "view.capture", "arguments": { "view": "layout", "layout": "Urban Test 3 - Mixed Use Massing", "width": 2400, "height": 1553 }, "dependsOn": ["stats-employment"], "expectedObservation": "mixed-use-layout-png" }
   ]
 }

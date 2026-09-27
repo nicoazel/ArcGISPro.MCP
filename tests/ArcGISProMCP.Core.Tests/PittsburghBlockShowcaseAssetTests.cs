@@ -18,7 +18,7 @@ public sealed class PittsburghBlockShowcaseAssetTests
             .ToHashSet(StringComparer.Ordinal);
 
         Assert.Equal("workflow.pittsburgh-block-mixed-use-showcase", root.GetProperty("id").GetString());
-        Assert.Equal("1.0.1", root.GetProperty("version").GetString());
+        Assert.Equal("1.1.0", root.GetProperty("version").GetString());
         Assert.Contains("illustrative", source, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("EPSG:2272", source, StringComparison.Ordinal);
         Assert.DoesNotContain("D:\\", source, StringComparison.Ordinal);
@@ -33,8 +33,8 @@ public sealed class PittsburghBlockShowcaseAssetTests
         Assert.Equal(3, steps.Count(step => Operation(step) == "layout.ensure-surround"));
         Assert.Equal(3, steps.Count(step => Operation(step) == "layer.set-appearance"));
         Assert.Equal(3, steps.Count(step => Operation(step) == "table.statistics"));
-        Assert.Equal("view.capture", Operation(steps[^2]));
-        Assert.Equal("project.save", Operation(steps[^1]));
+        Assert.Equal("view.capture", Operation(steps[^1]));
+        Assert.DoesNotContain(steps, step => Operation(step) == "project.save");
         Assert.Equal("relative-to-ground", Step(steps, "scene-ground-relative")
             .GetProperty("arguments").GetProperty("mode").GetString());
         Assert.Contains("<dyn type=\"project\"", Step(steps, "dynamic-status")
