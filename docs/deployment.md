@@ -1,8 +1,13 @@
-# Development preview deployment
+# Deployment, status and rollback
 
-ArcGIS Pro MCP Studio is a development preview for ArcGIS Pro 3.7.1 on Windows x64. The add-in is unsigned, and the newly separated ArcGIS-only build plus its feature, metadata, geoprocessing, and optional ArcPy surfaces require installation and live acceptance before distribution. Do not deploy this build as an unattended or organization-wide service.
+## Status
 
-By default, risky operations require a short-lived approval issued from the ArcGIS Pro panel, and the server cannot approve its own request. A trusted operator may explicitly start the host with `ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true`; this bypasses panel review and materially expands client authority.
+**Development preview.** Supported: interactive same-user workstation with dockpane approvals. Autonomous mode is an opt-in expert setting, not recommended.
+
+- Target: ArcGIS Pro 3.7.1 on Windows x64, one signed-in user, a model client running as that same user.
+- The add-in and bundle are unsigned. This is not a signed public release and must not be deployed as an unattended or organization-wide service.
+- By default, risky operations require a short-lived approval issued by a person in the ArcGIS Pro dockpane, and the gateway cannot approve its own request.
+- `ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true` bypasses dockpane review for the whole host session and effectively grants the connected client the user's ArcGIS authority. It exists for trusted experimentation and is not a supported deployment mode. See [security](security.md).
 
 ## Build the bundle
 
@@ -77,9 +82,40 @@ A generic MCP client entry is:
 }
 ```
 
-Do not bypass the panel. Run the procedures in [manual acceptance](manual-acceptance.md) against a disposable project, including local review, reconnect, revision rejection, feature/metadata/geoprocessing mutations, and host shutdown. Portable verification is not host acceptance.
+Keep the dockpane open and review each approval request. Run the procedures in [manual acceptance](manual-acceptance.md) against a disposable project, including local review, reconnect, revision rejection, feature/metadata/geoprocessing mutations, and host shutdown. Portable verification is not host acceptance.
 
 ArcPy is absent from the operation registry unless explicitly enabled before ArcGIS Pro starts. Follow [ArcPy configuration and trust boundaries](arcpy.md); do not enable it on a workstation that accepts untrusted scripts or untrusted MCP clients.
+
+## Implemented surface
+
+- Searchable registry with curated project, map, scene, layer, cartography, feature, table, metadata, geoprocessing, layout, observation, workflow and optional ArcPy operations. See the [reference](reference.md).
+- Typed point, single-part polyline and single-part polygon feature CRUD with GlobalID-first addressing, bounded queries, spatial filters, selection and revision checks.
+- Metadata read/update that preserves unrelated ArcGIS XML, plus scene elevation placement metadata.
+- Live legends, north arrows, scale bars and dynamic project/date/map-frame-scale text.
+- Per-PID host discovery with fail-closed ambiguity for concurrent ArcGIS Pro projects.
+- Dockpane local review with single-use approval tokens bound to operation version, arguments and workspace revision.
+
+## Acceptance evidence
+
+A live acceptance pass of the ArcGIS-only build was run on the maintainer's workstation on 2026-09-09. It covered MCP protocol and reconnect, multi-instance discovery, feature editing, layer metadata, SDK geoprocessing, the optional ArcPy runner (in autonomous mode), the urban layout workflows and the Pittsburgh showcase, and idle/shutdown behavior. Two findings are retained:
+
+- Explicit remote cancellation of an accepted SDK geoprocessing call is not implemented. A client disconnect after acceptance is reported as `outcome_unknown`.
+- ArcGIS Pro shutdown was not perfectly repeatable across disposable instances; one instance needed a PID-scoped forced close after 75 seconds.
+
+The evidence from that pass (result JSON, hashes and images under `artifacts/`) is **local only**: `artifacts/` is git-ignored and nothing in this repository lets a reader verify those results. Treat them as the maintainer's notes, not as release evidence. Recording reproducible, committed acceptance evidence tied to a commit SHA, ArcGIS Pro version and DLL hashes is planned (see the [roadmap](ROADMAP.md)). Until then, every installation should run [manual acceptance](manual-acceptance.md) itself.
+
+## Known limits
+
+- **Workflows cannot execute confirmation-gated steps in default mode.** `workflow_run` invokes each step without an approval token, and there is no per-step approval yet. A step such as `gp.run`, `metadata.update`, `feature.delete` or `arcpy.run-script` fails with `confirmation_required` unless the host runs in autonomous mode. Run such operations individually through `approval_request` and `registry_invoke`.
+- Workflows are not transactional or resumable after a crash. There is no automatic rollback.
+- Feature editing excludes batch edits, multipoint construction, multipart construction and complete subtype/domain/range validation.
+- Metadata update targets a map layer's ArcGIS metadata API; standalone catalog-item metadata editing is not supported.
+- Once an SDK geoprocessing write is accepted, the protocol has no durable job id or explicit remote cancel command. A disconnected caller receives `outcome_unknown` and must inspect state or retry with the same idempotency key.
+- Process-lifetime idempotency, workflow history and resources are not a durable cross-restart job store.
+- Advanced renderers, workspace connection management and PDF export are outside the curated registry. The registry is not a complete ArcGIS SDK wrapper.
+- ArcPy and `gp.run` can execute arbitrary user code; neither is a sandbox. See [security](security.md).
+- The package is unsigned. Wider distribution requires an organizational signing certificate, publisher policy and another installed-package verification pass over the signed artifact.
+- Automation that closes ArcGIS Pro must keep PID-scoped ownership, save first, request a normal close, wait, and only terminate a verified disposable process as a last resort.
 
 ## Roll back
 
@@ -93,10 +129,8 @@ Rollback does not undo map, geodatabase, layout, metadata, geoprocessing, or Arc
 
 ## Release boundaries
 
-- The script does not install, sign, or upload anything.
-- The operation registry is curated, not a complete ArcGIS SDK wrapper.
-- Workflows are not transactional or resumable after a crash.
-- Default-mode approval UI and live ArcGIS-host acceptance remain required. Autonomous deployments must instead verify the visible autonomous warning and unattended risky-operation audit notices.
-- The latest-build installation, reload, mutation and stability tests block wider distribution.
+- The packaging script does not install, sign, or upload anything.
+- Live ArcGIS-host acceptance of the exact installed build, including the dockpane approval flow, is required before relying on a build.
+- Anyone who enables autonomous mode anyway must also verify the visible autonomous warning and the unattended risky-operation audit notices.
 
-See [production readiness](production-readiness.md) for evidence and remaining gates, and [security](security.md) for the transport and approval model.
+See [security](security.md) for the transport and approval model.
