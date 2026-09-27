@@ -136,7 +136,6 @@ internal sealed record PanelStateSnapshot(
     VisualEvidenceSnapshot VisualEvidence,
     IReadOnlyList<ActivitySnapshot> Activity,
     IReadOnlyList<WorkflowSnapshot> Workflows,
-    int SkillCount,
     string FooterStatus,
     bool CanCancelOperation)
 {
@@ -174,7 +173,6 @@ internal sealed record PanelStateSnapshot(
                 false)
         },
         Array.Empty<WorkflowSnapshot>(),
-        0,
         "Visual evidence on request",
         false);
 }

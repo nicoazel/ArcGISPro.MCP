@@ -295,8 +295,7 @@
         <Expander Grid.Row="6" Padding="8,3">
             <Expander.Header>
                 <TextBlock>
-                    <Run Text="Skills " /><Run Text="{Binding SkillCount, Mode=OneWay}" />
-                    <Run Text=" · Workflows " /><Run Text="{Binding Workflows.Count, Mode=OneWay}" />
+                    <Run Text="Workflows " /><Run Text="{Binding Workflows.Count, Mode=OneWay}" />
                 </TextBlock>
             </Expander.Header>
             <Grid Margin="0,4,0,4">

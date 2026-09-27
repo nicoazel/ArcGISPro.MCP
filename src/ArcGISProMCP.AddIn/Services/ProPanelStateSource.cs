@@ -96,7 +96,6 @@ internal sealed class ProPanelStateSource(
                     $"{workspace.Maps.Length} maps • {workspace.Layouts.Length} layouts • revision {shortRevision}"),
                 Approvals = approvalSnapshots,
                 Workflows = workflowChoices,
-                SkillCount = 1,
                 Activity = _activity.ToArray(),
                 FooterStatus = "Visual evidence is captured only on request",
                 CanCancelOperation = false

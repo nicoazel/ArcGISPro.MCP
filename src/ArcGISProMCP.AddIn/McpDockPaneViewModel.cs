@@ -93,7 +93,6 @@ namespace ArcGISProMCP.AddIn
         public ICommand OpenSettingsCommand => _openSettingsCommand;
 
         public bool CanCancelOperation { get; private set; }
-        public int SkillCount { get; private set; }
         public string FooterStatus { get; private set; } = string.Empty;
         public string ErrorMessage
         {
@@ -162,10 +161,8 @@ namespace ArcGISProMCP.AddIn
             Workflows.Apply(snapshot.Workflows);
 
             CanCancelOperation = snapshot.CanCancelOperation;
-            SkillCount = snapshot.SkillCount;
             FooterStatus = snapshot.FooterStatus;
             NotifyPropertyChanged(nameof(CanCancelOperation));
-            NotifyPropertyChanged(nameof(SkillCount));
             NotifyPropertyChanged(nameof(FooterStatus));
             RaiseCommandStates();
         }
