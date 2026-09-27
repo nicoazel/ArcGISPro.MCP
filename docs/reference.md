@@ -13,7 +13,7 @@ Every tool declares all four MCP hints. `openWorldHint` is always false: nothing
 | `system_get_state` | ✓ | | ✓ | state | Revisioned snapshot of the project, maps, layouts, active view, capabilities, and connection. |
 | `registry_search` | ✓ | | ✓ | hit[] | Searches operations by intent, GIS terms and aliases. Optional filters: `domain`, `capabilities` (a result must require every listed capability) and `maxRisk` (highest risk to include, for example `ReadOnly`). `limit` defaults to 12 and is clamped to 1–100. Articles and prepositions such as "the", "a", "of" and "to" are ignored in the query. |
 | `registry_browse` | ✓ | | ✓ | browse | Without `domain`: `total` and per-domain `domains` counts. With `domain`: that domain's `operations`. The unused pair is null. Search and browse entries include `executesUserCode`. |
-| `registry_describe` | ✓ | | ✓ | descriptor | Returns one operation's full descriptor: input schema, required capabilities, examples, risk, confirmation requirement, related operations, and `resultSchema`, the JSON schema of that operation's `registry_invoke` result (`success`, `data`, `errorCode`, `message`, `workspaceRevision`, `notices`, `resources`). `outputSchema` describes `data` and is null while the operation declares none; `data` is then unconstrained. |
+| `registry_describe` | ✓ | | ✓ | descriptor | Returns one operation's full descriptor: input schema, required capabilities, examples, risk, confirmation requirement, related operations, and `resultSchema`, the JSON schema of that operation's `registry_invoke` result (`success`, `data`, `errorCode`, `message`, `workspaceRevision`, `notices`, `resources`). `outputSchema` describes `data` of a successful result and is null while the operation declares none; `data` is then unconstrained. 15 stable-shape operations declare one (`project.get`, `map.list`, `layer.list`, `feature.*`, `table.query`, `table.statistics`, `metadata.get`, `layout.list`, `layout.inspect`, `view.capture`); the `gp.*` operations do not, because a `gp.run` dry run and a real run return different shapes and tool results mirror open-ended Esri values. |
 | `registry_validate` | ✓ | | ✓ | validation | Checks arguments against the operation's input schema and, for writes, the expected revision against the current one. It does not resolve layers, maps or paths, so a valid result does not guarantee success. Never writes. |
 | `registry_invoke` | | ✓ | | operation result | Runs one operation. Writes need the current revision, and confirmation-gated operations also need an approval token. An operation result with `success: false` makes the call an error that still carries the result. `dryRun: true` validates without executing (see [dry runs](#dry-runs)). |
 | `approval_request` | | | | approval | Queues local review of one exact risky call in the ArcGIS Pro panel. It cannot approve itself. |
@@ -43,7 +43,7 @@ Every tool returns the same envelope as `structuredContent`, and the same JSON a
 
 ## Operations
 
-The add-in registers these operations. Risk determines the gate each one passes through:
+The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` operations when [ArcPy is enabled](arcpy.md). Risk determines the gate each one passes through:
 
 - **ReadOnly**: runs freely.
 - **SafeWrite**: requires the current workspace revision.

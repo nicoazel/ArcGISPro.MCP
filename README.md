@@ -11,7 +11,7 @@ The **[documentation hub](docs/README.md)** is the starting point, with a readin
 | | |
 | --- | --- |
 | **Set up** | [Deployment, status and rollback](docs/deployment.md) · [Architecture](docs/architecture.md) |
-| **Look up** | [Reference](docs/reference.md): 16 gateway tools, 38 operations with risk levels, environment variables, workflows, scripts |
+| **Look up** | [Reference](docs/reference.md): 16 gateway tools, 41 operations (39 without the opt-in ArcPy pair) with risk levels, MCP resources and prompts, environment variables, workflows, scripts |
 | **Stay safe** | [Security and limits](docs/security.md) · [ArcPy configuration](docs/arcpy.md) |
 | **Release** | [Status and known limits](docs/deployment.md#status) · [Manual acceptance](docs/manual-acceptance.md) · [Changelog](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md) · [Roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md) |
 | **Contribute** | [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) |
@@ -25,8 +25,10 @@ The **[documentation hub](docs/README.md)** is the starting point, with a readin
 - Typed feature-layer inspection, bounded attribute/spatial query and selection, and SDK-native create/update/single-feature delete operations.
 - Feature-layer metadata read/update for title, summary, description, tags, credits, and use limitations.
 - SDK geoprocessing execution with bounded ordered parameters, explicit environments and overwrite behavior, complete messages, warnings, derived values and timing.
+- Geoprocessing discovery from installed toolbox metadata (`gp.search`, `gp.describe`), review-free allowlisted read-only queries (`gp.query`), per-tool risk tiers, and static `gp.run` dry runs.
 - Layout creation, map frames and extents, named text, map surrounds, activation and PNG export; map-view PNG capture.
 - Immutable parameterized workflows, run history/ranking, and searchable bundled skill guidance.
+- MCP protocol surface: explicit tool annotations, typed `{ ok, result, error }` structured results with output schemas and `isError`, per-operation `resultSchema` in `registry_describe`, `dryRun` on `registry_invoke`, read-only `arcgis://` resources, and prompts generated from skills and workflows.
 - Same-user concurrent named-pipe transport, bounded connection slots/framing timeouts, exclusive pipe ownership, serialized host operations, audit records and write revisions.
 - Expiring modeless local review, exact argument/version/revision binding, and single-use approval tokens for every destructive or external-side-effect operation plus `project.open`, `project.save` and `feature.update`. Requests that run Python are flagged "Runs user code" on the approval card. Default mode does not allow remote self-approval; an explicit host-startup autonomous mode can bypass review while retaining revision checks, warning notices and audit records.
 - Workflow operation allowlists (`gp.run` and `arcpy.run-script` must be listed explicitly), and workflows that stop with `workspace_changed` instead of adopting a newer revision mid-run.

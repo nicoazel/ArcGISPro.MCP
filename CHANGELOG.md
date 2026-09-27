@@ -13,33 +13,34 @@ All notable changes to this project are documented here. The format is based on 
 - Workflow operation allowlists: an optional `allowedOperations` list on workflows, enforced on save and run and reported as the validation issue `operation_not_allowed`. Operation descriptors gain `executesUserCode` (true for `gp.run` and `arcpy.run-script`), which `registry_search` and `registry_browse` entries also report. Allowlist entries are operation ids and are not version-pinned.
 - `registry_search` accepts `capabilities` and `maxRisk` filters.
 - Approval cards show a "Runs user code" warning for `arcpy.*` runs and for `gp.run` requests that use a custom toolbox (`.pyt`/`.atbx`/`.tbx`) or a Python expression; matching `gp.run` results carry a `user_code_execution` notice.
-- Audit records gain `kind` (`operation` or `approval`), `autonomousBypass`, `decision` and `actor`. Unknown operation ids and every local approve/deny decision are now audited.
+- Audit records gain `kind` (`operation`, `dry-run` or `approval`), `autonomousBypass`, `decision` and `actor`. Unknown operation ids and every local approve/deny decision are now audited.
 - Audit log rotation: `operations.jsonl` rotates at 16 MiB and the newest five rotated files are kept.
 - MCP resources: `arcgis://project/state` plus templates for operations, workflows (`id@version`), skills and observation handles.
 - MCP prompts: one per bundled skill (`skill.<id>`) and, while ArcGIS Pro is running, one per saved workflow (`run.<id>`) with arguments from the workflow parameters.
 - Typed tool results: every tool returns `{ ok, result, error }` as `structuredContent` (and the same JSON as its text block) with an `outputSchema`, and sets `isError` on failure with `error` = `code`, `message`, `retryable`, `revision`. `registry_invoke` and `workflow_run` results with `success: false` are errors that keep `result`. Bridge results are typed records shared by the add-in and the gateway (`ArcGISProMCP.Bridge.Protocol.BridgeContracts`).
 - Every tool declares `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint` (always false). Only `registry_invoke` and `workflow_run` are destructive.
-- `registry_describe` returns `resultSchema`, the JSON schema of the operation's `registry_invoke` result envelope.
+- `registry_describe` returns `resultSchema`, the JSON schema of the operation's `registry_invoke` result envelope. Its `data` member is the operation's `outputSchema`, now declared by 15 stable-shape operations (`project.get`, `map.list`, `layer.list`, `feature.*`, `table.query`, `table.statistics`, `metadata.get`, `layout.list`, `layout.inspect`, `view.capture`); `data` stays unconstrained for the rest, including `gp.*`.
+- `registry_invoke` accepts `dryRun`: the operation is validated statically and never executed, needs no revision or approval token, and neither queues a review nor consumes a token. A completed dry run is not `isError` even when it reports `valid: false`. Combining `dryRun` with `idempotencyKey` fails with `dry_run_idempotency_conflict`.
 - `approval_status` accepts `waitSeconds` (0-120) to wait for the dockpane decision instead of polling.
 - `tests/ArcGISProMCP.Server.Tests`: in-process MCP client/server harness with a scriptable fake bridge and `tools/list`, `resources/list` and `prompts/list` snapshots (`UPDATE_SNAPSHOTS=1` regenerates them).
-
 - Geoprocessing operations `gp.search` and `gp.describe` (ReadOnly) over the installed system toolbox metadata, returning execution names, risk tiers and the positional parameter `signature` `gp.run` expects.
 - `gp.query` (ReadOnly, no review) runs only the allowlisted read-only system tools `management.GetCount`, `management.GetRasterProperties` and `management.GetCellValue`, resolved against the system toolboxes, with no map outputs, no overwrite and no history.
 - Geoprocessing risk tiers (UserCode, Destructive, ConsumesCredits, ReadOnlyQuery, Standard). Approval cards for `gp.run` say "Modifies/deletes input data in place" or "Consumes ArcGIS Online credits"; results carry `gp_mutates_input`, `gp_consumes_credits` or `gp_tool_not_indexed` notices.
-- Static dry runs: operations can implement `IDryRunnableOperation`; `gp.run` dry runs validate parameters against the catalog and report the tier, confirmation, user-code and autonomous-refusal flags without executing. Dry runs are audited with kind `dry-run`.
+- Static `gp.run` dry runs: operations can implement `IDryRunnableOperation`; `gp.run` dry runs validate parameters against the catalog and report the tier, confirmation, user-code and autonomous-refusal flags without executing. ArcGIS Pro has no validate-only geoprocessing API, so this is static validation, not the tool's own validation.
+- The registry now has 41 operations (39 without the opt-in ArcPy pair); the MCP tool count stays 16.
 
 ### Changed
 
 - **Breaking:** in autonomous mode `gp.run` refuses Destructive and UserCode tools, and requests flagged as running user code, with `destructive_tool_requires_review`.
 - **Breaking:** tool text content is now the `{ ok, result, error }` envelope rather than the bare bridge result; read `result` (or `structuredContent.result`). Failed bridge calls are `isError` results instead of protocol errors, and `skill_get` for an unknown id returns `skill_not_found`. `registry_browse` and `workflow_run` results now always carry all their members (unused ones are null). Enum fields such as `risk` remain numbers.
-- `tools/test-mcp.ps1` checks every tool's hints and envelope `outputSchema` and reads results from `structuredContent`.
 - **Breaking:** `project.open`, `project.save` and `feature.update` now require a local-review approval token (or autonomous mode). Dockpane buttons that trigger them approve through the same audited approval queue.
 - **Breaking:** a workflow whose workspace revision changes mid-run now stops with `workspace_changed` (reporting `stoppedAtStep`, `stepIndex`, `expectedRevision`, `currentRevision`) instead of retrying the step against the new revision. `continueOnError` does not override this, and completed steps are not rolled back.
 - **Breaking:** saved workflows can no longer use `gp.run` or `arcpy.run-script` unless their `allowedOperations` lists them. When `allowedOperations` is present it is exhaustive.
 - **Breaking:** skill manifests without a non-empty `allowedOperations` are skipped when loading. The bundled master-cartography skill no longer lists `project.save`.
 - **Breaking:** `resource.read` payloads use camelCase field names (`mimeType`, `name`, `createdAt`) instead of PascalCase.
+- `tools/test-mcp.ps1` checks every tool's hints and envelope `outputSchema` and reads results from `structuredContent`.
 - Registry search ignores articles and prepositions in queries.
-- Tool descriptions no longer over-promise: `registry_describe` does not claim output schemas, `registry_validate` is described as a schema and revision check that does not resolve layers or paths, and the `registry_search` limit is documented as 1–100 to match the registry clamp.
+- Tool descriptions no longer over-promise: `registry_validate` is described as a schema and revision check that does not resolve layers or paths, and the `registry_search` limit is documented as 1–100 to match the registry clamp.
 - `JsonLineAuditLog` moved to `ArcGISProMCP.Core.Infrastructure`, and the Add-In resource store facade is renamed `ProResourceStore`.
 - The live feature/GP/ArcPy acceptance script documents that it requires autonomous mode and asserts the `autonomous_control` notice for `feature.update` and `project.save`.
 - One release status across all documentation: development preview; supported configuration is an interactive same-user workstation with dockpane approvals; autonomous mode is an opt-in expert setting, not recommended.
@@ -47,6 +48,7 @@ All notable changes to this project are documented here. The format is based on 
 - `docs/security.md` describes the implemented per-PID multi-instance discovery, states that `gp.run` can execute arbitrary Python (Python toolboxes, script tools, Calculate Field expressions) without ArcPy, and documents that workflows cannot execute confirmation-gated steps in default mode.
 - The release bundle no longer includes the roadmap in its `docs/` folder.
 - Bundled workflows are now version 1.1.0 and no longer end with `project.save`; save the project with an explicit `project.save` call.
+- Operation input schemas are built with a typed `JsonSchemas` builder that self-checks each schema at startup; the string-based `JsonSchemas.ObjectSchema` helper is removed. Migrated schemas are semantically identical to the originals, guarded by a captured fixture.
 
 ### Fixed
 
@@ -65,6 +67,7 @@ All notable changes to this project are documented here. The format is based on 
 - User-code operations are opt-in per workflow, and approvals that execute Python are visibly labelled.
 - `gp.run` requests for Calculate Field, Calculate Fields and Calculate Value are labelled as running user code even without an explicit expression type, because ArcGIS Pro defaults it to Python 3. Python toolboxes called by an imported alias remain a documented false negative.
 - Approval decisions, autonomous bypasses and unknown operation ids are recorded in the audit log.
+- Approvals stay in the ArcGIS Pro dockpane: MCP elicitation is intentionally not used, so the client UI cannot become the approval authority. `approval_status` `waitSeconds` only waits for the dockpane decision.
 - A dockpane button click (for example **Open project**) can no longer approve an identical request that an MCP client queued for review. The panel's self-approval always creates its own approval entry (`IApprovalService.Request(..., reuseExisting: false)`), and the transient entry no longer flashes in the approval cards.
 
 ### Removed
