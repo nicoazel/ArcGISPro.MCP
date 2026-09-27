@@ -8,9 +8,7 @@ internal sealed class ArcPyInspectScriptOperation(ArcPyExecutionSettings setting
     "arcpy.inspect-script",
     "Inspect an ArcPy script",
     "Returns the size and SHA-256 of a Python script in the locally configured ArcPy script root without executing it.",
-    JsonSchemas.ObjectSchema(
-        "\"scriptPath\": {\"type\": \"string\", \"minLength\": 1, \"maxLength\": 512}",
-        "scriptPath"),
+    ArcPyOperationSchemas.InspectScriptInput,
     risk: OperationRisk.ReadOnly,
     executionTarget: ExecutionTarget.ExternalWorker,
     capabilities: ["arcpy"],
@@ -50,13 +48,7 @@ internal sealed class ArcPyRunScriptOperation(
     "arcpy.run-script",
     "Run an approved ArcPy script",
     "Runs a hash-pinned Python script from the locally configured ArcPy script root in the ArcGIS Pro Python environment.",
-    JsonSchemas.ObjectSchema(
-        "\"scriptPath\": {\"type\": \"string\", \"minLength\": 1, \"maxLength\": 512}, " +
-        "\"scriptSha256\": {\"type\": \"string\", \"pattern\": \"^[A-Fa-f0-9]{64}$\"}, " +
-        "\"arguments\": {\"type\": \"array\", \"maxItems\": 64, \"items\": {\"type\": \"string\", \"maxLength\": 8192}}, " +
-        "\"timeoutSeconds\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 900}",
-        "scriptPath",
-        "scriptSha256"),
+    ArcPyOperationSchemas.RunScriptInput,
     risk: OperationRisk.ExternalSideEffect,
     requiresConfirmation: true,
     executionTarget: ExecutionTarget.ExternalWorker,

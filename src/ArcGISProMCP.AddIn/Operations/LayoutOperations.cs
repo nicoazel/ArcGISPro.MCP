@@ -12,6 +12,7 @@ internal sealed class LayoutListOperation() : ProOperationBase(OperationDescript
     "layout.list", "List layouts",
     "Lists project layouts and their map frames using stable handles.",
     JsonSchemas.EmptyObject,
+    outputSchema: LayoutOperationSchemas.ListOutput,
     capabilities: ["layouts"], tags: ["layout", "map frame", "browse"], aliases: ["layouts", "print layouts"],
     related: ["layout.inspect", "layout.ensure", "layout.add-map-frame", "layout.activate"]))
 {
@@ -37,7 +38,8 @@ internal sealed class LayoutListOperation() : ProOperationBase(OperationDescript
 internal sealed class LayoutInspectOperation() : ProOperationBase(OperationDescriptor.Create(
     "layout.inspect", "Inspect layout",
     "Returns a layout's page dimensions and flattened element geometry, including map-frame bindings and cameras.",
-    JsonSchemas.ObjectSchema("\"layout\": {\"type\": \"string\", \"minLength\": 1}", "layout"),
+    LayoutOperationSchemas.InspectInput,
+    outputSchema: LayoutOperationSchemas.InspectOutput,
     capabilities: ["layouts"], tags: ["layout", "inspect", "map frame", "camera", "verification"],
     aliases: ["inspect layout elements", "verify layout geometry", "read map frames"],
     related: ["layout.list", "layout.add-map-frame", "layout.set-frame-extent", "view.capture"]))
@@ -129,9 +131,7 @@ internal sealed class LayoutInspectOperation() : ProOperationBase(OperationDescr
 internal sealed class LayoutEnsureOperation() : ProOperationBase(OperationDescriptor.Create(
     "layout.ensure", "Ensure layout exists",
     "Returns an existing named layout or creates a page in inches using the requested dimensions.",
-    JsonSchemas.ObjectSchema(
-        "\"name\": {\"type\": \"string\", \"minLength\": 1}, \"width\": {\"type\": \"number\", \"exclusiveMinimum\": 0}, \"height\": {\"type\": \"number\", \"exclusiveMinimum\": 0}",
-        "name"),
+    LayoutOperationSchemas.EnsureInput,
     risk: OperationRisk.SafeWrite, capabilities: ["layouts"], tags: ["layout", "page", "create"],
     aliases: ["new layout", "create layout"], related: ["layout.inspect", "layout.add-map-frame", "layout.activate"], undoable: true))
 {
@@ -198,9 +198,7 @@ internal sealed class LayoutEnsureOperation() : ProOperationBase(OperationDescri
 internal sealed class LayoutAddMapFrameOperation() : ProOperationBase(OperationDescriptor.Create(
     "layout.add-map-frame", "Add map frame",
     "Adds a map frame to a layout at page coordinates measured in inches.",
-    JsonSchemas.ObjectSchema(
-        "\"layout\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\", \"minLength\": 1}, \"name\": {\"type\": \"string\"}, \"x\": {\"type\": \"number\"}, \"y\": {\"type\": \"number\"}, \"width\": {\"type\": \"number\", \"exclusiveMinimum\": 0}, \"height\": {\"type\": \"number\", \"exclusiveMinimum\": 0}",
-        "layout", "map"),
+    LayoutOperationSchemas.AddMapFrameInput,
     risk: OperationRisk.SafeWrite, capabilities: ["layouts", "maps"], tags: ["layout", "map frame", "compose", "multi-map"],
     aliases: ["place map on layout", "multi map layout"], related: ["layout.ensure", "layout.inspect", "layout.list"], undoable: true))
 {
@@ -296,7 +294,7 @@ internal static class LayoutElementPlacement
 internal sealed class LayoutActivateOperation() : ProOperationBase(OperationDescriptor.Create(
     "layout.activate", "Activate layout",
     "Opens or activates a layout view.",
-    JsonSchemas.ObjectSchema("\"layout\": {\"type\": \"string\", \"minLength\": 1}", "layout"),
+    LayoutOperationSchemas.ActivateInput,
     risk: OperationRisk.SafeWrite, executionTarget: ExecutionTarget.ArcGISUiThread, capabilities: ["layouts"],
     tags: ["layout", "view", "open", "switch"], aliases: ["show layout", "open layout"], related: ["layout.list", "view.capture"]))
 {

@@ -7,7 +7,7 @@ namespace ArcGISProMCP.AddIn.Operations;
 internal sealed class MapClearSelectionOperation() : ProOperationBase(OperationDescriptor.Create(
     "map.clear-selection", "Clear feature selection",
     "Clears selected features in a map without editing feature data. Useful before a clean layout export.",
-    JsonSchemas.ObjectSchema("\"map\":{\"type\":\"string\"}"),
+    MapSelectionOperationSchemas.ClearSelectionInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["map", "selection", "highlight", "export"]))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)

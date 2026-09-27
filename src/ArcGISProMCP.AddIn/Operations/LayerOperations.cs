@@ -11,7 +11,8 @@ namespace ArcGISProMCP.AddIn.Operations;
 internal sealed class LayerListOperation() : ProOperationBase(OperationDescriptor.Create(
     "layer.list", "List layers",
     "Lists the flattened layer tree for a map with stable handles and appearance state.",
-    JsonSchemas.ObjectSchema("\"map\": {\"type\": \"string\"}"),
+    LayerOperationSchemas.ListInput,
+    outputSchema: LayerOperationSchemas.ListOutput,
     capabilities: ["maps"], tags: ["layer", "map", "browse"], aliases: ["table of contents", "toc"],
     related: ["layer.add", "layer.set-appearance", "layer.set-elevation", "symbology.set-simple"]))
 {
@@ -67,9 +68,7 @@ internal sealed class LayerListOperation() : ProOperationBase(OperationDescripto
 internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor.Create(
     "layer.add", "Add layer",
     "Adds a dataset, layer file, or service URL to a map and returns its stable layer handle.",
-    JsonSchemas.ObjectSchema(
-        "\"source\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"name\": {\"type\": \"string\"}",
-        "source"),
+    LayerOperationSchemas.AddInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["layer", "data", "service", "create"],
     aliases: ["add data", "load layer", "add service"], related: ["layer.list", "symbology.set-simple"], undoable: true))
 {
@@ -104,9 +103,7 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
 internal sealed class LayerSetAppearanceOperation() : ProOperationBase(OperationDescriptor.Create(
     "layer.set-appearance", "Set layer appearance",
     "Sets visibility and/or transparency for one layer. Transparency is a percentage from 0 to 100.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"visible\": {\"type\": \"boolean\"}, \"transparency\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 100}",
-        "layer"),
+    LayerOperationSchemas.SetAppearanceInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["layer", "visibility", "transparency", "appearance"],
     aliases: ["hide layer", "show layer", "fade layer"], related: ["layer.list", "symbology.set-simple"], undoable: true))
 {
@@ -137,9 +134,7 @@ internal sealed class LayerSetAppearanceOperation() : ProOperationBase(Operation
 internal sealed class LayerSetElevationOperation() : ProOperationBase(OperationDescriptor.Create(
     "layer.set-elevation", "Set layer elevation",
     "Sets how a feature layer is placed vertically in a scene, with optional cartographic offset and vertical exaggeration.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"mode\": {\"type\": \"string\", \"enum\": [\"on-ground\", \"relative-to-ground\", \"relative-to-scene\", \"absolute-height\"]}, \"offset\": {\"type\": \"number\", \"minimum\": -1000000, \"maximum\": 1000000}, \"verticalExaggeration\": {\"type\": \"number\", \"minimum\": 0.01, \"maximum\": 100}",
-        "layer", "mode"),
+    LayerOperationSchemas.SetElevationInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["layer", "scene", "elevation", "ground", "3d"],
     aliases: ["put layer on ground", "set height mode", "place features relative to ground"],
     related: ["layer.list", "layer.set-appearance", "layout.set-frame-extent"], undoable: true))
@@ -203,7 +198,7 @@ internal sealed class LayerSetElevationOperation() : ProOperationBase(OperationD
 internal sealed class BasemapSetOperation() : ProOperationBase(OperationDescriptor.Create(
     "basemap.set", "Set basemap",
     "Sets a map's basemap using an ArcGIS Pro basemap name.",
-    JsonSchemas.ObjectSchema("\"basemap\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}", "basemap"),
+    LayerOperationSchemas.BasemapSetInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["basemap", "map", "style"],
     aliases: ["change basemap", "set imagery", "set topo"], related: ["map.list", "map.ensure"], undoable: true))
 {
@@ -225,8 +220,7 @@ internal sealed class BasemapSetOperation() : ProOperationBase(OperationDescript
 internal sealed class StyleSearchOperation() : ProOperationBase(OperationDescriptor.Create(
     "style.search", "Search project styles",
     "Searches symbols in referenced project styles without loading the full style catalog into model context.",
-    JsonSchemas.ObjectSchema(
-        "\"query\": {\"type\": \"string\"}, \"type\": {\"type\": \"string\", \"enum\": [\"point\", \"line\", \"polygon\", \"text\"]}, \"limit\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 100}"),
+    LayerOperationSchemas.StyleSearchInput,
     capabilities: ["maps"], tags: ["style", "symbol", "search"], aliases: ["find symbol", "search symbols"],
     related: ["symbology.set-simple"]))
 {

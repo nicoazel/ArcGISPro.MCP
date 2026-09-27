@@ -12,9 +12,7 @@ namespace ArcGISProMCP.AddIn.Operations;
 internal sealed class LayoutSetFrameExtentOperation() : ProOperationBase(OperationDescriptor.Create(
     "layout.set-frame-extent", "Frame a layer on a layout",
     "Fits a named map frame to a feature layer with optional scale padding and camera heading/pitch overrides.",
-    JsonSchemas.ObjectSchema(
-        "\"layout\":{\"type\":\"string\"},\"frame\":{\"type\":\"string\"},\"layer\":{\"type\":\"string\"},\"padding\":{\"type\":\"number\",\"minimum\":1,\"maximum\":20},\"heading\":{\"type\":\"number\",\"minimum\":-360,\"maximum\":360},\"pitch\":{\"type\":\"number\",\"minimum\":-90,\"maximum\":90}",
-        "layout", "frame", "layer"),
+    PresentationRefinementOperationSchemas.SetFrameExtentInput,
     risk: OperationRisk.SafeWrite, capabilities: ["layouts"], tags: ["layout", "extent", "camera", "zoom"]))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
@@ -119,9 +117,7 @@ internal sealed class LayoutSetFrameExtentOperation() : ProOperationBase(Operati
 internal sealed class SymbologySetUniqueValuesOperation() : ProOperationBase(OperationDescriptor.Create(
     "symbology.set-unique-values", "Style polygon categories",
     "Applies explicitly specified colors and labels to values in one polygon-layer field.",
-    JsonSchemas.ObjectSchema(
-        "\"map\":{\"type\":\"string\"},\"layer\":{\"type\":\"string\"},\"field\":{\"type\":\"string\"},\"classes\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\"},\"label\":{\"type\":\"string\"},\"color\":{\"type\":\"string\"}},\"required\":[\"value\",\"color\"],\"additionalProperties\":false}},\"defaultColor\":{\"type\":\"string\"}",
-        "layer", "field", "classes"),
+    PresentationRefinementOperationSchemas.SetUniqueValuesInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["symbology", "categories", "zoning", "land use", "unique values"]))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)

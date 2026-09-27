@@ -14,9 +14,8 @@ namespace ArcGISProMCP.AddIn.Operations;
 internal sealed class MetadataGetOperation() : ProOperationBase(OperationDescriptor.Create(
     "metadata.get", "Get feature-layer metadata",
     "Reads title, summary, description, tags, credits, and use limitations from a feature layer. The response identifies whether metadata is stored by the map layer or supplied by its dataset source.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"includeXml\": {\"type\": \"boolean\"}",
-        "layer"),
+    MetadataOperationSchemas.GetInput,
+    outputSchema: MetadataOperationSchemas.GetOutput,
     capabilities: ["maps", "metadata"], tags: ["metadata", "layer", "feature", "dataset"],
     aliases: ["inspect layer metadata", "describe feature layer"], related: ["metadata.update", "layer.list"]))
 {
@@ -76,9 +75,7 @@ internal sealed class MetadataGetOperation() : ProOperationBase(OperationDescrip
 internal sealed class MetadataUpdateOperation() : ProOperationBase(OperationDescriptor.Create(
     "metadata.update", "Update feature-layer metadata",
     "Updates the supported common metadata fields while preserving unrelated metadata XML. If the layer is using dataset-source metadata, the source XML is copied to editable map-layer metadata in the APRX before applying the patch; the dataset item itself is not changed.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"title\": {\"type\": \"string\", \"maxLength\": 32768}, \"summary\": {\"type\": \"string\", \"maxLength\": 32768}, \"description\": {\"type\": \"string\", \"maxLength\": 32768}, \"tags\": {\"type\": \"array\", \"items\": {\"type\": \"string\", \"maxLength\": 512}, \"maxItems\": 100, \"uniqueItems\": true}, \"credits\": {\"type\": \"string\", \"maxLength\": 32768}, \"useLimitations\": {\"type\": \"string\", \"maxLength\": 32768}",
-        "layer"),
+    MetadataOperationSchemas.UpdateInput,
     risk: OperationRisk.ExternalSideEffect, capabilities: ["maps", "metadata"], tags: ["metadata", "layer", "feature", "update"],
     aliases: ["edit layer metadata", "set feature layer description"], related: ["metadata.get"],
     requiresConfirmation: true, undoable: false))
