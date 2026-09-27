@@ -158,6 +158,48 @@ public sealed class HostHandlerTests
         Assert.Equal(1, rank.FailedRuns);
     }
 
+    [Fact]
+    public async Task Read_only_step_does_not_launder_a_mid_run_revision_change()
+    {
+        // Initial check r1; the read step's executor and operation observe r2; the write sees r2.
+        var workspace = new SequenceWorkspace("r1", "r2", "r2", "r2");
+        using var fixture = new Fixture(OperationRisk.SafeWrite, workspace);
+        var arguments = JsonSerializer.SerializeToElement(new { });
+        var workflow = new WorkflowDefinition("laundering-flow", "1.0.0", "Laundering", "Test", [], [], [],
+            [new("read", "test.read", arguments, []),
+             new("write", "test.write", arguments, [])]);
+        await fixture.Workflows.SaveAsync(workflow, TestContext.Current.CancellationToken);
+
+        var response = await fixture.Call("workflow.run", new { workflowId = workflow.Id, parameters = new { }, expectedRevision = "r1" });
+
+        var result = response.Result!.Value;
+        Assert.False(result.GetProperty("success").GetBoolean());
+        Assert.Equal("workspace_changed", result.GetProperty("errorCode").GetString());
+        Assert.Equal("write", result.GetProperty("stoppedAtStep").GetString());
+        Assert.Equal("r1", result.GetProperty("expectedRevision").GetString());
+        Assert.Equal("r2", result.GetProperty("currentRevision").GetString());
+        Assert.Equal(1, fixture.ReadOperation.CallCount);
+        Assert.Equal(0, fixture.Operation.CallCount);
+    }
+
+    [Fact]
+    public async Task Successful_write_advances_the_expected_revision_for_the_next_write()
+    {
+        // Initial check r1; write one starts at r1 and produces r2; write two starts at r2.
+        var workspace = new SequenceWorkspace("r1", "r1", "r2", "r2");
+        using var fixture = new Fixture(OperationRisk.SafeWrite, workspace);
+        var arguments = JsonSerializer.SerializeToElement(new { });
+        var workflow = new WorkflowDefinition("advancing-flow", "1.0.0", "Advancing", "Test", [], [], [],
+            [new("one", "test.write", arguments, []),
+             new("two", "test.write", arguments, ["one"])]);
+        await fixture.Workflows.SaveAsync(workflow, TestContext.Current.CancellationToken);
+
+        var response = await fixture.Call("workflow.run", new { workflowId = workflow.Id, parameters = new { }, expectedRevision = "r1" });
+
+        Assert.True(response.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(2, fixture.Operation.CallCount);
+    }
+
     [Theory]
     [InlineData("ReadOnly")]
     [InlineData("read_only")]
@@ -237,10 +279,12 @@ public sealed class HostHandlerTests
         public int CallCount { get; private set; }
         public bool Fail { get; set; }
         public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(id, "Test operation", "Test", JsonSchemas.EmptyObject, risk: risk, capabilities: capabilities, requiresConfirmation: risk == OperationRisk.Destructive);
-        public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+        public async Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
         {
             CallCount++;
-            return Task.FromResult(Fail ? OperationResult.Fail("test_failure", "Deliberate failure", "r1") : OperationResult.Ok(JsonSerializer.SerializeToElement(new { }), "r1"));
+            // Like real operations, report the workspace revision observed after running.
+            var revision = (await context.Workspace.GetSnapshotAsync(cancellationToken)).Revision;
+            return Fail ? OperationResult.Fail("test_failure", "Deliberate failure", revision) : OperationResult.Ok(JsonSerializer.SerializeToElement(new { }), revision);
         }
     }
 

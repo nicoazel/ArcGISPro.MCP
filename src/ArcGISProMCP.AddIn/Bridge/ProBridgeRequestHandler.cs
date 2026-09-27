@@ -410,7 +410,13 @@ internal sealed class ProBridgeRequestHandler(
                 }, JsonOptions);
             }
             results.Add(new { step = step.Id, operation = step.Operation, result.Success, result.ErrorCode, result.Message, result.WorkspaceRevision, result.Data, result.Resources, result.Notices });
-            revision = result.WorkspaceRevision;
+            // Only a successful write advances the expected revision, to the revision it produced.
+            // A read-only step or a failed (continueOnError) step reports whatever the workspace
+            // currently is; adopting that would launder an unreviewed mid-run change into
+            // authorization for the remaining writes.
+            if (result.Success && registry.TryGet(step.Operation, out var executed) &&
+                executed.Descriptor.Risk != OperationRisk.ReadOnly)
+                revision = result.WorkspaceRevision;
             if (result.Success) succeededCount++;
             else { failedCount++; failedSteps.Add(step.Id); }
             if (!result.Success && !step.ContinueOnError)

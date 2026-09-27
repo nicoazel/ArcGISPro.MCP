@@ -40,7 +40,7 @@ All notable changes to this project are documented here. The format is based on 
 ### Security
 
 - Confirmation now covers project replacement (`project.open`), project persistence (`project.save`) and attribute/geometry edits (`feature.update`).
-- Workflows can no longer silently adopt a newer workspace revision and continue writing against state nobody reviewed.
+- Workflows can no longer silently adopt a newer workspace revision and continue writing against state nobody reviewed. Only a successful write step advances the run's expected revision; a read-only step or a `continueOnError` failure that observes a mid-run change no longer authorizes the following writes.
 - User-code operations are opt-in per workflow, and approvals that execute Python are visibly labelled.
 - Approval decisions, autonomous bypasses and unknown operation ids are recorded in the audit log.
 
