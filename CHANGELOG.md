@@ -9,7 +9,7 @@ All notable changes to this project are documented here. The format is based on 
 - `SECURITY.md` with supported versions, private reporting through GitHub security advisories, and a threat model summary.
 - `CONTRIBUTING.md` with prerequisites, build, test and packaging commands, and pull request conventions.
 - This changelog and a public [roadmap](docs/ROADMAP.md).
-- Bundled workflows are embedded in `ArcGISProMCP.Core` and seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` on first load, so `workflow_list` is populated on a fresh install. Existing files are never overwritten.
+- Bundled workflows are embedded in `ArcGISProMCP.Core` and seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` at start-up, so `workflow_list` is populated on a fresh install. Seeding is a no-op once a workflow is present; existing files are never overwritten.
 
 ### Changed
 
@@ -17,7 +17,7 @@ All notable changes to this project are documented here. The format is based on 
 - `docs/production-readiness.md` merged into `docs/deployment.md`, which now also covers the implemented surface, acceptance evidence and known limits. The 2026-09-09 live acceptance evidence is described as local only and not verifiable from the repository.
 - `docs/security.md` describes the implemented per-PID multi-instance discovery, states that `gp.run` can execute arbitrary Python (Python toolboxes, script tools, Calculate Field expressions) without ArcPy, and documents that workflows cannot execute confirmation-gated steps in default mode.
 - The release bundle no longer includes the roadmap in its `docs/` folder.
-- Bundled workflows are now version 1.1.0 and no longer end with `project.save`; save the project with an explicit, approved `project.save` call.
+- Bundled workflows are now version 1.1.0 and no longer end with `project.save`; save the project with an explicit `project.save` call.
 
 ### Removed
 
