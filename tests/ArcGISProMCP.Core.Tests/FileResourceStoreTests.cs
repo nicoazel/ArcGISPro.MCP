@@ -69,6 +69,24 @@ public sealed class FileResourceStoreTests
     }
 
     [Fact]
+    public async Task Read_uses_camel_case_wire_names_like_other_bridge_results()
+    {
+        var root = CreateTempDirectory();
+        using var store = new FileResourceStore(root);
+        var handle = await store.StoreAsync([1, 2, 3], "image/png", ".png", "capture", CancellationToken.None);
+
+        var resource = await store.ReadAsync(handle.Uri, CancellationToken.None);
+
+        Assert.Equal(
+            ["createdAt", "data", "encoding", "mimeType", "name", "uri"],
+            resource.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal));
+        Assert.Equal("image/png", resource.GetProperty("mimeType").GetString());
+        Assert.Equal("capture", resource.GetProperty("name").GetString());
+        Assert.Equal(handle.Uri, resource.GetProperty("uri").GetString());
+        Assert.Equal([1, 2, 3], Convert.FromBase64String(resource.GetProperty("data").GetString()!));
+    }
+
+    [Fact]
     public async Task Rejects_path_traversal_extensions()
     {
         var root = CreateTempDirectory();

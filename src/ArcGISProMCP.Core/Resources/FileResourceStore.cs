@@ -14,6 +14,8 @@ public class FileResourceStore : IDisposable
 {
     public const int MaxResourceBytes = 5 * 1024 * 1024;
     public const string SchemePrefix = "arcgis://resource/";
+    // Same camelCase wire casing as every other bridge result.
+    private static readonly JsonSerializerOptions WireOptions = new(JsonSerializerDefaults.Web);
 
     private readonly string _root;
     private readonly ResourceRetentionOptions _retention;
@@ -114,7 +116,7 @@ public class FileResourceStore : IDisposable
                 encoding = "base64",
                 data = Convert.ToBase64String(bytes),
                 resource.CreatedAt
-            });
+            }, WireOptions);
         }
         finally
         {

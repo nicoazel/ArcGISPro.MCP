@@ -13,6 +13,9 @@ namespace ArcGISProMCP.Bridge.Tests;
 
 public sealed class HostHandlerTests
 {
+    private static readonly string[] MapsOnly = ["MAPS"];
+    private static readonly string[] MapsAndLayouts = ["maps", "layouts"];
+
     [Fact]
     public async Task Approval_is_local_single_use_and_bound_to_revision()
     {
@@ -115,28 +118,90 @@ public sealed class HostHandlerTests
     }
 
     [Fact]
-    public async Task Workflow_retries_once_when_host_revision_advances_before_a_step_executes()
+    public async Task Workflow_stops_with_workspace_changed_when_revision_advances_before_a_step()
     {
+        // Initial workflow check sees r1; the executor then observes r2 before the first step runs.
         var workspace = new SequenceWorkspace("r1", "r2", "r2");
         using var fixture = new Fixture(OperationRisk.SafeWrite, workspace);
+        var arguments = JsonSerializer.SerializeToElement(new { });
         var workflow = new WorkflowDefinition("settling-flow", "1.0.0", "Settling", "Test", [], [], [],
-            [new("write", "test.write", JsonSerializer.SerializeToElement(new { }), [])]);
+            [new("write", "test.write", arguments, [], true),
+             new("second", "test.write", arguments, [])]);
         await fixture.Workflows.SaveAsync(workflow, TestContext.Current.CancellationToken);
 
         var response = await fixture.Call("workflow.run", new { workflowId = workflow.Id, parameters = new { }, expectedRevision = "r1" });
 
-        Assert.True(response.Result!.Value.GetProperty("success").GetBoolean());
-        Assert.Equal(1, fixture.Operation.CallCount);
-        var notices = response.Result.Value.GetProperty("results")[0].GetProperty("notices");
-        Assert.Contains(notices.EnumerateArray(), notice =>
-            notice.GetProperty("code").GetString() == "workflow_revision_refreshed");
+        var result = response.Result!.Value;
+        Assert.False(result.GetProperty("success").GetBoolean());
+        Assert.Equal("workspace_changed", result.GetProperty("errorCode").GetString());
+        Assert.Equal("write", result.GetProperty("stoppedAtStep").GetString());
+        Assert.Equal(0, result.GetProperty("stepIndex").GetInt32());
+        Assert.Equal("r1", result.GetProperty("expectedRevision").GetString());
+        Assert.Equal("r2", result.GetProperty("currentRevision").GetString());
+        // No retry at the newer revision, and ContinueOnError does not let the second step run.
+        Assert.Equal(0, fixture.Operation.CallCount);
+        var step = Assert.Single(result.GetProperty("results").EnumerateArray());
+        Assert.Equal("workspace_revision_mismatch", step.GetProperty("errorCode").GetString());
+        var rank = Assert.Single(await fixture.Workflows.RankAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(0, rank.SuccessfulRuns);
+        Assert.Equal(1, rank.FailedRuns);
+    }
+
+    [Theory]
+    [InlineData("ReadOnly")]
+    [InlineData("read_only")]
+    [InlineData("read-only")]
+    public async Task Search_max_risk_excludes_write_operations(string maxRisk)
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+
+        var all = await fixture.Call("registry.search", new { query = "test" });
+        var readOnly = await fixture.Call("registry.search", new { query = "test", maxRisk });
+
+        Assert.Equal(["test.read", "test.write"], OperationIds(all).Order(StringComparer.Ordinal));
+        Assert.Equal(["test.read"], OperationIds(readOnly));
+    }
+
+    [Fact]
+    public async Task Search_capabilities_filter_is_passed_to_the_registry()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+
+        var maps = await fixture.Call("registry.search", new { query = "test", capabilities = MapsOnly });
+        var none = await fixture.Call("registry.search", new { query = "test", capabilities = MapsAndLayouts });
+
+        Assert.Equal(["test.read"], OperationIds(maps));
+        Assert.Empty(OperationIds(none));
+    }
+
+    [Theory]
+    [InlineData("maxRisk", "\"Dangerous\"")]
+    [InlineData("maxRisk", "\"1\"")]
+    [InlineData("capabilities", "\"maps\"")]
+    [InlineData("capabilities", "[1]")]
+    public async Task Search_rejects_malformed_filters(string name, string json)
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var parameters = JsonDocument.Parse($"{{\"query\":\"test\",\"{name}\":{json}}}").RootElement;
+
+        var response = await fixture.Call("registry.search", parameters);
+
+        Assert.Equal("invalid_parameters", response.Error!.Code);
+    }
+
+    private static string[] OperationIds(BridgeResponse response)
+    {
+        Assert.True(response.Success, response.Error?.Message);
+        return response.Result!.Value.EnumerateArray()
+            .Select(hit => hit.GetProperty("operation").GetProperty("id").GetString()!)
+            .ToArray();
     }
 
     private sealed class Fixture : IDisposable
     {
         public ApprovalService Approvals { get; } = new();
         public TestOperation Operation { get; }
-        public TestOperation ReadOperation { get; } = new(OperationRisk.ReadOnly, "test.read");
+        public TestOperation ReadOperation { get; } = new(OperationRisk.ReadOnly, "test.read", ["maps"]);
         public FileWorkflowLibrary Workflows { get; }
         private readonly ProBridgeRequestHandler _handler;
         // Test files are isolated and intentionally retained for post-failure diagnosis.
@@ -156,11 +221,11 @@ public sealed class HostHandlerTests
         public void Dispose() { _handler.Dispose(); Approvals.Dispose(); Workflows.Dispose(); }
     }
 
-    private sealed class TestOperation(OperationRisk risk, string id = "test.write") : IOperation
+    private sealed class TestOperation(OperationRisk risk, string id = "test.write", string[]? capabilities = null) : IOperation
     {
         public int CallCount { get; private set; }
         public bool Fail { get; set; }
-        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(id, "Test operation", "Test", JsonSchemas.EmptyObject, risk: risk, requiresConfirmation: risk == OperationRisk.Destructive);
+        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(id, "Test operation", "Test", JsonSchemas.EmptyObject, risk: risk, capabilities: capabilities, requiresConfirmation: risk == OperationRisk.Destructive);
         public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
         {
             CallCount++;

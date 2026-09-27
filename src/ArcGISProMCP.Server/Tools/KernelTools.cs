@@ -15,14 +15,16 @@ public sealed class KernelTools
         CallAsync(bridge, "system.get_state", null, cancellationToken);
 
     [McpServerTool(Name = "registry_search", Title = "Search ArcGIS operations", ReadOnly = true, Destructive = false)]
-    [Description("Searches the server-side operation registry by intent, GIS terms, aliases, domain, capability, and risk without adding the full catalog to model context.")]
+    [Description("Searches the server-side operation registry by intent, GIS terms and aliases, optionally filtered by domain, required capabilities and maximum risk, without adding the full catalog to model context.")]
     public static Task<string> Search(
         IBridgeClient bridge,
         [Description("Natural-language intent such as 'make parcels transparent' or 'compose three map frames'.")] string query,
         [Description("Optional domain: project, map, layer, feature, table, metadata, basemap, style, symbology, label, layout, gp, arcpy, view, workspace, workflow.")] string? domain = null,
         [Description("Maximum results from 1 to 50.")] int limit = 12,
+        [Description("Optional capabilities every result must require, e.g. ['maps'], ['layouts'], ['geoprocessing'], ['arcpy'], ['metadata'], ['visual-observations'].")] string[]? capabilities = null,
+        [Description("Optional highest risk to include: ReadOnly, SafeWrite, Destructive or ExternalSideEffect. Use ReadOnly to find only operations that never change the project.")] string? maxRisk = null,
         CancellationToken cancellationToken = default) =>
-        CallAsync(bridge, "registry.search", new { query, domain, limit }, cancellationToken);
+        CallAsync(bridge, "registry.search", new { query, domain, limit, capabilities, maxRisk }, cancellationToken);
 
     [McpServerTool(Name = "registry_browse", Title = "Browse ArcGIS operations", ReadOnly = true, Destructive = false)]
     [Description("Browses concise registry entries by domain. Use registry_describe only for the few operations relevant to the task.")]
@@ -34,7 +36,7 @@ public sealed class KernelTools
         CallAsync(bridge, "registry.browse", new { domain, limit }, cancellationToken);
 
     [McpServerTool(Name = "registry_describe", Title = "Describe an ArcGIS operation", ReadOnly = true, Destructive = false)]
-    [Description("Returns the complete descriptor, JSON input/output schemas, requirements, examples, risk, and related operations for one registry id.")]
+    [Description("Returns the complete descriptor for one registry id: JSON input schema, output schema where the operation declares one, required capabilities, examples, risk, confirmation requirement and related operations.")]
     public static Task<string> Describe(
         IBridgeClient bridge,
         [Description("Stable operation id returned by registry_search or registry_browse.")] string operationId,
@@ -42,7 +44,7 @@ public sealed class KernelTools
         CallAsync(bridge, "registry.describe", new { operationId }, cancellationToken);
 
     [McpServerTool(Name = "registry_validate", Title = "Validate an ArcGIS operation", ReadOnly = true, Destructive = false)]
-    [Description("Validates an operation and its arguments against the registry and live ArcGIS state without changing the project.")]
+    [Description("Validates an operation's arguments against its registry input schema and, for writes, checks the expected workspace revision against the current one. Does not resolve layers, maps or paths, so a valid result does not guarantee the call will succeed. Never changes the project.")]
     public static Task<string> Validate(
         IBridgeClient bridge,
         [Description("Stable operation id.")] string operationId,
@@ -104,7 +106,7 @@ public sealed class KernelTools
         CallAsync(bridge, "workflow.get", new { workflowId, version }, cancellationToken);
 
     [McpServerTool(Name = "workflow_save", Title = "Save an ArcGIS workflow")]
-    [Description("Validates and saves a declarative, operation-allowlisted workflow as a new immutable version. It cannot contain arbitrary code.")]
+    [Description("Validates and saves a declarative workflow as a new immutable version. Validated against the registry; steps that execute user code (gp.run, arcpy.*) must be listed in the workflow's allowedOperations.")]
     public static Task<string> WorkflowSave(
         IBridgeClient bridge,
         [Description("Workflow definition JSON matching the workflow schema.")] JsonElement workflow,
@@ -131,7 +133,7 @@ public sealed class KernelTools
         CancellationToken cancellationToken = default)
     {
         var resource = await bridge.CallAsync("resource.read", new { uri }, cancellationToken).ConfigureAwait(false);
-        var mimeType = resource.GetProperty("MimeType").GetString() ?? "application/octet-stream";
+        var mimeType = resource.GetProperty("mimeType").GetString() ?? "application/octet-stream";
         if (mimeType.StartsWith("image/", StringComparison.Ordinal))
         {
             var bytes = Convert.FromBase64String(resource.GetProperty("data").GetString()!);
