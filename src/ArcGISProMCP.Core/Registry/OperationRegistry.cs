@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Core.Search;
 
 namespace ArcGISProMCP.Core.Registry;
 
@@ -7,6 +8,7 @@ public sealed class OperationRegistry : IOperationRegistry
 {
     private readonly Dictionary<string, IOperation> _operations = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _gate = new();
+    private SearchIndex<OperationDescriptor>? _searchIndex;
 
     public IReadOnlyCollection<OperationDescriptor> Descriptors
     {
@@ -33,6 +35,8 @@ public sealed class OperationRegistry : IOperationRegistry
             {
                 throw new InvalidOperationException($"Operation '{operation.Descriptor.Id}' is already registered.");
             }
+
+            _searchIndex = null;
         }
     }
 
@@ -46,81 +50,73 @@ public sealed class OperationRegistry : IOperationRegistry
 
     public IReadOnlyList<SearchHit> Search(OperationQuery query)
     {
-        var terms = Tokenize(query.Text);
-        IEnumerable<OperationDescriptor> candidates = Descriptors;
+        var terms = SearchText.ParseQuery(query.Text);
+        var index = GetSearchIndex();
 
-        if (!string.IsNullOrWhiteSpace(query.Domain))
-        {
-            var domain = query.Domain.Trim();
-            candidates = candidates.Where(descriptor =>
-                descriptor.Id.StartsWith(domain + ".", StringComparison.OrdinalIgnoreCase) ||
-                descriptor.Tags.Contains(domain));
-        }
-
-        if (query.Capabilities is { Count: > 0 })
-        {
-            candidates = candidates.Where(descriptor =>
-                query.Capabilities.All(capability => descriptor.RequiredCapabilities.Contains(capability)));
-        }
-
-        if (query.MaximumRisk is { } risk)
-        {
-            candidates = candidates.Where(descriptor => descriptor.Risk <= risk);
-        }
-
-        return candidates
-            .Select(descriptor => Score(descriptor, terms))
-            .Where(hit => terms.Length == 0 || hit.Score > 0)
+        return Enumerable.Range(0, index.Items.Count)
+            .Where(i => Matches(index.Items[i], query))
+            .Select(i => Score(index, i, terms))
+            .Where(hit => terms.Count == 0 || hit.Score > 0)
             .OrderByDescending(hit => hit.Score)
             .ThenBy(hit => hit.Descriptor.Id, StringComparer.Ordinal)
             .Take(Math.Clamp(query.Limit, 1, 100))
             .ToArray();
     }
 
-    private static SearchHit Score(OperationDescriptor descriptor, string[] terms)
+    private static bool Matches(OperationDescriptor descriptor, OperationQuery query)
     {
-        if (terms.Length == 0)
+        if (!string.IsNullOrWhiteSpace(query.Domain))
+        {
+            var domain = query.Domain.Trim();
+            if (!descriptor.Id.StartsWith(domain + ".", StringComparison.OrdinalIgnoreCase) && !descriptor.Tags.Contains(domain))
+                return false;
+        }
+
+        if (query.Capabilities is { Count: > 0 } &&
+            !query.Capabilities.All(capability => descriptor.RequiredCapabilities.Contains(capability)))
+            return false;
+
+        return query.MaximumRisk is not { } risk || descriptor.Risk <= risk;
+    }
+
+    private static SearchHit Score(SearchIndex<OperationDescriptor> index, int position, IReadOnlyList<QueryTerm> terms)
+    {
+        var descriptor = index.Items[position];
+        if (terms.Count == 0)
         {
             return new SearchHit(descriptor, 1, []);
         }
 
-        var matches = ImmutableArray.CreateBuilder<string>();
-        double score = 0;
-        foreach (var term in terms)
-        {
-            var termScore = 0d;
-            if (descriptor.Id.Contains(term, StringComparison.OrdinalIgnoreCase)) termScore = Math.Max(termScore, 12);
-            if (descriptor.Title.Contains(term, StringComparison.OrdinalIgnoreCase)) termScore = Math.Max(termScore, 9);
-            if (descriptor.Aliases.Any(alias => alias.Contains(term, StringComparison.OrdinalIgnoreCase))) termScore = Math.Max(termScore, 8);
-            if (descriptor.Tags.Any(tag => tag.Contains(term, StringComparison.OrdinalIgnoreCase))) termScore = Math.Max(termScore, 6);
-            if (descriptor.Summary.Contains(term, StringComparison.OrdinalIgnoreCase)) termScore = Math.Max(termScore, 4);
-            if (termScore <= 0) continue;
-            matches.Add(term);
-            score += termScore;
-        }
-
-        if (matches.Count == terms.Length) score += 5;
-        return new SearchHit(descriptor, score, matches.ToImmutable());
+        var match = index.Score(position, terms);
+        var score = match.Score;
+        if (match.AllTermsMatched) score += AllTermsBonus;
+        return new SearchHit(descriptor, score, match.MatchedTerms);
     }
 
-    // Articles and prepositions only. They substring-match almost every summary ("the", "a"),
-    // inflating scores and defeating the all-terms bonus. Domain words are never listed here.
-    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "a", "an", "the",
-        "about", "at", "by", "for", "from", "in", "into", "of", "on", "onto", "to", "with"
-    };
+    // Field weights: the id and title name the operation; aliases and tags are curated search words;
+    // the summary is prose and matches incidentally.
+    private const double IdWeight = 12;
+    private const double TitleWeight = 9;
+    private const double AliasWeight = 8;
+    private const double TagWeight = 6;
+    private const double SummaryWeight = 4;
+    private const double AllTermsBonus = 5;
 
-    private static string[] Tokenize(string? text)
+    private SearchIndex<OperationDescriptor> GetSearchIndex()
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return [];
-        var tokens = text.Split([' ', '\t', '\r', '\n', '.', '_', '-'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        var meaningful = tokens.Where(token => !StopWords.Contains(token)).ToArray();
-        // A query made only of stop words keeps its terms rather than silently matching everything.
-        return meaningful.Length == 0 ? tokens : meaningful;
+        lock (_gate)
+        {
+            return _searchIndex ??= new SearchIndex<OperationDescriptor>(
+                _operations.Values.Select(operation => operation.Descriptor).OrderBy(descriptor => descriptor.Id, StringComparer.Ordinal),
+                descriptor =>
+                [
+                    new SearchField(IdWeight, descriptor.Id),
+                    new SearchField(TitleWeight, descriptor.Title),
+                    new SearchField(AliasWeight, descriptor.Aliases),
+                    new SearchField(TagWeight, descriptor.Tags),
+                    new SearchField(SummaryWeight, descriptor.Summary)
+                ]);
+        }
     }
 
     private static void Validate(OperationDescriptor descriptor)
