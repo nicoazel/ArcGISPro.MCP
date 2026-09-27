@@ -20,6 +20,35 @@ public sealed class ToolListSnapshotTests
     }
 
     [Fact]
+    public async Task Every_tool_declares_all_four_hints_and_an_envelope_output_schema()
+    {
+        await using var server = await McpTestServer.StartAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var tools = await server.Client.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        foreach (var tool in tools)
+        {
+            // Read the wire form: an omitted hint means the client applies the spec default.
+            var node = JsonSerializer.SerializeToNode(tool.ProtocolTool, McpJsonUtilities.DefaultOptions)!;
+            var annotations = node["annotations"]?.AsObject();
+            Assert.True(annotations is not null, $"{tool.Name} has no annotations.");
+            foreach (var hint in new[] { "readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint" })
+                Assert.True(annotations[hint]?.GetValueKind() is JsonValueKind.True or JsonValueKind.False, $"{tool.Name} does not declare {hint}.");
+            Assert.False(annotations["openWorldHint"]!.GetValue<bool>(), $"{tool.Name} must not claim open-world access.");
+            if (annotations["readOnlyHint"]!.GetValue<bool>())
+                Assert.False(annotations["destructiveHint"]!.GetValue<bool>(), $"{tool.Name} is read-only and destructive.");
+
+            var outputSchema = node["outputSchema"]?.AsObject();
+            Assert.True(outputSchema is not null, $"{tool.Name} has no outputSchema.");
+            Assert.Equal("object", outputSchema["type"]?.GetValue<string>());
+            Assert.Equal(["ok", "result", "error"], outputSchema["required"]!.AsArray().Select(item => item!.GetValue<string>()));
+        }
+
+        var destructive = tools.Where(tool => tool.ProtocolTool.Annotations?.DestructiveHint == true).Select(tool => tool.Name).Order(StringComparer.Ordinal);
+        Assert.Equal(["registry_invoke", "workflow_run"], destructive);
+    }
+
+    [Fact]
     public async Task Concurrently_started_hosts_never_publish_the_injected_bridge_as_an_argument()
     {
         // Regression: hosts that built their tools concurrently could publish IBridgeClient as a

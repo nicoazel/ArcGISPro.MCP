@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
@@ -46,8 +47,8 @@ public sealed record OperationSummary(
     string Version,
     string Title,
     string Summary,
-    OperationRisk Risk,
-    ExecutionTarget ExecutionTarget,
+    [property: Description("Numeric OperationRisk: 0 ReadOnly, 1 SafeWrite, 2 Destructive, 3 ExternalSideEffect.")] OperationRisk Risk,
+    [property: Description("Numeric ExecutionTarget: 0 ArcGISMainCimThread, 1 ArcGISUiThread, 2 Background, 3 ExternalWorker.")] ExecutionTarget ExecutionTarget,
     IReadOnlyList<string> Tags,
     IReadOnlyList<string> RequiredCapabilities,
     bool RequiresConfirmation,
@@ -99,8 +100,8 @@ public sealed record OperationDescription(
     string Summary,
     JsonElement InputSchema,
     JsonElement? OutputSchema,
-    OperationRisk Risk,
-    ExecutionTarget ExecutionTarget,
+    [property: Description("Numeric OperationRisk: 0 ReadOnly, 1 SafeWrite, 2 Destructive, 3 ExternalSideEffect.")] OperationRisk Risk,
+    [property: Description("Numeric ExecutionTarget: 0 ArcGISMainCimThread, 1 ArcGISUiThread, 2 Background, 3 ExternalWorker.")] ExecutionTarget ExecutionTarget,
     IReadOnlyList<string> RequiredCapabilities,
     IReadOnlyList<string> Tags,
     IReadOnlyList<string> Aliases,

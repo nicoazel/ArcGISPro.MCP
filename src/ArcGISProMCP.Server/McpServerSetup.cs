@@ -48,7 +48,10 @@ public static class McpServerSetup
         [.. PrimitiveMethods<McpServerToolAttribute>(typeof(KernelTools), typeof(SkillTools))
             .Select(method => McpServerTool.Create(method, target: null, new McpServerToolCreateOptions
             {
-                Services = InjectedServices.Instance
+                Services = InjectedServices.Instance,
+                // One serializer for arguments, output schemas and structured results, so the
+                // advertised outputSchema describes exactly what ToolResults writes.
+                SerializerOptions = ToolResults.JsonOptions
             }))];
 
     private static McpServerResource[] CreateResources() =>
