@@ -131,6 +131,6 @@ Rollback does not undo map, geodatabase, layout, metadata, geoprocessing, or Arc
 
 - The packaging script does not install, sign, or upload anything.
 - Live ArcGIS-host acceptance of the exact installed build, including the dockpane approval flow, is required before relying on a build.
-- Anyone who enables autonomous mode anyway must also verify the visible autonomous warning and the unattended risky-operation audit notices.
+- Anyone who enables autonomous mode anyway must also verify the visible autonomous warning and the autonomous-mode audit notices.
 
 See [security](security.md) for the transport and approval model.
