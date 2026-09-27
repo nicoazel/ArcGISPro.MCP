@@ -185,7 +185,7 @@ function Assert-Png([string]$Path) {
     finally { $bitmap.Dispose() }
 }
 
-function Get-JsonLeaves($Value, [string]$Path) {
+function Get-JsonLeaf($Value, [string]$Path) {
     if ($null -eq $Value) {
         "$Path=<null>"
         return
@@ -193,14 +193,14 @@ function Get-JsonLeaves($Value, [string]$Path) {
     if ($Value -is [Collections.IDictionary]) {
         foreach ($key in ($Value.Keys | Sort-Object)) {
             $childPath = if ($Path) { "$Path.$key" } else { [string]$key }
-            Get-JsonLeaves $Value[$key] $childPath
+            Get-JsonLeaf $Value[$key] $childPath
         }
         return
     }
     if ($Value -is [Collections.IEnumerable] -and $Value -isnot [string]) {
         $index = 0
         foreach ($item in $Value) {
-            Get-JsonLeaves $item "$Path[$index]"
+            Get-JsonLeaf $item "$Path[$index]"
             $index++
         }
         return
@@ -212,8 +212,8 @@ function Assert-SameWorkflowDefinition([string]$WorkflowPath, [string]$Installed
     $local = Get-Content -LiteralPath $WorkflowPath -Raw | ConvertFrom-Json -AsHashtable
     $installed = Get-Content -LiteralPath $InstalledPath -Raw | ConvertFrom-Json -AsHashtable
     $ignored = '^(contentHash=|.*\.(defaultValue|expectedObservation)=<null>$|steps\[\d+\]\.continueOnError=False$|tags\[\d+\]=|requiredCapabilities\[\d+\]=)'
-    $localLeaves = @(Get-JsonLeaves $local '' | Where-Object { $_ -notmatch $ignored })
-    $installedLeaves = @(Get-JsonLeaves $installed '' | Where-Object { $_ -notmatch $ignored })
+    $localLeaves = @(Get-JsonLeaf $local '' | Where-Object { $_ -notmatch $ignored })
+    $installedLeaves = @(Get-JsonLeaf $installed '' | Where-Object { $_ -notmatch $ignored })
     $differences = @(Compare-Object $localLeaves $installedLeaves)
     foreach ($setName in @('tags', 'requiredCapabilities')) {
         $localSet = @($local[$setName] | Sort-Object) -join "`n"
