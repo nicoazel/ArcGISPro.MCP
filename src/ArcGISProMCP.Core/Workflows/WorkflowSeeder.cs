@@ -95,9 +95,12 @@ public static class WorkflowSeeder
         WorkflowDefinition? workflow;
         try
         {
-            await using var stream = BundleAssembly.GetManifestResourceStream(resourceName)
+            var stream = BundleAssembly.GetManifestResourceStream(resourceName)
                 ?? throw new InvalidOperationException("Embedded workflow resource is missing.");
-            workflow = await JsonSerializer.DeserializeAsync<WorkflowDefinition>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            await using (stream.ConfigureAwait(false))
+            {
+                workflow = await JsonSerializer.DeserializeAsync<WorkflowDefinition>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or IOException)
         {

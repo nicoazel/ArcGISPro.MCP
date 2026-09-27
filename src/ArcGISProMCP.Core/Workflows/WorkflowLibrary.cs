@@ -179,8 +179,11 @@ public sealed class FileWorkflowLibrary : IWorkflowLibrary, IDisposable
             throw new InvalidOperationException("Workflow path escaped the configured library root.");
         }
 
-        await using var stream = File.OpenRead(fullPath);
-        return await JsonSerializer.DeserializeAsync<WorkflowDefinition>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
+        var stream = File.OpenRead(fullPath);
+        await using (stream.ConfigureAwait(false))
+        {
+            return await JsonSerializer.DeserializeAsync<WorkflowDefinition>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
