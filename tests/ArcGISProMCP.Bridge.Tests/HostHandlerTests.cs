@@ -115,21 +115,33 @@ public sealed class HostHandlerTests
     }
 
     [Fact]
-    public async Task Workflow_retries_once_when_host_revision_advances_before_a_step_executes()
+    public async Task Workflow_stops_with_workspace_changed_when_revision_advances_before_a_step()
     {
+        // Initial workflow check sees r1; the executor then observes r2 before the first step runs.
         var workspace = new SequenceWorkspace("r1", "r2", "r2");
         using var fixture = new Fixture(OperationRisk.SafeWrite, workspace);
+        var arguments = JsonSerializer.SerializeToElement(new { });
         var workflow = new WorkflowDefinition("settling-flow", "1.0.0", "Settling", "Test", [], [], [],
-            [new("write", "test.write", JsonSerializer.SerializeToElement(new { }), [])]);
+            [new("write", "test.write", arguments, [], true),
+             new("second", "test.write", arguments, [])]);
         await fixture.Workflows.SaveAsync(workflow, TestContext.Current.CancellationToken);
 
         var response = await fixture.Call("workflow.run", new { workflowId = workflow.Id, parameters = new { }, expectedRevision = "r1" });
 
-        Assert.True(response.Result!.Value.GetProperty("success").GetBoolean());
-        Assert.Equal(1, fixture.Operation.CallCount);
-        var notices = response.Result.Value.GetProperty("results")[0].GetProperty("notices");
-        Assert.Contains(notices.EnumerateArray(), notice =>
-            notice.GetProperty("code").GetString() == "workflow_revision_refreshed");
+        var result = response.Result!.Value;
+        Assert.False(result.GetProperty("success").GetBoolean());
+        Assert.Equal("workspace_changed", result.GetProperty("errorCode").GetString());
+        Assert.Equal("write", result.GetProperty("stoppedAtStep").GetString());
+        Assert.Equal(0, result.GetProperty("stepIndex").GetInt32());
+        Assert.Equal("r1", result.GetProperty("expectedRevision").GetString());
+        Assert.Equal("r2", result.GetProperty("currentRevision").GetString());
+        // No retry at the newer revision, and ContinueOnError does not let the second step run.
+        Assert.Equal(0, fixture.Operation.CallCount);
+        var step = Assert.Single(result.GetProperty("results").EnumerateArray());
+        Assert.Equal("workspace_revision_mismatch", step.GetProperty("errorCode").GetString());
+        var rank = Assert.Single(await fixture.Workflows.RankAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(0, rank.SuccessfulRuns);
+        Assert.Equal(1, rank.FailedRuns);
     }
 
     private sealed class Fixture : IDisposable

@@ -345,8 +345,9 @@ internal sealed class ProBridgeRequestHandler(
         var failedCount = 0;
         string? historyWarning = null;
         var results = new List<object>();
-        foreach (var step in workflow.Steps)
+        for (var stepIndex = 0; stepIndex < workflow.Steps.Length; stepIndex++)
         {
+            var step = workflow.Steps[stepIndex];
             if (step.DependsOn.Any(dependency => !completed.Contains(dependency)))
                 throw new BridgeException("workflow_order_invalid", $"Step '{step.Id}' appears before one of its dependencies.");
             if (step.DependsOn.Any(failedSteps.Contains))
@@ -368,30 +369,31 @@ internal sealed class ProBridgeRequestHandler(
             }
             var result = await ExecuteCoreAsync(new OperationRequest(step.Operation, stepArguments, revision), $"{correlationId}:{step.Id}", cancellationToken).ConfigureAwait(false);
             if (!result.Success &&
-                string.Equals(result.ErrorCode, "workspace_revision_mismatch", StringComparison.Ordinal) &&
-                !string.IsNullOrWhiteSpace(result.WorkspaceRevision))
+                string.Equals(result.ErrorCode, "workspace_revision_mismatch", StringComparison.Ordinal))
             {
-                // The workflow's caller revision is validated before the batch begins. ArcGIS Pro
-                // can publish delayed map-member/layout notifications after a successful SDK write,
-                // advancing the revision between serialized steps. A mismatch is raised before the
-                // operation executes, so retrying once at the newly observed revision cannot repeat
-                // a mutation. Direct operation calls retain strict fail-closed concurrency behavior.
-                var rejectedRevision = revision;
-                revision = result.WorkspaceRevision;
-                result = await ExecuteCoreAsync(
-                    new OperationRequest(step.Operation, stepArguments, revision),
-                    $"{correlationId}:{step.Id}:revision-refresh",
-                    cancellationToken).ConfigureAwait(false);
-                if (result.Success)
+                // The workspace changed between serialized steps (a person edited the project, or
+                // ArcGIS Pro published a delayed notification). The mismatch is detected before the
+                // step executes, so nothing ran. Never silently adopt the newer revision: that would
+                // authorize the remaining writes against state nobody reviewed. Stop regardless of
+                // ContinueOnError and let the caller refresh state and decide how to proceed.
+                results.Add(new { step = step.Id, operation = step.Operation, result.Success, result.ErrorCode, result.Message, result.WorkspaceRevision, result.Data, result.Resources, result.Notices });
+                failedCount++;
+                await RecordRunAsync("failed", startedAt, succeededCount, failedCount).ConfigureAwait(false);
+                return JsonSerializer.SerializeToElement(new
                 {
-                    result = result with
-                    {
-                        Notices = result.Notices.Add(new OperationNotice(
-                            "workflow_revision_refreshed",
-                            $"ArcGIS Pro advanced the workspace revision from '{rejectedRevision}' to '{revision}' between serialized workflow steps; the rejected step was retried once before execution.",
-                            "info"))
-                    };
-                }
+                    success = false,
+                    errorCode = "workspace_changed",
+                    message = $"The workspace changed before step '{step.Id}' (index {stepIndex}) executed. Completed steps are not rolled back. Refresh state with system_get_state and review before continuing.",
+                    workflow.Id,
+                    workflow.Version,
+                    stoppedAtStep = step.Id,
+                    stepIndex,
+                    expectedRevision = revision,
+                    currentRevision = result.WorkspaceRevision,
+                    results,
+                    revision = result.WorkspaceRevision,
+                    historyWarning
+                }, JsonOptions);
             }
             results.Add(new { step = step.Id, operation = step.Operation, result.Success, result.ErrorCode, result.Message, result.WorkspaceRevision, result.Data, result.Resources, result.Notices });
             revision = result.WorkspaceRevision;
