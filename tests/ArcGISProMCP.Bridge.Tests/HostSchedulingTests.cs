@@ -111,6 +111,53 @@ public sealed class HostSchedulingTests
         await invoke;
     }
 
+    [Fact]
+    public async Task Cancelling_the_first_keyed_caller_does_not_cancel_the_shared_operation()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var request = new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", idempotencyKey = "shared-key" };
+        using var firstCaller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+
+        var first = fixture.CallAs("registry.invoke", request, firstCaller.Token);
+        await fixture.Operation.Started.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await firstCaller.CancelAsync();
+        var cancelled = await first.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.Equal("request_cancelled", cancelled.Error!.Code);
+
+        var second = fixture.Call("registry.invoke", request);
+        fixture.Operation.Release.TrySetResult(true);
+        var response = await second.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+
+        Assert.True(response.Success, response.Error?.Message);
+        Assert.True(response.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(1, fixture.Operation.CallCount);
+    }
+
+    [Fact]
+    public async Task Cancelling_the_first_keyed_workflow_caller_does_not_cancel_the_shared_run()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var workflow = new WorkflowDefinition("shared-flow", "1.0.0", "Shared", "Test", [], [], [],
+            [new("write", "test.write", JsonSerializer.SerializeToElement(new { }), [])]);
+        await fixture.Workflows.SaveAsync(workflow, TestContext.Current.CancellationToken);
+        var request = new { workflowId = workflow.Id, version = "1.0.0", parameters = new { }, expectedRevision = "r1", idempotencyKey = "shared-run" };
+        using var firstCaller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+
+        var first = fixture.CallAs("workflow.run", request, firstCaller.Token);
+        await fixture.Operation.Started.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await firstCaller.CancelAsync();
+        var cancelled = await first.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.Equal("request_cancelled", cancelled.Error!.Code);
+
+        var second = fixture.Call("workflow.run", request);
+        fixture.Operation.Release.TrySetResult(true);
+        var response = await second.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+
+        Assert.True(response.Success, response.Error?.Message);
+        Assert.True(response.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(1, fixture.Operation.CallCount);
+    }
+
     private sealed class Fixture : IDisposable
     {
         private readonly ProBridgeRequestHandler _handler;
@@ -137,12 +184,15 @@ public sealed class HostSchedulingTests
 
         public FileWorkflowLibrary Workflows { get; }
 
-        public Task<BridgeResponse> Call(string method, object? parameters)
+        public Task<BridgeResponse> Call(string method, object? parameters) =>
+            CallAs(method, parameters, TestContext.Current.CancellationToken);
+
+        public Task<BridgeResponse> CallAs(string method, object? parameters, CancellationToken cancellationToken)
         {
             JsonElement? serialized = parameters is null ? null : JsonSerializer.SerializeToElement(parameters);
             return _handler.HandleAsync(
                 new(BridgeProtocol.Version, Guid.NewGuid().ToString("N"), method, serialized, DateTimeOffset.UtcNow),
-                TestContext.Current.CancellationToken);
+                cancellationToken);
         }
 
         public void Dispose()

@@ -174,10 +174,13 @@ internal sealed class ProBridgeRequestHandler(
             if (idempotencyKey.Length > 128)
                 throw new BridgeException("invalid_idempotency_key", "Idempotency keys must be at most 128 characters.");
             var fingerprint = Fingerprint(operationId, arguments, expectedRevision);
+            // Keyed work is shared by every caller presenting the same key, so it must not be bound
+            // to whichever caller happened to arrive first. It runs under the host lifetime; each
+            // caller's own token only stops that caller from waiting.
             var candidate = new IdempotencyEntry(
                 fingerprint,
                 new Lazy<Task<OperationResult>>(
-                    () => ExecuteAsync(request, correlationId, cancellationToken),
+                    () => ExecuteAsync(request, correlationId, baseContext.ApplicationStopping),
                     LazyThreadSafetyMode.ExecutionAndPublication));
             IdempotencyEntry entry;
             lock (_idempotencyGate)
@@ -193,7 +196,7 @@ internal sealed class ProBridgeRequestHandler(
                 throw new BridgeException("idempotency_conflict", "The idempotency key was already used with a different operation, arguments, or workspace revision.");
             // Keep faulted executions cached too: an exception may follow an accepted write.
             // Eviction must not turn an uncertain outcome into an accidental duplicate mutation.
-            result = await entry.Result.Value.ConfigureAwait(false);
+            result = await entry.Result.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (result.ErrorCode == "confirmation_required")
                 _idempotency.TryRemove(new KeyValuePair<string, IdempotencyEntry>(idempotencyKey, entry));
         }
@@ -289,9 +292,9 @@ internal sealed class ProBridgeRequestHandler(
             throw new BridgeException("workflow_version_required", "Pin the immutable workflow version when using an idempotency key.");
         var workflow = await workflows.GetAsync(id, requestedVersion, cancellationToken).ConfigureAwait(false)
             ?? throw new BridgeException("workflow_not_found", $"Workflow '{id}' was not found.");
-        Task<JsonElement> Run() => WithExecutionGateAsync(
-            () => RunWorkflowCoreAsync(workflow, parameters, correlationId, cancellationToken), cancellationToken);
-        if (key is null) return await Run().ConfigureAwait(false);
+        Task<JsonElement> Run(CancellationToken token) => WithExecutionGateAsync(
+            () => RunWorkflowCoreAsync(workflow, parameters, correlationId, token), token);
+        if (key is null) return await Run(cancellationToken).ConfigureAwait(false);
         var fingerprint = Fingerprint(id + "@" + workflow.Version, RequiredObject(parameters, "parameters"), OptionalString(parameters, "expectedRevision"));
         WorkflowIdempotencyEntry entry;
         lock (_idempotencyGate)
@@ -300,12 +303,14 @@ internal sealed class ProBridgeRequestHandler(
             {
                 if (_workflowIdempotency.Count + _idempotency.Count >= 2048)
                     throw new BridgeException("idempotency_capacity", "This Pro session reached its 2048-key idempotency limit.");
-                _workflowIdempotency[key] = entry = new(fingerprint, new Lazy<Task<JsonElement>>(Run, LazyThreadSafetyMode.ExecutionAndPublication));
+                _workflowIdempotency[key] = entry = new(fingerprint, new Lazy<Task<JsonElement>>(
+                    // Shared keyed run: bound to the host lifetime, not the first caller's token.
+                    () => Run(baseContext.ApplicationStopping), LazyThreadSafetyMode.ExecutionAndPublication));
             }
         }
         if (entry.Fingerprint != fingerprint)
             throw new BridgeException("idempotency_conflict", "The workflow key is bound to different parameters, version or revision.");
-        return await entry.Result.Value.ConfigureAwait(false);
+        return await entry.Result.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<JsonElement> RunWorkflowCoreAsync(WorkflowDefinition workflow, JsonElement parameters, string correlationId, CancellationToken cancellationToken)
