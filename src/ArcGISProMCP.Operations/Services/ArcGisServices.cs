@@ -16,7 +16,8 @@ internal sealed record ArcGisServices(
     IProjectService Project,
     IMapService Maps,
     ILayerService Layers,
-    IViewCaptureService Views);
+    IViewCaptureService Views,
+    IFeatureService Features);
 
 /// <summary>Project lifecycle. Both members run on the ArcGIS UI thread.</summary>
 internal interface IProjectService

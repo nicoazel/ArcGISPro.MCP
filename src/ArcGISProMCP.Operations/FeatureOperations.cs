@@ -1,19 +1,14 @@
 using System.Globalization;
 using System.Text.Json;
-using ArcGIS.Core.Data;
-using ArcGIS.Core.Geometry;
-using ArcGIS.Desktop.Editing;
-using ArcGIS.Desktop.Mapping;
-using ArcGISProMCP.AddIn.ArcGIS;
 using ArcGISProMCP.Core.Operations;
-using ArcGISProMCP.Operations;
+using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.AddIn.Operations;
+namespace ArcGISProMCP.Operations;
 
 // These are intentionally small, typed operations.  They are not a general ArcPy or
 // SQL execution surface: field names are resolved against the layer schema and delete
 // accepts exactly one stable feature identity.
-internal sealed class FeatureLayerDescribeOperation() : ProOperationBase(OperationDescriptor.Create(
+internal sealed class FeatureLayerDescribeOperation(IFeatureService features) : ProOperationBase(OperationDescriptor.Create(
     "feature.layer.describe", "Describe editable feature layer",
     "Returns the feature layer schema, geometry type, stable identifier fields, and editability needed before a feature edit.",
     FeatureOperationSchemas.LayerDescribeInput,
@@ -23,41 +18,34 @@ internal sealed class FeatureLayerDescribeOperation() : ProOperationBase(Operati
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
-        var layerReference = RequiredString(arguments, "layer");
-        var mapReference = OptionalString(arguments, "map");
+        var target = FeatureOperationSupport.Target(arguments);
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
-            var map = ProHandles.ResolveMap(mapReference);
-            var layer = FeatureOperationSupport.ResolveFeatureLayer(map, layerReference);
-            using var table = layer.GetTable();
-            var definition = table.GetDefinition();
-            using var featureClassDefinition = definition as FeatureClassDefinition;
+            var layer = features.Describe(target);
             return new
             {
-                map = ProHandles.ForMap(map),
-                layer = ProHandles.ForLayer(layer),
+                map = layer.MapId,
+                layer = layer.LayerId,
                 layer.Name,
-                editable = layer.IsEditable && layer.CanEditData(),
-                objectIdField = definition.GetObjectIDField(),
-                globalIdField = definition.HasGlobalID() ? definition.GetGlobalIDField() : null,
-                shapeField = featureClassDefinition?.GetShapeField(),
-                geometryType = featureClassDefinition?.GetShapeType().ToString(),
-                spatialReference = featureClassDefinition is null ? null : new
-                {
-                    wkid = featureClassDefinition.GetSpatialReference().Wkid,
-                    name = featureClassDefinition.GetSpatialReference().Name
-                },
-                fields = definition.GetFields().Select(field => new
+                editable = layer.Editable,
+                objectIdField = layer.ObjectIdField,
+                globalIdField = layer.GlobalIdField,
+                shapeField = layer.IsFeatureClass ? layer.ShapeField : null,
+                geometryType = layer.IsFeatureClass ? layer.GeometryType : null,
+                spatialReference = layer.IsFeatureClass && layer.SpatialReference is { } spatialReference
+                    ? new { wkid = spatialReference.Wkid, name = spatialReference.Name }
+                    : null,
+                fields = layer.Fields.Select(field => new
                 {
                     field.Name,
                     field.AliasName,
-                    type = field.FieldType.ToString(),
+                    type = field.Type,
                     field.IsNullable,
                     field.IsEditable,
                     field.Length,
-                    isObjectId = field.FieldType == FieldType.OID,
-                    isGlobalId = field.FieldType == FieldType.GlobalID,
-                    isGeometry = field.FieldType == FieldType.Geometry
+                    isObjectId = field.Type == FeatureFieldTypes.ObjectId,
+                    isGlobalId = field.Type == FeatureFieldTypes.GlobalId,
+                    isGeometry = field.Type == FeatureFieldTypes.Geometry
                 }).ToArray()
             };
         }, cancellationToken).ConfigureAwait(false);
@@ -66,7 +54,7 @@ internal sealed class FeatureLayerDescribeOperation() : ProOperationBase(Operati
     }
 }
 
-internal sealed class FeatureQueryOperation() : ProOperationBase(OperationDescriptor.Create(
+internal sealed class FeatureQueryOperation(IFeatureService features) : ProOperationBase(OperationDescriptor.Create(
     "feature.query", "Query features by attributes and extent",
     "Runs a bounded feature query with a safe where clause and optional layer-coordinate envelope/spatial relationship. Results always include ObjectID and GlobalID when available.",
     FeatureOperationSchemas.QueryInput,
@@ -76,8 +64,7 @@ internal sealed class FeatureQueryOperation() : ProOperationBase(OperationDescri
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
-        var layerReference = RequiredString(arguments, "layer");
-        var mapReference = OptionalString(arguments, "map");
+        var target = FeatureOperationSupport.Target(arguments);
         var where = OptionalString(arguments, "where") ?? "1=1";
         QuerySafety.ValidateWhereClause(where);
         var limit = FeatureOperationSupport.ReadLimit(arguments, 100, 500);
@@ -86,19 +73,16 @@ internal sealed class FeatureQueryOperation() : ProOperationBase(OperationDescri
 
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
-            var map = ProHandles.ResolveMap(mapReference);
-            var layer = FeatureOperationSupport.ResolveFeatureLayer(map, layerReference);
-            using var table = layer.GetTable();
-            var definition = table.GetDefinition();
-            var fields = FeatureOperationSupport.ResolveReadableFields(definition, requestedFields);
+            var layer = features.Describe(target);
+            var fields = FeatureOperationSupport.ResolveReadableFields(layer.Fields, requestedFields);
             var filter = FeatureOperationSupport.CreateFilter(arguments, where, layer, fields, relationship);
-            var rows = FeatureOperationSupport.ReadFeatures(table, filter, fields, limit);
+            var rows = FeatureOperationSupport.ToRows(features.Query(target, filter, limit), fields, limit);
             return new
             {
-                map = ProHandles.ForMap(map),
-                layer = ProHandles.ForLayer(layer),
+                map = layer.MapId,
+                layer = layer.LayerId,
                 where,
-                spatialRelationship = relationship?.ToString(),
+                spatialRelationship = relationship,
                 fields,
                 returned = rows.Count,
                 limit,
@@ -110,7 +94,7 @@ internal sealed class FeatureQueryOperation() : ProOperationBase(OperationDescri
     }
 }
 
-internal sealed class FeatureSelectOperation() : ProOperationBase(OperationDescriptor.Create(
+internal sealed class FeatureSelectOperation(IFeatureService features) : ProOperationBase(OperationDescriptor.Create(
     "feature.select", "Select bounded features",
     "Replaces or adds to a layer selection using a bounded attribute/spatial query. This changes selection only; it does not edit feature data.",
     FeatureOperationSchemas.SelectInput,
@@ -120,8 +104,7 @@ internal sealed class FeatureSelectOperation() : ProOperationBase(OperationDescr
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
-        var layerReference = RequiredString(arguments, "layer");
-        var mapReference = OptionalString(arguments, "map");
+        var target = FeatureOperationSupport.Target(arguments);
         var where = OptionalString(arguments, "where") ?? "1=1";
         QuerySafety.ValidateWhereClause(where);
         var limit = FeatureOperationSupport.ReadLimit(arguments, 100, 500);
@@ -131,22 +114,17 @@ internal sealed class FeatureSelectOperation() : ProOperationBase(OperationDescr
             throw new ArgumentException("mode must be 'new' or 'add'.", nameof(arguments));
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
-            var map = ProHandles.ResolveMap(mapReference);
-            var layer = FeatureOperationSupport.ResolveFeatureLayer(map, layerReference);
-            using var table = layer.GetTable();
-            var ids = FeatureOperationSupport.ReadObjectIds(table,
-                FeatureOperationSupport.CreateFilter(arguments, where, layer, [table.GetDefinition().GetObjectIDField()], relationship), limit);
-            if (mode == "new" && ids.Count == 0) layer.Select(new QueryFilter { ObjectIDs = [] }, SelectionCombinationMethod.New);
-            else if (ids.Count > 0)
-                layer.Select(new QueryFilter { ObjectIDs = ids }, mode == "add" ? SelectionCombinationMethod.Add : SelectionCombinationMethod.New);
-            return new { map = ProHandles.ForMap(map), layer = ProHandles.ForLayer(layer), mode, matched = ids.Count, selectionCount = layer.SelectionCount, limit };
+            var layer = features.Describe(target);
+            var filter = FeatureOperationSupport.CreateFilter(arguments, where, layer, [layer.ObjectIdField], relationship);
+            var selection = features.Select(target, filter, limit, add: mode == "add");
+            return new { map = layer.MapId, layer = layer.LayerId, mode, matched = selection.Matched, selectionCount = selection.SelectionCount, limit };
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
     }
 }
 
-internal sealed class FeatureCreateOperation() : ProOperationBase(OperationDescriptor.Create(
+internal sealed class FeatureCreateOperation(IFeatureService features) : ProOperationBase(OperationDescriptor.Create(
     "feature.create", "Create one feature",
     "Creates one point, single-part polyline, or single-part polygon in an editable layer using schema-validated attributes. Coordinates must use the layer spatial reference.",
     FeatureOperationSchemas.CreateInput,
@@ -156,29 +134,23 @@ internal sealed class FeatureCreateOperation() : ProOperationBase(OperationDescr
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
-        var layerReference = RequiredString(arguments, "layer");
-        var mapReference = OptionalString(arguments, "map");
+        var target = FeatureOperationSupport.Target(arguments);
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
-            var map = ProHandles.ResolveMap(mapReference);
-            var layer = FeatureOperationSupport.ResolveFeatureLayer(map, layerReference);
+            var layer = features.Describe(target);
             FeatureOperationSupport.EnsureEditable(layer);
-            using var table = layer.GetTable();
-            using var featureClassDefinition = table.GetDefinition() as FeatureClassDefinition
-                ?? throw new InvalidOperationException("The layer does not expose a feature-class definition.");
-            var geometry = FeatureOperationSupport.ReadGeometry(arguments.GetProperty("geometry"), featureClassDefinition);
-            var attributes = FeatureOperationSupport.ReadWritableAttributes(arguments, table.GetDefinition());
-            var edit = new EditOperation { Name = "MCP create feature", SelectNewFeatures = false };
-            var token = edit.Create(layer, geometry, attributes);
-            if (!edit.Execute()) throw new InvalidOperationException($"ArcGIS could not create the feature: {edit.ErrorMessage}");
-            return new { map = ProHandles.ForMap(map), layer = ProHandles.ForLayer(layer), objectId = token.ObjectID, globalId = token.GlobalID };
+            FeatureOperationSupport.EnsureFeatureClass(layer);
+            var geometry = FeatureOperationSupport.ReadGeometry(arguments.GetProperty("geometry"), layer);
+            var attributes = FeatureOperationSupport.ReadWritableAttributes(arguments, layer.Fields);
+            var created = features.Create(target, geometry, attributes);
+            return new { map = layer.MapId, layer = layer.LayerId, objectId = created.ObjectId, globalId = created.GlobalId };
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(CancellationToken.None).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
     }
 }
 
-internal sealed class FeatureUpdateOperation() : ProOperationBase(OperationDescriptor.Create(
+internal sealed class FeatureUpdateOperation(IFeatureService features) : ProOperationBase(OperationDescriptor.Create(
     "feature.update", "Update one feature's attributes or geometry",
     "Updates exactly one feature selected by ObjectID or GlobalID. Attribute names and values are validated against the layer schema; coordinates use the layer spatial reference.",
     FeatureOperationSchemas.UpdateInput,
@@ -188,36 +160,30 @@ internal sealed class FeatureUpdateOperation() : ProOperationBase(OperationDescr
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
-        var layerReference = RequiredString(arguments, "layer");
-        var mapReference = OptionalString(arguments, "map");
+        var target = FeatureOperationSupport.Target(arguments);
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
-            var map = ProHandles.ResolveMap(mapReference);
-            var layer = FeatureOperationSupport.ResolveFeatureLayer(map, layerReference);
+            var layer = features.Describe(target);
             FeatureOperationSupport.EnsureEditable(layer);
-            using var table = layer.GetTable();
-            var definition = table.GetDefinition();
-            var objectId = FeatureOperationSupport.ResolveObjectId(table, definition, arguments.GetProperty("target"));
-            var attributes = FeatureOperationSupport.ReadWritableAttributes(arguments, definition);
+            var objectId = FeatureOperationSupport.ResolveObjectId(features, target, layer, arguments.GetProperty("target"));
+            var attributes = FeatureOperationSupport.ReadWritableAttributes(arguments, layer.Fields);
             var hasGeometry = arguments.TryGetProperty("geometry", out var geometryElement) && geometryElement.ValueKind == JsonValueKind.Object;
             if (attributes.Count == 0 && !hasGeometry) throw new ArgumentException("Specify attributes and/or geometry.", nameof(arguments));
-            var edit = new EditOperation { Name = "MCP update feature", SelectModifiedFeatures = false };
+            FeatureGeometry? geometry = null;
             if (hasGeometry)
             {
-                using var featureClassDefinition = definition as FeatureClassDefinition
-                    ?? throw new InvalidOperationException("The layer does not expose a feature-class definition.");
-                edit.Modify(layer, objectId, FeatureOperationSupport.ReadGeometry(geometryElement, featureClassDefinition), attributes);
+                FeatureOperationSupport.EnsureFeatureClass(layer);
+                geometry = FeatureOperationSupport.ReadGeometry(geometryElement, layer);
             }
-            else edit.Modify(layer, objectId, attributes);
-            if (!edit.Execute()) throw new InvalidOperationException($"ArcGIS could not update ObjectID {objectId}: {edit.ErrorMessage}");
-            return new { map = ProHandles.ForMap(map), layer = ProHandles.ForLayer(layer), objectId, updatedAttributes = attributes.Keys.OrderBy(key => key).ToArray(), geometryUpdated = hasGeometry };
+            features.Update(target, objectId, geometry, attributes);
+            return new { map = layer.MapId, layer = layer.LayerId, objectId, updatedAttributes = attributes.Keys.OrderBy(key => key).ToArray(), geometryUpdated = hasGeometry };
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(CancellationToken.None).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
     }
 }
 
-internal sealed class FeatureDeleteOperation() : ProOperationBase(OperationDescriptor.Create(
+internal sealed class FeatureDeleteOperation(IFeatureService features) : ProOperationBase(OperationDescriptor.Create(
     "feature.delete", "Delete one feature",
     "Deletes exactly one editable-layer feature selected by stable ObjectID or GlobalID. This is deliberately not a where-clause or bulk-delete operation.",
     FeatureOperationSchemas.DeleteInput,
@@ -227,37 +193,63 @@ internal sealed class FeatureDeleteOperation() : ProOperationBase(OperationDescr
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
-        var layerReference = RequiredString(arguments, "layer");
-        var mapReference = OptionalString(arguments, "map");
+        var target = FeatureOperationSupport.Target(arguments);
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
-            var map = ProHandles.ResolveMap(mapReference);
-            var layer = FeatureOperationSupport.ResolveFeatureLayer(map, layerReference);
+            var layer = features.Describe(target);
             FeatureOperationSupport.EnsureEditable(layer);
-            using var table = layer.GetTable();
-            var objectId = FeatureOperationSupport.ResolveObjectId(table, table.GetDefinition(), arguments.GetProperty("target"));
-            var edit = new EditOperation { Name = "MCP delete one feature", SelectModifiedFeatures = false };
-            edit.Delete(layer, objectId);
-            if (!edit.Execute()) throw new InvalidOperationException($"ArcGIS could not delete ObjectID {objectId}: {edit.ErrorMessage}");
-            return new { map = ProHandles.ForMap(map), layer = ProHandles.ForLayer(layer), objectId, deleted = true };
+            var objectId = FeatureOperationSupport.ResolveObjectId(features, target, layer, arguments.GetProperty("target"));
+            features.Delete(target, objectId);
+            return new { map = layer.MapId, layer = layer.LayerId, objectId, deleted = true };
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(CancellationToken.None).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
     }
 }
 
+/// <summary>ArcGIS field type names the feature operations treat specially.</summary>
+internal static class FeatureFieldTypes
+{
+    public const string ObjectId = "OID";
+    public const string GlobalId = "GlobalID";
+    public const string Geometry = "Geometry";
+}
+
+/// <summary>Argument parsing, schema validation and result shaping for the feature operations.</summary>
 internal static class FeatureOperationSupport
 {
     private const int MaximumAttributeCount = 64;
 
-    public static BasicFeatureLayer ResolveFeatureLayer(Map map, string reference) =>
-        ProHandles.ResolveLayer(map, reference) as BasicFeatureLayer
-        ?? throw new InvalidOperationException("Feature operations require a feature layer.");
-
-    public static void EnsureEditable(BasicFeatureLayer layer)
+    /// <summary>ArcGIS spatial relationship names by lower-case argument value.</summary>
+    private static readonly Dictionary<string, string> SpatialRelationships = new(StringComparer.Ordinal)
     {
-        if (!layer.IsEditable || !layer.CanEditData())
+        ["intersects"] = "Intersects",
+        ["envelopeintersects"] = "EnvelopeIntersects",
+        ["contains"] = "Contains",
+        ["within"] = "Within",
+        ["touches"] = "Touches",
+        ["crosses"] = "Crosses",
+        ["overlaps"] = "Overlaps",
+    };
+
+    /// <summary>Reads the layer and map references. Must run before any dispatch, as before the seam.</summary>
+    public static FeatureLayerTarget Target(JsonElement arguments)
+    {
+        var layer = RequiredArgument(arguments, "layer");
+        var map = arguments.TryGetProperty("map", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        return new FeatureLayerTarget(map, layer);
+    }
+
+    public static void EnsureEditable(FeatureLayerInfo layer)
+    {
+        if (!layer.Editable)
             throw new InvalidOperationException($"Layer '{layer.Name}' is not editable. Check layer editability, data-source permissions, and active edit constraints.");
+    }
+
+    public static void EnsureFeatureClass(FeatureLayerInfo layer)
+    {
+        if (!layer.IsFeatureClass)
+            throw new InvalidOperationException("The layer does not expose a feature-class definition.");
     }
 
     public static int ReadLimit(JsonElement arguments, int defaultValue, int maximum) =>
@@ -271,100 +263,69 @@ internal static class FeatureOperationSupport
                 .Distinct(StringComparer.OrdinalIgnoreCase).Take(MaximumAttributeCount).ToArray()
             : [];
 
-    public static SpatialRelationship? ReadSpatialRelationship(JsonElement arguments)
+    /// <summary>The ArcGIS spatial relationship name, or null when none was given.</summary>
+    public static string? ReadSpatialRelationship(JsonElement arguments)
     {
         var value = Optional(arguments, "spatialRelationship");
-        return value?.ToLowerInvariant() switch
-        {
-            null or "" => null,
-            "intersects" => SpatialRelationship.Intersects,
-            "envelopeintersects" => SpatialRelationship.EnvelopeIntersects,
-            "contains" => SpatialRelationship.Contains,
-            "within" => SpatialRelationship.Within,
-            "touches" => SpatialRelationship.Touches,
-            "crosses" => SpatialRelationship.Crosses,
-            "overlaps" => SpatialRelationship.Overlaps,
-            _ => throw new ArgumentException("spatialRelationship must be intersects, envelopeIntersects, contains, within, touches, crosses, or overlaps.", nameof(arguments))
-        };
+        if (string.IsNullOrEmpty(value)) return null;
+        return SpatialRelationships.TryGetValue(value.ToLowerInvariant(), out var relationship)
+            ? relationship
+            : throw new ArgumentException("spatialRelationship must be intersects, envelopeIntersects, contains, within, touches, crosses, or overlaps.", nameof(arguments));
     }
 
-    public static string[] ResolveReadableFields(TableDefinition definition, string[] requested)
+    public static string[] ResolveReadableFields(IReadOnlyList<FeatureFieldInfo> fields, string[] requested)
     {
-        var available = definition.GetFields().Where(field => field.FieldType != FieldType.Geometry).ToArray();
+        var available = fields.Where(field => field.Type != FeatureFieldTypes.Geometry).ToArray();
         return requested.Length == 0
-            ? available.Where(field => field.FieldType is not (FieldType.Blob or FieldType.Raster or FieldType.XML)).Select(field => field.Name).ToArray()
+            ? available.Where(field => field.Type is not ("Blob" or "Raster" or "XML")).Select(field => field.Name).ToArray()
             : requested.Select(name => available.FirstOrDefault(field => string.Equals(field.Name, name, StringComparison.OrdinalIgnoreCase))?.Name
                 ?? throw new ArgumentException($"Unknown or unsupported field '{name}'.", nameof(requested))).ToArray();
     }
 
-    public static QueryFilter CreateFilter(JsonElement arguments, string where, BasicFeatureLayer layer, IReadOnlyCollection<string> fields, SpatialRelationship? relationship)
+    /// <summary>
+    /// An attribute filter, or a spatial one (default relationship Intersects) when an envelope
+    /// is given. Spatial filters need a feature class; that is checked before the envelope.
+    /// </summary>
+    public static FeatureQueryFilter CreateFilter(JsonElement arguments, string where, FeatureLayerInfo layer, IReadOnlyList<string> fields, string? relationship)
     {
         if (!arguments.TryGetProperty("envelope", out var envelopeElement) || envelopeElement.ValueKind != JsonValueKind.Object)
-            return new QueryFilter { WhereClause = where, SubFields = string.Join(",", fields) };
-        if (relationship is null) relationship = SpatialRelationship.Intersects;
-        using var table = layer.GetTable();
-        using var definition = table.GetDefinition() as FeatureClassDefinition
-            ?? throw new InvalidOperationException("The layer does not expose a feature-class definition.");
-        var envelope = ReadEnvelope(envelopeElement, definition.GetSpatialReference());
-        return new SpatialQueryFilter
-        {
-            WhereClause = where,
-            SubFields = string.Join(",", fields),
-            FilterGeometry = envelope,
-            SpatialRelationship = relationship.Value
-        };
+            return new FeatureQueryFilter(where, fields, null, null);
+        EnsureFeatureClass(layer);
+        return new FeatureQueryFilter(where, fields, ReadEnvelope(envelopeElement), relationship ?? "Intersects");
     }
 
-    public static List<Dictionary<string, object?>> ReadFeatures(Table table, QueryFilter filter, IReadOnlyCollection<string> fields, int limit)
+    /// <summary>Rows as returned to the caller: objectId, globalId, then each field's plain value.</summary>
+    public static List<Dictionary<string, object?>> ToRows(IReadOnlyList<FeatureRow> source, IReadOnlyList<string> fields, int limit)
     {
         var rows = new List<Dictionary<string, object?>>();
-        using var definition = table.GetDefinition();
-        var hasGlobalId = definition.HasGlobalID();
-        using var cursor = table.Search(filter, false);
-        while (rows.Count < limit && cursor.MoveNext())
+        foreach (var row in source)
         {
-            using var row = cursor.Current;
+            if (rows.Count >= limit) break;
             var values = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
-                ["objectId"] = row.GetObjectID(),
-                ["globalId"] = TryGetGlobalId(row, hasGlobalId)
+                ["objectId"] = row.ObjectId,
+                ["globalId"] = row.GlobalId is { } globalId && globalId != Guid.Empty ? globalId.ToString("D") : null
             };
-            foreach (var field in fields) values[field] = PlainValue(row[field]);
+            for (var index = 0; index < fields.Count; index++) values[fields[index]] = PlainValue(row.Values[index]);
             rows.Add(values);
         }
         return rows;
     }
 
-    public static List<long> ReadObjectIds(Table table, QueryFilter filter, int limit)
-    {
-        var ids = new List<long>();
-        using var cursor = table.Search(filter, false);
-        while (ids.Count < limit && cursor.MoveNext())
-        {
-            using var row = cursor.Current;
-            ids.Add(row.GetObjectID());
-        }
-        return ids;
-    }
-
-    public static long ResolveObjectId(Table table, TableDefinition definition, JsonElement target)
+    public static long ResolveObjectId(IFeatureService features, FeatureLayerTarget layerTarget, FeatureLayerInfo layer, JsonElement target)
     {
         if (target.ValueKind != JsonValueKind.Object) throw new ArgumentException("target must be an ObjectID or GlobalID object.", nameof(target));
         if (target.TryGetProperty("objectId", out var objectId) && objectId.TryGetInt64(out var id)) return id;
         if (!target.TryGetProperty("globalId", out var globalId) || globalId.ValueKind != JsonValueKind.String || !Guid.TryParse(globalId.GetString(), out var guid))
             throw new ArgumentException("target must contain objectId or a valid globalId UUID.", nameof(target));
-        if (!definition.HasGlobalID()) throw new InvalidOperationException("This layer has no GlobalID field; target it by ObjectID.");
-        var globalIdField = definition.GetGlobalIDField();
-        var filter = new QueryFilter { WhereClause = $"{globalIdField} = '{guid:B}'", SubFields = definition.GetObjectIDField() };
-        using var cursor = table.Search(filter, false);
-        if (!cursor.MoveNext()) throw new InvalidOperationException($"No feature matches GlobalID '{guid:D}'.");
-        using var row = cursor.Current;
-        var objectIdValue = row.GetObjectID();
-        if (cursor.MoveNext()) throw new InvalidOperationException($"GlobalID '{guid:D}' did not resolve uniquely.");
-        return objectIdValue;
+        if (layer.GlobalIdField is null) throw new InvalidOperationException("This layer has no GlobalID field; target it by ObjectID.");
+        var matches = features.FindObjectIdsByGlobalId(layerTarget, guid, 2);
+        if (matches.Count == 0) throw new InvalidOperationException($"No feature matches GlobalID '{guid:D}'.");
+        if (matches.Count > 1) throw new InvalidOperationException($"GlobalID '{guid:D}' did not resolve uniquely.");
+        return matches[0];
     }
 
-    public static Dictionary<string, object> ReadWritableAttributes(JsonElement arguments, TableDefinition definition)
+    public static Dictionary<string, object> ReadWritableAttributes(JsonElement arguments, IReadOnlyList<FeatureFieldInfo> fields)
     {
         if (!arguments.TryGetProperty("attributes", out var attributes) || attributes.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null) return [];
         if (attributes.ValueKind != JsonValueKind.Object) throw new ArgumentException("attributes must be a JSON object.", nameof(arguments));
@@ -372,48 +333,48 @@ internal static class FeatureOperationSupport
         foreach (var property in attributes.EnumerateObject())
         {
             if (result.Count >= MaximumAttributeCount) throw new ArgumentException($"attributes may contain at most {MaximumAttributeCount} fields.", nameof(arguments));
-            var field = definition.GetFields().FirstOrDefault(candidate => string.Equals(candidate.Name, property.Name, StringComparison.OrdinalIgnoreCase))
+            var field = fields.FirstOrDefault(candidate => string.Equals(candidate.Name, property.Name, StringComparison.OrdinalIgnoreCase))
                 ?? throw new ArgumentException($"Unknown field '{property.Name}'.", nameof(arguments));
-            if (!field.IsEditable || field.FieldType is FieldType.OID or FieldType.GlobalID or FieldType.Geometry)
+            if (!field.IsEditable || field.Type is FeatureFieldTypes.ObjectId or FeatureFieldTypes.GlobalId or FeatureFieldTypes.Geometry)
                 throw new ArgumentException($"Field '{field.Name}' is system-managed or read-only.", nameof(arguments));
             result[field.Name] = ToFieldValue(property.Value, field);
         }
         return result;
     }
 
-    public static Geometry ReadGeometry(JsonElement geometry, FeatureClassDefinition definition)
+    /// <summary>Parses point/polyline/polygon JSON and checks it against the layer shape type.</summary>
+    public static FeatureGeometry ReadGeometry(JsonElement geometry, FeatureLayerInfo layer)
     {
         if (geometry.ValueKind != JsonValueKind.Object) throw new ArgumentException("geometry must be a JSON object.", nameof(geometry));
         var type = Required(geometry, "type").ToLowerInvariant();
-        var spatialReference = definition.GetSpatialReference();
-        Geometry result = type switch
+        var result = type switch
         {
-            "point" => BuildPoint(geometry, spatialReference),
-            "polyline" => PolylineBuilderEx.CreatePolyline(ReadPoints(geometry, spatialReference, 2), spatialReference),
-            "polygon" => PolygonBuilderEx.CreatePolygon(ReadPoints(geometry, spatialReference, 3), spatialReference),
+            "point" => new FeatureGeometry(FeatureGeometryKind.Point, [ReadPoint(geometry)]),
+            "polyline" => new FeatureGeometry(FeatureGeometryKind.Polyline, ReadPoints(geometry, 2)),
+            "polygon" => new FeatureGeometry(FeatureGeometryKind.Polygon, ReadPoints(geometry, 3)),
             _ => throw new ArgumentException("geometry.type must be point, polyline, or polygon.", nameof(geometry))
         };
-        if (!string.Equals(result.GeometryType.ToString(), definition.GetShapeType().ToString(), StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException($"Geometry type '{result.GeometryType}' does not match layer shape type '{definition.GetShapeType()}'.", nameof(geometry));
+        if (!string.Equals(result.Kind.ToString(), layer.GeometryType, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"Geometry type '{result.Kind}' does not match layer shape type '{layer.GeometryType}'.", nameof(geometry));
         return result;
     }
 
-    private static Envelope ReadEnvelope(JsonElement envelope, SpatialReference spatialReference)
+    private static FeatureEnvelope ReadEnvelope(JsonElement envelope)
     {
         var xmin = RequiredNumber(envelope, "xmin");
         var ymin = RequiredNumber(envelope, "ymin");
         var xmax = RequiredNumber(envelope, "xmax");
         var ymax = RequiredNumber(envelope, "ymax");
         if (xmin > xmax || ymin > ymax) throw new ArgumentException("envelope minimum coordinates must not exceed maximum coordinates.", nameof(envelope));
-        return EnvelopeBuilderEx.CreateEnvelope(xmin, ymin, xmax, ymax, spatialReference);
+        return new FeatureEnvelope(xmin, ymin, xmax, ymax);
     }
 
-    private static MapPoint BuildPoint(JsonElement geometry, SpatialReference spatialReference) =>
+    private static FeaturePoint ReadPoint(JsonElement geometry) =>
         geometry.TryGetProperty("z", out var z) && z.TryGetDouble(out var zValue)
-            ? MapPointBuilderEx.CreateMapPoint(RequiredNumber(geometry, "x"), RequiredNumber(geometry, "y"), zValue, spatialReference)
-            : MapPointBuilderEx.CreateMapPoint(RequiredNumber(geometry, "x"), RequiredNumber(geometry, "y"), spatialReference);
+            ? new FeaturePoint(RequiredNumber(geometry, "x"), RequiredNumber(geometry, "y"), zValue)
+            : new FeaturePoint(RequiredNumber(geometry, "x"), RequiredNumber(geometry, "y"), null);
 
-    private static MapPoint[] ReadPoints(JsonElement geometry, SpatialReference spatialReference, int minimum)
+    private static FeaturePoint[] ReadPoints(JsonElement geometry, int minimum)
     {
         if (!geometry.TryGetProperty("coordinates", out var coordinates) || coordinates.ValueKind != JsonValueKind.Array)
             throw new ArgumentException("polyline and polygon geometry require coordinates.", nameof(geometry));
@@ -424,14 +385,14 @@ internal static class FeatureOperationSupport
             if (values.Length is < 2 or > 3 || values.Any(value => !value.TryGetDouble(out _)))
                 throw new ArgumentException("Each coordinate must be an [x, y] or [x, y, z] numeric array.", nameof(geometry));
             return values.Length == 3
-                ? MapPointBuilderEx.CreateMapPoint(values[0].GetDouble(), values[1].GetDouble(), values[2].GetDouble(), spatialReference)
-                : MapPointBuilderEx.CreateMapPoint(values[0].GetDouble(), values[1].GetDouble(), spatialReference);
+                ? new FeaturePoint(values[0].GetDouble(), values[1].GetDouble(), values[2].GetDouble())
+                : new FeaturePoint(values[0].GetDouble(), values[1].GetDouble(), null);
         }).ToArray();
         if (points.Length < minimum) throw new ArgumentException($"geometry.coordinates must contain at least {minimum} positions.", nameof(geometry));
         return points;
     }
 
-    private static object ToFieldValue(JsonElement value, Field field)
+    private static object ToFieldValue(JsonElement value, FeatureFieldInfo field)
     {
         if (value.ValueKind == JsonValueKind.Null)
         {
@@ -440,29 +401,29 @@ internal static class FeatureOperationSupport
         }
         try
         {
-            return field.FieldType switch
+            return field.Type switch
             {
-                FieldType.String when value.ValueKind == JsonValueKind.String => ValidateString(value.GetString() ?? string.Empty, field),
-                FieldType.SmallInteger => checked((short)RequiredInteger(value, field.Name)),
-                FieldType.Integer => checked((int)RequiredInteger(value, field.Name)),
-                FieldType.BigInteger => RequiredInteger(value, field.Name),
-                FieldType.Single => (float)RequiredFieldNumber(value, field.Name),
-                FieldType.Double => RequiredFieldNumber(value, field.Name),
-                FieldType.Date => DateTime.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
-                FieldType.DateOnly => DateOnly.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture),
-                FieldType.TimeOnly => TimeOnly.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture),
-                FieldType.TimestampOffset => DateTimeOffset.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
-                FieldType.GUID => Guid.Parse(RequiredStringValue(value, field.Name)),
-                _ => throw new ArgumentException($"Field '{field.Name}' of type '{field.FieldType}' is not supported by typed feature edits.")
+                "String" when value.ValueKind == JsonValueKind.String => ValidateString(value.GetString() ?? string.Empty, field),
+                "SmallInteger" => checked((short)RequiredInteger(value, field.Name)),
+                "Integer" => checked((int)RequiredInteger(value, field.Name)),
+                "BigInteger" => RequiredInteger(value, field.Name),
+                "Single" => (float)RequiredFieldNumber(value, field.Name),
+                "Double" => RequiredFieldNumber(value, field.Name),
+                "Date" => DateTime.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                "DateOnly" => DateOnly.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture),
+                "TimeOnly" => TimeOnly.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture),
+                "TimestampOffset" => DateTimeOffset.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                "GUID" => Guid.Parse(RequiredStringValue(value, field.Name)),
+                _ => throw new ArgumentException($"Field '{field.Name}' of type '{field.Type}' is not supported by typed feature edits.")
             };
         }
         catch (Exception exception) when (exception is FormatException or OverflowException)
         {
-            throw new ArgumentException($"Value for field '{field.Name}' is not a valid {field.FieldType}.", exception);
+            throw new ArgumentException($"Value for field '{field.Name}' is not a valid {field.Type}.", exception);
         }
     }
 
-    private static string ValidateString(string value, Field field)
+    private static string ValidateString(string value, FeatureFieldInfo field)
     {
         if (field.Length > 0 && value.Length > field.Length) throw new ArgumentException($"Value for field '{field.Name}' exceeds its maximum length of {field.Length}.");
         return value;
@@ -481,11 +442,16 @@ internal static class FeatureOperationSupport
         _ => Convert.ToString(value, CultureInfo.InvariantCulture)
     };
 
-    private static string? TryGetGlobalId(Row row, bool hasGlobalId)
+    private static string RequiredArgument(JsonElement arguments, string name)
     {
-        if (!hasGlobalId) return null;
-        var globalId = row.GetGlobalID();
-        return globalId == Guid.Empty ? null : globalId.ToString("D");
+        if (!arguments.TryGetProperty(name, out var value) ||
+            value.ValueKind != JsonValueKind.String ||
+            string.IsNullOrWhiteSpace(value.GetString()))
+        {
+            throw new ArgumentException($"Argument '{name}' is required.");
+        }
+
+        return value.GetString()!;
     }
 
     private static string? Optional(JsonElement value, string name) =>

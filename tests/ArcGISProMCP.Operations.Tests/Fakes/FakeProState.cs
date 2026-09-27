@@ -84,8 +84,15 @@ internal sealed class FakeLayer(string name, string uri, string type = "FeatureL
 
     public LayerElevation? Elevation { get; set; }
 
-    public static FakeLayer Feature(string name, LayerElevation? elevation = null) =>
-        new(name, $"CIMPATH=layer/{name.ToLowerInvariant()}.xml") { Elevation = elevation ?? new LayerElevation("on-ground", 0, 1) };
+    /// <summary>The feature table behind a feature layer; null for layers the feature operations reject.</summary>
+    public FakeFeatureTable? Table { get; init; }
+
+    public static FakeLayer Feature(string name, LayerElevation? elevation = null, FakeFeatureTable? table = null) =>
+        new(name, $"CIMPATH=layer/{name.ToLowerInvariant()}.xml")
+        {
+            Elevation = elevation ?? new LayerElevation("on-ground", 0, 1),
+            Table = table ?? FakeFeatureTable.Parcels()
+        };
 
     public static FakeLayer Other(string name, string type) =>
         new(name, $"CIMPATH=layer/{name.ToLowerInvariant()}.xml", type, isFeatureLayer: false);

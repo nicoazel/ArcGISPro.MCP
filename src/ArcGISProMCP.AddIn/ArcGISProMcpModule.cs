@@ -86,7 +86,8 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
             new ProProjectService(),
             new ProMapService(),
             new ProLayerService(),
-            new ProViewCaptureService());
+            new ProViewCaptureService(),
+            new ProFeatureService());
         foreach (var operation in ProOperationCatalog.Create(resources, services)) registry.Register(operation);
         SeedBundledWorkflows(workflows);
         Registry = registry;

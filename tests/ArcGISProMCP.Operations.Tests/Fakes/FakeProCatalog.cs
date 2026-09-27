@@ -29,11 +29,13 @@ internal sealed class FakePro : IDisposable
         Audit = new FakeAuditLog();
         Resources = new FileResourceStore(_resourceRoot);
         Views = new FakeViewCaptureService(State);
+        Features = new FakeFeatureService(State);
         Services = new ArcGisServices(
             new FakeProjectService(State),
             new FakeMapService(State),
             new FakeLayerService(),
-            Views);
+            Views,
+            Features);
         Context = new OperationContext(Dispatcher, Workspace, Confirmation, Audit, "fake-pro", CancellationToken.None);
         Registry = FakeProCatalog.CreateRegistry(Services, Resources, arcPy, mapStructuralSettleDelay ?? TimeSpan.Zero);
         Executor = new OperationExecutor(Registry, Context);
@@ -52,6 +54,8 @@ internal sealed class FakePro : IDisposable
     public FileResourceStore Resources { get; }
 
     public FakeViewCaptureService Views { get; }
+
+    public FakeFeatureService Features { get; }
 
     public ArcGisServices Services { get; }
 
@@ -118,6 +122,12 @@ internal static class FakeProCatalog
             new MapActivateOperation(services.Maps),
             new MapClearSelectionOperation(services.Maps),
             new LayerListOperation(services.Maps, services.Layers),
+            new FeatureLayerDescribeOperation(services.Features),
+            new FeatureQueryOperation(services.Features),
+            new FeatureSelectOperation(services.Features),
+            new FeatureCreateOperation(services.Features),
+            new FeatureUpdateOperation(services.Features),
+            new FeatureDeleteOperation(services.Features),
             new ViewCaptureOperation(resources, services.Views),
         };
 
