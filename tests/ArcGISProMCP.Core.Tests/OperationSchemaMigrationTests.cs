@@ -41,6 +41,8 @@ public sealed class OperationSchemaMigrationTests
         ["layout.ensure-surround"] = (LayoutSurroundOperationSchemas.EnsureSurroundInput, "LayoutSurroundOperationSchemas.EnsureSurroundInput"),
         ["layout.set-frame-extent"] = (PresentationRefinementOperationSchemas.SetFrameExtentInput, "PresentationRefinementOperationSchemas.SetFrameExtentInput"),
         ["symbology.set-unique-values"] = (PresentationRefinementOperationSchemas.SetUniqueValuesInput, "PresentationRefinementOperationSchemas.SetUniqueValuesInput"),
+        ["map.ensure"] = (MapOperationSchemas.EnsureInput, "MapOperationSchemas.EnsureInput"),
+        ["map.activate"] = (MapOperationSchemas.ActivateInput, "MapOperationSchemas.ActivateInput"),
     };
 
     [Fact]

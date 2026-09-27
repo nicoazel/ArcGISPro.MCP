@@ -41,9 +41,7 @@ internal sealed class MapListOperation() : ProOperationBase(OperationDescriptor.
 internal sealed class MapEnsureOperation() : ProOperationBase(OperationDescriptor.Create(
     "map.ensure", "Ensure map exists",
     "Returns an existing named map or creates it with the requested 2D/3D type and basemap.",
-    JsonSchemas.ObjectSchema(
-        "\"name\": {\"type\": \"string\", \"minLength\": 1}, \"type\": {\"type\": \"string\", \"enum\": [\"map\", \"scene\", \"global-scene\"]}, \"basemap\": {\"type\": \"string\"}",
-        "name"),
+    MapOperationSchemas.EnsureInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["map", "create", "scene"],
     aliases: ["new map", "create map", "make map"],
     examples: ["Ensure maps named Zoning, Transit, and Buildings exist."],
@@ -95,7 +93,7 @@ internal sealed class MapEnsureOperation() : ProOperationBase(OperationDescripto
 internal sealed class MapActivateOperation() : ProOperationBase(OperationDescriptor.Create(
     "map.activate", "Activate map",
     "Opens or activates a map view for a stable map handle or unambiguous name.",
-    JsonSchemas.ObjectSchema("\"map\": {\"type\": \"string\", \"minLength\": 1}", "map"),
+    MapOperationSchemas.ActivateInput,
     risk: OperationRisk.SafeWrite, executionTarget: ExecutionTarget.ArcGISUiThread,
     capabilities: ["maps"], tags: ["map", "view", "open", "switch"],
     aliases: ["switch map", "open map", "show map"], examples: ["Activate the Transit map."],
