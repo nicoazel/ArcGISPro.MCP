@@ -1,0 +1,1030 @@
+{
+  "arcpy.inspect-script": {
+    "type": "object",
+    "properties": {
+      "scriptPath": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "required": [
+      "scriptPath"
+    ],
+    "additionalProperties": false
+  },
+  "arcpy.run-script": {
+    "type": "object",
+    "properties": {
+      "scriptPath": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "scriptSha256": {
+        "type": "string",
+        "pattern": "^[A-Fa-f0-9]{64}$"
+      },
+      "arguments": {
+        "type": "array",
+        "maxItems": 64,
+        "items": {
+          "type": "string",
+          "maxLength": 8192
+        }
+      },
+      "timeoutSeconds": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 900
+      }
+    },
+    "required": [
+      "scriptPath",
+      "scriptSha256"
+    ],
+    "additionalProperties": false
+  },
+  "feature.layer.describe": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "layer"
+    ],
+    "additionalProperties": false
+  },
+  "feature.query": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "where": {
+        "type": "string",
+        "maxLength": 4096
+      },
+      "fields": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 64
+      },
+      "envelope": {
+        "type": "object",
+        "properties": {
+          "xmin": {
+            "type": "number"
+          },
+          "ymin": {
+            "type": "number"
+          },
+          "xmax": {
+            "type": "number"
+          },
+          "ymax": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "xmin",
+          "ymin",
+          "xmax",
+          "ymax"
+        ],
+        "additionalProperties": false
+      },
+      "spatialRelationship": {
+        "type": "string",
+        "enum": [
+          "intersects",
+          "envelopeIntersects",
+          "contains",
+          "within",
+          "touches",
+          "crosses",
+          "overlaps"
+        ]
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500
+      }
+    },
+    "required": [
+      "layer"
+    ],
+    "additionalProperties": false
+  },
+  "feature.select": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "where": {
+        "type": "string",
+        "maxLength": 4096
+      },
+      "envelope": {
+        "type": "object",
+        "properties": {
+          "xmin": {
+            "type": "number"
+          },
+          "ymin": {
+            "type": "number"
+          },
+          "xmax": {
+            "type": "number"
+          },
+          "ymax": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "xmin",
+          "ymin",
+          "xmax",
+          "ymax"
+        ],
+        "additionalProperties": false
+      },
+      "spatialRelationship": {
+        "type": "string",
+        "enum": [
+          "intersects",
+          "envelopeIntersects",
+          "contains",
+          "within",
+          "touches",
+          "crosses",
+          "overlaps"
+        ]
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "new",
+          "add"
+        ]
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500
+      }
+    },
+    "required": [
+      "layer"
+    ],
+    "additionalProperties": false
+  },
+  "feature.create": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "attributes": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "geometry": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "point",
+              "polyline",
+              "polygon"
+            ]
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          },
+          "coordinates": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 3,
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "layer",
+      "geometry"
+    ],
+    "additionalProperties": false
+  },
+  "feature.update": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "target": {
+        "type": "object",
+        "properties": {
+          "objectId": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "globalId": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 38
+          }
+        },
+        "minProperties": 1,
+        "maxProperties": 1,
+        "additionalProperties": false
+      },
+      "attributes": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "geometry": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "point",
+              "polyline",
+              "polygon"
+            ]
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          },
+          "coordinates": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 3,
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "layer",
+      "target"
+    ],
+    "additionalProperties": false
+  },
+  "feature.delete": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "target": {
+        "type": "object",
+        "properties": {
+          "objectId": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "globalId": {
+            "type": "string",
+            "minLength": 32,
+            "maxLength": 38
+          }
+        },
+        "minProperties": 1,
+        "maxProperties": 1,
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "layer",
+      "target"
+    ],
+    "additionalProperties": false
+  },
+  "layer.list": {
+    "type": "object",
+    "properties": {
+      "map": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  },
+  "layer.add": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "source"
+    ],
+    "additionalProperties": false
+  },
+  "layer.set-appearance": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "visible": {
+        "type": "boolean"
+      },
+      "transparency": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      }
+    },
+    "required": [
+      "layer"
+    ],
+    "additionalProperties": false
+  },
+  "layer.set-elevation": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "on-ground",
+          "relative-to-ground",
+          "relative-to-scene",
+          "absolute-height"
+        ]
+      },
+      "offset": {
+        "type": "number",
+        "minimum": -1000000,
+        "maximum": 1000000
+      },
+      "verticalExaggeration": {
+        "type": "number",
+        "minimum": 0.01,
+        "maximum": 100
+      }
+    },
+    "required": [
+      "layer",
+      "mode"
+    ],
+    "additionalProperties": false
+  },
+  "basemap.set": {
+    "type": "object",
+    "properties": {
+      "basemap": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "basemap"
+    ],
+    "additionalProperties": false
+  },
+  "style.search": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "point",
+          "line",
+          "polygon",
+          "text"
+        ]
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  },
+  "layout.inspect": {
+    "type": "object",
+    "properties": {
+      "layout": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "layout"
+    ],
+    "additionalProperties": false
+  },
+  "layout.ensure": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "width": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "height": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "additionalProperties": false
+  },
+  "layout.add-map-frame": {
+    "type": "object",
+    "properties": {
+      "layout": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string",
+        "minLength": 1
+      },
+      "name": {
+        "type": "string"
+      },
+      "x": {
+        "type": "number"
+      },
+      "y": {
+        "type": "number"
+      },
+      "width": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "height": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      }
+    },
+    "required": [
+      "layout",
+      "map"
+    ],
+    "additionalProperties": false
+  },
+  "layout.activate": {
+    "type": "object",
+    "properties": {
+      "layout": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "layout"
+    ],
+    "additionalProperties": false
+  },
+  "layout.set-text": {
+    "type": "object",
+    "properties": {
+      "layout": {
+        "type": "string",
+        "minLength": 1
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "text": {
+        "type": "string"
+      },
+      "x": {
+        "type": "number"
+      },
+      "y": {
+        "type": "number"
+      },
+      "fontFamily": {
+        "type": "string",
+        "minLength": 1
+      },
+      "fontStyle": {
+        "type": "string",
+        "minLength": 1
+      },
+      "size": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+      }
+    },
+    "required": [
+      "layout",
+      "name",
+      "text",
+      "x",
+      "y"
+    ],
+    "additionalProperties": false
+  },
+  "layout.ensure-surround": {
+    "type": "object",
+    "properties": {
+      "layout": {
+        "type": "string"
+      },
+      "frame": {
+        "type": "string"
+      },
+      "name": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "legend",
+          "north-arrow",
+          "scale-bar"
+        ]
+      },
+      "x": {
+        "type": "number"
+      },
+      "y": {
+        "type": "number"
+      },
+      "width": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "height": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      }
+    },
+    "required": [
+      "layout",
+      "frame",
+      "name",
+      "kind",
+      "x",
+      "y",
+      "width",
+      "height"
+    ],
+    "additionalProperties": false
+  },
+  "map.ensure": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "map",
+          "scene",
+          "global-scene"
+        ]
+      },
+      "basemap": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "additionalProperties": false
+  },
+  "map.activate": {
+    "type": "object",
+    "properties": {
+      "map": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "map"
+    ],
+    "additionalProperties": false
+  },
+  "map.clear-selection": {
+    "type": "object",
+    "properties": {
+      "map": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  },
+  "metadata.get": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "includeXml": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "layer"
+    ],
+    "additionalProperties": false
+  },
+  "metadata.update": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string",
+        "maxLength": 32768
+      },
+      "summary": {
+        "type": "string",
+        "maxLength": 32768
+      },
+      "description": {
+        "type": "string",
+        "maxLength": 32768
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "maxItems": 100,
+        "uniqueItems": true
+      },
+      "credits": {
+        "type": "string",
+        "maxLength": 32768
+      },
+      "useLimitations": {
+        "type": "string",
+        "maxLength": 32768
+      }
+    },
+    "required": [
+      "layer"
+    ],
+    "additionalProperties": false
+  },
+  "layout.set-frame-extent": {
+    "type": "object",
+    "properties": {
+      "layout": {
+        "type": "string"
+      },
+      "frame": {
+        "type": "string"
+      },
+      "layer": {
+        "type": "string"
+      },
+      "padding": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 20
+      },
+      "heading": {
+        "type": "number",
+        "minimum": -360,
+        "maximum": 360
+      },
+      "pitch": {
+        "type": "number",
+        "minimum": -90,
+        "maximum": 90
+      }
+    },
+    "required": [
+      "layout",
+      "frame",
+      "layer"
+    ],
+    "additionalProperties": false
+  },
+  "symbology.set-unique-values": {
+    "type": "object",
+    "properties": {
+      "map": {
+        "type": "string"
+      },
+      "layer": {
+        "type": "string"
+      },
+      "field": {
+        "type": "string"
+      },
+      "classes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "color": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "value",
+            "color"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "defaultColor": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "layer",
+      "field",
+      "classes"
+    ],
+    "additionalProperties": false
+  },
+  "project.open": {
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "required": [
+      "path"
+    ],
+    "additionalProperties": false
+  },
+  "symbology.set-simple": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "color": {
+        "type": "string",
+        "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+      },
+      "size": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "outlineColor": {
+        "type": "string"
+      },
+      "outlineWidth": {
+        "type": "number",
+        "minimum": 0
+      }
+    },
+    "required": [
+      "layer",
+      "color"
+    ],
+    "additionalProperties": false
+  },
+  "label.configure": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "expression": {
+        "type": "string"
+      },
+      "fontFamily": {
+        "type": "string"
+      },
+      "fontStyle": {
+        "type": "string"
+      },
+      "size": {
+        "type": "number",
+        "exclusiveMinimum": 0
+      },
+      "color": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "layer"
+    ],
+    "additionalProperties": false
+  },
+  "table.query": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "where": {
+        "type": "string"
+      },
+      "fields": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500
+      }
+    },
+    "required": [
+      "layer"
+    ],
+    "additionalProperties": false
+  },
+  "table.statistics": {
+    "type": "object",
+    "properties": {
+      "layer": {
+        "type": "string",
+        "minLength": 1
+      },
+      "map": {
+        "type": "string"
+      },
+      "field": {
+        "type": "string",
+        "minLength": 1
+      },
+      "where": {
+        "type": "string"
+      },
+      "sampleLimit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 1000000
+      }
+    },
+    "required": [
+      "layer",
+      "field"
+    ],
+    "additionalProperties": false
+  },
+  "view.capture": {
+    "type": "object",
+    "properties": {
+      "view": {
+        "type": "string",
+        "enum": [
+          "active-map",
+          "layout"
+        ]
+      },
+      "layout": {
+        "type": "string"
+      },
+      "width": {
+        "type": "integer",
+        "minimum": 64,
+        "maximum": 4096
+      },
+      "height": {
+        "type": "integer",
+        "minimum": 64,
+        "maximum": 4096
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  }
+}

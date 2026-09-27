@@ -17,5 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/ArcGISProMCP.Core/ArcGISProMCP.Core.csproj" />
+    <!-- Add-in operation schemas depend only on Core, so the tests compile the exact production schemas. -->
+    <Compile Include="../../src/ArcGISProMCP.AddIn/Operations/Schemas/*.cs" Link="AddInSchemas/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>
