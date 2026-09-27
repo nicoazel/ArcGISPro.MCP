@@ -1,3 +1,4 @@
+using ArcGISProMCP.Server.Resources;
 using ArcGISProMCP.Server.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
@@ -23,6 +24,7 @@ public static class McpServerSetup
         ArgumentNullException.ThrowIfNull(builder);
         return builder
             .WithTools<KernelTools>()
-            .WithTools<SkillTools>();
+            .WithTools<SkillTools>()
+            .WithResources<ArcGisResources>();
     }
 }
