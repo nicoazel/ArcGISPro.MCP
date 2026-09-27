@@ -140,7 +140,7 @@ Codes a client should handle. The message carries the details.
 | `workspace_revision_mismatch` | invoke, workflow run | The expected revision is stale. Nothing ran. Refresh state and review. |
 | `workspace_changed` | workflow run result | The project changed before a later write step. The run stopped at `stoppedAtStep`/`stepIndex`; earlier steps are not rolled back and the run is not repeated. |
 | `confirmation_required` | invoke, workflow step | The operation needs an approval token bound to these arguments and revision. |
-| `operation_not_allowed` | workflow validation issue | A step's operation is not permitted by the workflow's `allowedOperations`. Only the issue message reaches the client: inside `invalid_workflow` on run, and inside the `workflow_save` failure (currently `bridge_request_failed`). |
+| `operation_not_allowed` | workflow validation issue | A step's operation is not permitted by the workflow's `allowedOperations`. The issue message is returned inside an `invalid_workflow` error on both `workflow_save` and `workflow_run`. |
 | `invalid_workflow` | workflow run (and malformed save input) | The definition failed validation; the message lists each issue. |
 | `operation_not_found` | describe, invoke | Unknown operation id. Invocations with unknown ids are audited. |
 | `request_cancelled` | any bridge call | The caller cancelled the request before it completed. A write may already have been accepted; check state. |

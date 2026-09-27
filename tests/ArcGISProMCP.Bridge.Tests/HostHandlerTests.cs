@@ -53,6 +53,17 @@ public sealed class HostHandlerTests
     }
 
     [Fact]
+    public async Task Workflow_save_reports_validation_failures_as_invalid_workflow()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var arguments = JsonSerializer.SerializeToElement(new { });
+        var workflow = new WorkflowDefinition("unknown-flow", "1.0.0", "Unknown", "Test", [], [], [],
+            [new("one", "does.not-exist", arguments, [])]);
+        var response = await fixture.Call("workflow.save", new { workflow });
+        Assert.Equal("invalid_workflow", response.Error!.Code);
+    }
+
+    [Fact]
     public async Task Workflow_continuation_preserves_failure_and_skips_dependants()
     {
         using var fixture = new Fixture(OperationRisk.SafeWrite);

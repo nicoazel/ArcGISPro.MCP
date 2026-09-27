@@ -279,7 +279,14 @@ internal sealed class ProBridgeRequestHandler(
             throw new BridgeException("invalid_workflow", "workflow must be a JSON object.");
         var workflow = element.Deserialize<WorkflowDefinition>(JsonOptions)
             ?? throw new BridgeException("invalid_workflow", "Workflow definition could not be parsed.");
-        await workflows.SaveAsync(workflow, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await workflows.SaveAsync(workflow, cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new BridgeException("invalid_workflow", exception.Message);
+        }
         return JsonSerializer.SerializeToElement(new { saved = true, workflow.Id, workflow.Version }, JsonOptions);
     }
 
