@@ -98,6 +98,28 @@ and raise the baseline in the same change. If you add or remove tasks, re-measur
 a baseline taken on a different task count. `gp-search` depends on the installed Pro version, which
 the baseline note and the scorecard host record.
 
+## Search tuning (Phase 4)
+
+`registry_search` and `gp.search` share `Core/Search`: punctuation stripping, camel-case splitting,
+light stemming, whole-word over prefix over compound matching, a softened inverse document frequency,
+and a small curated synonym map of general GIS vocabulary (`SearchSynonyms`). `gp.search` also gives the
+core system toolboxes a modest prior (`GpToolboxPriority`: x1.25 for analysis, management, conversion,
+cartography, edit and stats; x1.1 for Spatial Analyst and 3D Analyst).
+
+The free parameters (rarity floor, core factor) were chosen on the main suites only. The held-out suites
+were written first and measured before and after, never used for choices.
+
+| Suite | Tasks | recall@1 before -> after | recall@5 before -> after | MRR before -> after |
+|---|---:|---|---|---|
+| registry-search | 30 | 0.500 -> 0.667 | 0.833 -> 1.000 | 0.607 -> 0.803 |
+| registry-search-holdout | 16 | 0.813 -> 0.813 | 0.938 -> 0.938 | 0.856 -> 0.865 |
+| gp-search | 30 | 0.533 -> 0.667 | 0.667 -> 0.933 | 0.586 -> 0.776 |
+| gp-search-holdout | 16 | 0.500 -> 0.688 | 0.688 -> 0.875 | 0.559 -> 0.771 |
+| gp-search-fixture | 5 | 0.800 -> 1.000 | 1.000 -> 1.000 | 0.900 -> 1.000 |
+
+"Before" is `832a4ac` (the descriptor fixture regenerated for the phase-2 gp operations, 41 descriptors);
+"after" is `2290311`, scorecard in `results/2026-09-26-2290311`. gp suites ran against ArcGIS Pro 3.7.1.1904.
+
 ## Descriptor fixture (interim)
 
 The add-in's descriptors live in an assembly that references Esri DLLs, so tests cannot build the real

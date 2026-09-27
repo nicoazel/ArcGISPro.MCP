@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "sha": "2290311",
+  "dirty": false,
+  "date": "2026-09-26",
+  "model": null,
+  "suites": [
+    {
+      "suite": "gp-search",
+      "host": "ArcGIS Pro 3.7.1.1904 system toolboxes (2210 tools)",
+      "tasks": 30,
+      "metrics": {
+        "recall@1": 0.6667,
+        "recall@5": 0.9333,
+        "mrr": 0.7764,
+        "taskPassRate": 0.9333,
+        "meanFirstHitRank": 1.7241,
+        "misses": 1,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "gp-03",
+          "task": "keep only the areas where two polygon layers overlap",
+          "expected": [
+            "analysis.Intersect",
+            "analysis.PairwiseIntersect"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "ga.ArealInterpolationLayerToPolygons",
+            "cartography.IntersectingLayersMasks",
+            "na.MakeServiceAreaAnalysisLayer",
+            "analysis.ApportionPolygon",
+            "management.PolygonToLine"
+          ]
+        },
+        {
+          "id": "gp-15",
+          "task": "compute the area of each polygon in acres",
+          "expected": [
+            "management.CalculateGeometryAttributes"
+          ],
+          "k": 5,
+          "firstHitRank": 8,
+          "top": [
+            "management.ComputeDirtyArea",
+            "3d.PolygonVolume",
+            "ga.ArealInterpolationLayerToPolygons",
+            "management.PolygonToLine",
+            "cartography.DelineateBuiltUpAreas"
+          ]
+        }
+      ]
+    },
+    {
+      "suite": "gp-search-fixture",
+      "host": "synthetic fixture toolboxes (13 tools)",
+      "tasks": 5,
+      "metrics": {
+        "recall@1": 1,
+        "recall@5": 1,
+        "mrr": 1,
+        "taskPassRate": 1,
+        "meanFirstHitRank": 1,
+        "misses": 0,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": []
+    },
+    {
+      "suite": "gp-search-holdout",
+      "host": "ArcGIS Pro 3.7.1.1904 system toolboxes (2210 tools)",
+      "tasks": 16,
+      "metrics": {
+        "recall@1": 0.6875,
+        "recall@5": 0.875,
+        "mrr": 0.7708,
+        "taskPassRate": 0.875,
+        "meanFirstHitRank": 1.2857,
+        "misses": 2,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "gph-03",
+          "task": "stitch adjacent polygons together into one outline",
+          "expected": [
+            "management.Dissolve",
+            "analysis.PairwiseDissolve",
+            "cartography.AggregatePolygons"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "management.Mosaic",
+            "management.MosaicToNewRaster",
+            "management.PolygonToLine",
+            "analysis.PolygonNeighbors",
+            "analysis.CreateThiessenPolygons"
+          ]
+        },
+        {
+          "id": "gph-05",
+          "task": "pull out the roads whose type is highway into a new feature class",
+          "expected": [
+            "analysis.Select",
+            "conversion.ExportFeatures"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "cartography.ResolveRoadConflicts",
+            "cartography.MergeDividedRoads",
+            "locref.ConfigureAddressFeatureClasses",
+            "management.AppendAnnotation",
+            "management.CreateFeatureclass"
+          ]
+        }
+      ]
+    },
+    {
+      "suite": "registry-search",
+      "host": "OperationRegistry over 41 add-in descriptors (source fixture)",
+      "tasks": 30,
+      "metrics": {
+        "recall@1": 0.6667,
+        "recall@5": 1,
+        "mrr": 0.8028,
+        "taskPassRate": 1,
+        "meanFirstHitRank": 1.5667,
+        "misses": 0,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": []
+    },
+    {
+      "suite": "registry-search-holdout",
+      "host": "OperationRegistry over 41 add-in descriptors (source fixture)",
+      "tasks": 16,
+      "metrics": {
+        "recall@1": 0.8125,
+        "recall@5": 0.9375,
+        "mrr": 0.8646,
+        "taskPassRate": 0.9375,
+        "meanFirstHitRank": 1.2,
+        "misses": 1,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "rsh-11",
+          "task": "Move this manhole to a new location",
+          "expected": [
+            "feature.update"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "layout.ensure",
+            "map.ensure",
+            "feature.create",
+            "layer.add",
+            "layout.set-text"
+          ]
+        }
+      ]
+    }
+  ]
+}
