@@ -1,0 +1,18 @@
+# Ruff configuration for the Python helper scripts under tools/.
+# The scripts run inside the ArcGIS Pro conda environment (Python 3.11).
+target-version = "py311"
+line-length = 100
+include = ["tools/**/*.py"]
+
+[lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+]
+
+[lint.isort]
+known-third-party = ["arcpy"]
