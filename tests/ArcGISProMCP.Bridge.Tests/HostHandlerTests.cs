@@ -13,6 +13,9 @@ namespace ArcGISProMCP.Bridge.Tests;
 
 public sealed class HostHandlerTests
 {
+    private static readonly string[] MapsOnly = ["MAPS"];
+    private static readonly string[] MapsAndLayouts = ["maps", "layouts"];
+
     [Fact]
     public async Task Approval_is_local_single_use_and_bound_to_revision()
     {
@@ -144,11 +147,61 @@ public sealed class HostHandlerTests
         Assert.Equal(1, rank.FailedRuns);
     }
 
+    [Theory]
+    [InlineData("ReadOnly")]
+    [InlineData("read_only")]
+    [InlineData("read-only")]
+    public async Task Search_max_risk_excludes_write_operations(string maxRisk)
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+
+        var all = await fixture.Call("registry.search", new { query = "test" });
+        var readOnly = await fixture.Call("registry.search", new { query = "test", maxRisk });
+
+        Assert.Equal(["test.read", "test.write"], OperationIds(all).Order(StringComparer.Ordinal));
+        Assert.Equal(["test.read"], OperationIds(readOnly));
+    }
+
+    [Fact]
+    public async Task Search_capabilities_filter_is_passed_to_the_registry()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+
+        var maps = await fixture.Call("registry.search", new { query = "test", capabilities = MapsOnly });
+        var none = await fixture.Call("registry.search", new { query = "test", capabilities = MapsAndLayouts });
+
+        Assert.Equal(["test.read"], OperationIds(maps));
+        Assert.Empty(OperationIds(none));
+    }
+
+    [Theory]
+    [InlineData("maxRisk", "\"Dangerous\"")]
+    [InlineData("maxRisk", "\"1\"")]
+    [InlineData("capabilities", "\"maps\"")]
+    [InlineData("capabilities", "[1]")]
+    public async Task Search_rejects_malformed_filters(string name, string json)
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var parameters = JsonDocument.Parse($"{{\"query\":\"test\",\"{name}\":{json}}}").RootElement;
+
+        var response = await fixture.Call("registry.search", parameters);
+
+        Assert.Equal("invalid_parameters", response.Error!.Code);
+    }
+
+    private static string[] OperationIds(BridgeResponse response)
+    {
+        Assert.True(response.Success, response.Error?.Message);
+        return response.Result!.Value.EnumerateArray()
+            .Select(hit => hit.GetProperty("operation").GetProperty("id").GetString()!)
+            .ToArray();
+    }
+
     private sealed class Fixture : IDisposable
     {
         public ApprovalService Approvals { get; } = new();
         public TestOperation Operation { get; }
-        public TestOperation ReadOperation { get; } = new(OperationRisk.ReadOnly, "test.read");
+        public TestOperation ReadOperation { get; } = new(OperationRisk.ReadOnly, "test.read", ["maps"]);
         public FileWorkflowLibrary Workflows { get; }
         private readonly ProBridgeRequestHandler _handler;
         // Test files are isolated and intentionally retained for post-failure diagnosis.
@@ -168,11 +221,11 @@ public sealed class HostHandlerTests
         public void Dispose() { _handler.Dispose(); Approvals.Dispose(); Workflows.Dispose(); }
     }
 
-    private sealed class TestOperation(OperationRisk risk, string id = "test.write") : IOperation
+    private sealed class TestOperation(OperationRisk risk, string id = "test.write", string[]? capabilities = null) : IOperation
     {
         public int CallCount { get; private set; }
         public bool Fail { get; set; }
-        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(id, "Test operation", "Test", JsonSchemas.EmptyObject, risk: risk, requiresConfirmation: risk == OperationRisk.Destructive);
+        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(id, "Test operation", "Test", JsonSchemas.EmptyObject, risk: risk, capabilities: capabilities, requiresConfirmation: risk == OperationRisk.Destructive);
         public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
         {
             CallCount++;

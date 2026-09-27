@@ -90,7 +90,9 @@ internal sealed class ProBridgeRequestHandler(
         var query = new OperationQuery(
             OptionalString(parameters, "query"),
             OptionalString(parameters, "domain"),
-            Limit: Integer(parameters, "limit", 12));
+            OptionalStringSet(parameters, "capabilities"),
+            OptionalRisk(parameters, "maxRisk"),
+            Integer(parameters, "limit", 12));
         var hits = registry.Search(query).Select(hit => new
         {
             operation = Compact(hit.Descriptor),
@@ -481,6 +483,39 @@ internal sealed class ProBridgeRequestHandler(
     private static string? OptionalString(JsonElement parameters, string name) =>
         parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString() : null;
+
+    private static ImmutableHashSet<string>? OptionalStringSet(JsonElement parameters, string name)
+    {
+        if (parameters.ValueKind != JsonValueKind.Object || !parameters.TryGetProperty(name, out var value) ||
+            value.ValueKind == JsonValueKind.Null)
+            return null;
+        if (value.ValueKind != JsonValueKind.Array)
+            throw new BridgeException("invalid_parameters", $"'{name}' must be an array of strings.");
+        var items = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(item.GetString()))
+                throw new BridgeException("invalid_parameters", $"'{name}' must be an array of non-empty strings.");
+            items.Add(item.GetString()!.Trim());
+        }
+        return items.Count == 0 ? null : items.ToImmutable();
+    }
+
+    private static OperationRisk? OptionalRisk(JsonElement parameters, string name)
+    {
+        var text = OptionalString(parameters, name);
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        // Accept ReadOnly, readOnly, read_only, read-only; reject numeric aliases.
+        var normalized = text.Trim().Replace("_", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
+        foreach (var risk in Enum.GetValues<OperationRisk>())
+        {
+            if (string.Equals(risk.ToString(), normalized, StringComparison.OrdinalIgnoreCase))
+                return risk;
+        }
+        throw new BridgeException("invalid_parameters",
+            $"'{name}' must be one of {string.Join(", ", Enum.GetNames<OperationRisk>())}.");
+    }
 
     private static int Integer(JsonElement parameters, string name, int defaultValue) =>
         parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out var value) && value.TryGetInt32(out var parsed)
