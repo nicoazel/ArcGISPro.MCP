@@ -12,9 +12,7 @@ namespace ArcGISProMCP.AddIn.Operations;
 internal sealed class LayoutSetTextOperation() : ProOperationBase(OperationDescriptor.Create(
     "layout.set-text", "Set layout text",
     "Creates or updates a named point-text element on a layout, positioned in page inches with explicit typography and color.",
-    JsonSchemas.ObjectSchema(
-        "\"layout\": {\"type\": \"string\", \"minLength\": 1}, \"name\": {\"type\": \"string\", \"minLength\": 1}, \"text\": {\"type\": \"string\"}, \"x\": {\"type\": \"number\"}, \"y\": {\"type\": \"number\"}, \"fontFamily\": {\"type\": \"string\", \"minLength\": 1}, \"fontStyle\": {\"type\": \"string\", \"minLength\": 1}, \"size\": {\"type\": \"number\", \"exclusiveMinimum\": 0}, \"color\": {\"type\": \"string\", \"pattern\": \"^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$\"}",
-        "layout", "name", "text", "x", "y"),
+    LayoutPresentationOperationSchemas.SetTextInput,
     risk: OperationRisk.SafeWrite,
     capabilities: ["layouts"],
     tags: ["layout", "text", "title", "annotation", "typography", "presentation"],
