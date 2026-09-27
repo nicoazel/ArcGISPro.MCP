@@ -35,6 +35,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Fixed
 
+- An audit write failure for an unknown operation id now adds the `audit_write_failed` notice, like every other invocation. A failed approval audit write in the dockpane is reported in the activity feed whatever the exception type, instead of surfacing as an error after the decision was already applied.
 - `invalid_workflow` errors from `workflow_save` and `workflow_run` prefix each issue with its code (for example `operation_not_allowed: ...`), so clients can tell policy violations from other validation failures.
 - A failed audit log rotation (for example while another Pro process holds `operations.jsonl`) no longer drops the audit record; rotation is skipped and the record is appended. The log is appended through a handle that shares read, write and delete access with other processes, and rotation happens only once the file exceeds 16 MiB, as documented.
 - A request cancelled by ArcGIS Pro shutting down now fails with the retryable code `host_stopping` instead of the generic `bridge_request_failed`. `docs/security.md` states that keyed requests cannot be cancelled by callers once started.

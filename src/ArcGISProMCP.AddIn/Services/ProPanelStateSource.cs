@@ -312,8 +312,10 @@ internal sealed class ProPanelStateSource(
                 Decision: resolution == ApprovalResolution.ApproveOnce ? "approved" : "denied",
                 Actor: actor), CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ObjectDisposedException)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            // The decision is already applied; any audit failure is reported, never rethrown,
+            // so the caller does not mistake a recorded approve/deny for a failed one.
             Trace.TraceError("Approval audit write failed: {0}", exception);
             AddActivity(ActivityLevel.Warning, "Audit write failed", $"Approval {request.Id} was decided but could not be written to the audit log.");
         }

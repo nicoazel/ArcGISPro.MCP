@@ -86,6 +86,31 @@ public sealed class OperationExecutorTests
     }
 
     [Fact]
+    public async Task Unknown_operation_id_audit_failure_adds_a_notice()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
+        fixture.Audit.Fail = true;
+
+        var result = await fixture.ExecuteAsync(expectedRevision: null, operationId: "does.not.exist");
+
+        Assert.Equal("operation_not_found", result.ErrorCode);
+        var notice = Assert.Single(result.Notices);
+        Assert.Equal("audit_write_failed", notice.Code);
+    }
+
+    [Fact]
+    public async Task Known_operation_audit_failure_adds_a_notice()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.SafeWrite);
+        fixture.Audit.Fail = true;
+
+        var result = await fixture.ExecuteAsync(expectedRevision: ExecutorFixture.Revision);
+
+        Assert.True(result.Success);
+        Assert.Equal("audit_write_failed", Assert.Single(result.Notices).Code);
+    }
+
+    [Fact]
     public async Task Oversized_unknown_operation_id_is_truncated_in_the_audit_record()
     {
         var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
@@ -199,9 +224,11 @@ public sealed class OperationExecutorTests
     private sealed class CapturingAuditLog : IOperationAuditLog
     {
         internal List<OperationAuditEvent> Events { get; } = [];
+        internal bool Fail { get; set; }
 
         public ValueTask WriteAsync(OperationAuditEvent auditEvent, CancellationToken cancellationToken)
         {
+            if (Fail) return ValueTask.FromException(new IOException("audit sink unavailable"));
             Events.Add(auditEvent);
             return ValueTask.CompletedTask;
         }

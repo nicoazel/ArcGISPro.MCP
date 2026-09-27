@@ -41,6 +41,19 @@ public sealed class ProjectOperationSourceTests
         Assert.Contains("RunOperationAsync(\"project.open\"", panel, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Panel_approval_audit_failures_never_undo_or_mask_the_applied_decision()
+    {
+        // ProPanelStateSource needs ArcGIS Pro to run, so this stays a source-level check.
+        var panel = ReadSource("Services", "ProPanelStateSource.cs");
+        var start = panel.IndexOf("private async Task WriteApprovalAuditAsync", StringComparison.Ordinal);
+        Assert.True(start >= 0, "WriteApprovalAuditAsync not found.");
+        var body = panel[start..panel.IndexOf("private static string ArgumentsHash", start, StringComparison.Ordinal)];
+
+        Assert.Contains("catch (Exception exception) when (exception is not OperationCanceledException)", body, StringComparison.Ordinal);
+        Assert.Contains("AddActivity(ActivityLevel.Warning, \"Audit write failed\"", body, StringComparison.Ordinal);
+    }
+
     private static string Descriptor(string source, string id)
     {
         var match = Regex.Match(source, $@"OperationDescriptor\.Create\(\s*""{Regex.Escape(id)}""");

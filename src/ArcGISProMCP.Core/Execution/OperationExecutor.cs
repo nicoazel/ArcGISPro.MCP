@@ -21,7 +21,7 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
             if (!registry.TryGet(request.OperationId, out var operation))
             {
                 result = OperationResult.Fail("operation_not_found", $"Unknown operation '{request.OperationId}'.", startSnapshot.Revision);
-                await WriteAuditAsync(new OperationAuditEvent(
+                var unknownWritten = await WriteAuditAsync(new OperationAuditEvent(
                     correlationId,
                     AuditOperationId(request.OperationId),
                     "unknown",
@@ -32,7 +32,7 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
                     startSnapshot.Revision,
                     result.ErrorCode,
                     Hash(request.Arguments))).ConfigureAwait(false);
-                return result;
+                return unknownWritten ? result : WithAuditFailureNotice(result);
             }
 
             descriptor = operation.Descriptor;
@@ -127,19 +127,18 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
                 result.ErrorCode,
                 Hash(request.Arguments),
                 AutonomousBypass: autonomousBypass)).ConfigureAwait(false);
-            if (!written)
-            {
-                // Observability failure must not hide the known outcome of an accepted mutation.
-                result = result with
-                {
-                    Notices = result.Notices.Add(new OperationNotice(
-                    "audit_write_failed", "Operation result is known, but the audit record could not be persisted. Inspect host diagnostics before further work.", "warning"))
-                };
-            }
+            // Observability failure must not hide the known outcome of an accepted mutation.
+            if (!written) result = WithAuditFailureNotice(result);
         }
 
         return result;
     }
+
+    private static OperationResult WithAuditFailureNotice(OperationResult result) => result with
+    {
+        Notices = result.Notices.Add(new OperationNotice(
+            "audit_write_failed", "Operation result is known, but the audit record could not be persisted. Inspect host diagnostics before further work.", "warning"))
+    };
 
     private async Task<bool> WriteAuditAsync(OperationAuditEvent auditEvent)
     {
