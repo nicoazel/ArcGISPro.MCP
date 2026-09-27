@@ -27,6 +27,12 @@ public sealed class OperationSchemaMigrationTests
         ["feature.create"] = (FeatureOperationSchemas.CreateInput, "FeatureOperationSchemas.CreateInput"),
         ["feature.update"] = (FeatureOperationSchemas.UpdateInput, "FeatureOperationSchemas.UpdateInput"),
         ["feature.delete"] = (FeatureOperationSchemas.DeleteInput, "FeatureOperationSchemas.DeleteInput"),
+        ["layer.list"] = (LayerOperationSchemas.ListInput, "LayerOperationSchemas.ListInput"),
+        ["layer.add"] = (LayerOperationSchemas.AddInput, "LayerOperationSchemas.AddInput"),
+        ["layer.set-appearance"] = (LayerOperationSchemas.SetAppearanceInput, "LayerOperationSchemas.SetAppearanceInput"),
+        ["layer.set-elevation"] = (LayerOperationSchemas.SetElevationInput, "LayerOperationSchemas.SetElevationInput"),
+        ["basemap.set"] = (LayerOperationSchemas.BasemapSetInput, "LayerOperationSchemas.BasemapSetInput"),
+        ["style.search"] = (LayerOperationSchemas.StyleSearchInput, "LayerOperationSchemas.StyleSearchInput"),
     };
 
     [Fact]
