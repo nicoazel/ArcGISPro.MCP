@@ -10,7 +10,7 @@ The stdio gateway (`ArcGISProMCP.Server`) exposes exactly these 16 MCP tools.
 | --- | :---: | --- |
 | `system_get_state` | ✓ | Revisioned snapshot of the project, maps, layouts, active view, capabilities, and connection. |
 | `registry_search` | ✓ | Searches operations by intent, GIS terms and aliases. Optional filters: `domain`, `capabilities` (a result must require every listed capability) and `maxRisk` (highest risk to include, for example `ReadOnly`). `limit` defaults to 12 and is clamped to 1–100. Articles and prepositions such as "the", "a", "of" and "to" are ignored in the query. |
-| `registry_browse` | ✓ | Lists concise registry entries by domain. |
+| `registry_browse` | ✓ | Lists concise registry entries by domain. Search and browse entries include `executesUserCode`. |
 | `registry_describe` | ✓ | Returns one operation's full descriptor: input schema, required capabilities, examples, risk, confirmation requirement, and related operations. Operations do not declare result schemas yet. |
 | `registry_validate` | ✓ | Checks arguments against the operation's input schema and, for writes, the expected revision against the current one. It does not resolve layers, maps or paths, so a valid result does not guarantee success. Never writes. |
 | `registry_invoke` | | Runs one operation. Writes need the current revision, and confirmation-gated operations also need an approval token. |
@@ -34,7 +34,7 @@ The add-in registers these operations. Risk determines the gate each one passes 
 - **Destructive** and **ExternalSideEffect**: require the current revision *and* a local-review token, unless the host was started in [autonomous mode](security.md).
 - **SafeWrite + approval**: `project.open`, `project.save` and `feature.update` are SafeWrite but also require a local-review token.
 
-`gp.run` and `arcpy.run-script` execute user code. A saved workflow may use them only when its `allowedOperations` lists them explicitly (see [security](security.md)).
+`gp.run` and `arcpy.run-script` execute user code (`executesUserCode: true` in search, browse and describe results). A saved workflow may use them only when its `allowedOperations` lists them explicitly (see [security](security.md)). Allowlist entries are operation ids only; they do not pin an operation version.
 
 ### Project and maps
 
@@ -140,8 +140,8 @@ Codes a client should handle. The message carries the details.
 | `workspace_revision_mismatch` | invoke, workflow run | The expected revision is stale. Nothing ran. Refresh state and review. |
 | `workspace_changed` | workflow run result | The project changed before a later write step. The run stopped at `stoppedAtStep`/`stepIndex`; earlier steps are not rolled back and the run is not repeated. |
 | `confirmation_required` | invoke, workflow step | The operation needs an approval token bound to these arguments and revision. |
-| `operation_not_allowed` | workflow validation issue | A step's operation is not permitted by the workflow's `allowedOperations`. The issue message is returned inside an `invalid_workflow` error on both `workflow_save` and `workflow_run`. |
-| `invalid_workflow` | workflow run (and malformed save input) | The definition failed validation; the message lists each issue. |
+| `operation_not_allowed` | workflow validation issue | A step's operation is not permitted by the workflow's `allowedOperations`. The issue is returned as `operation_not_allowed: <message>` inside an `invalid_workflow` error on both `workflow_save` and `workflow_run`. |
+| `invalid_workflow` | workflow save and run | The definition failed validation; the message lists each issue as `<code>: <message>`. |
 | `operation_not_found` | describe, invoke | Unknown operation id. Invocations with unknown ids are audited. |
 | `request_cancelled` | any bridge call | The caller cancelled the request before it completed. A write may already have been accepted; check state. |
 | `host_stopping` | any bridge call | ArcGIS Pro is shutting down and cancelled the request, including keyed work shared by several callers. Retryable against a new host; a write may already have been accepted, so check state first. |

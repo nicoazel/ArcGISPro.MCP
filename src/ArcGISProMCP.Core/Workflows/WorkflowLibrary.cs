@@ -111,7 +111,7 @@ public sealed class FileWorkflowLibrary : IWorkflowLibrary, IDisposable
         var validation = await ValidateAsync(workflow, cancellationToken).ConfigureAwait(false);
         if (!validation.IsValid)
         {
-            throw new InvalidOperationException(string.Join(" ", validation.Issues.Select(issue => issue.Message)));
+            throw new InvalidOperationException(string.Join(" ", validation.Issues.Select(issue => $"{issue.Code}: {issue.Message}")));
         }
 
         var persisted = workflow with { ContentHash = ComputeContentHash(workflow) };

@@ -332,7 +332,7 @@ internal sealed class ProBridgeRequestHandler(
     {
         var validation = await workflows.ValidateAsync(workflow, cancellationToken).ConfigureAwait(false);
         if (!validation.IsValid)
-            throw new BridgeException("invalid_workflow", string.Join(" ", validation.Issues.Select(issue => issue.Message)));
+            throw new BridgeException("invalid_workflow", string.Join(" ", validation.Issues.Select(issue => $"{issue.Code}: {issue.Message}")));
         var suppliedParameters = RequiredObject(parameters, "parameters");
         IReadOnlyDictionary<string, JsonElement> boundParameters;
         try
@@ -488,6 +488,7 @@ internal sealed class ProBridgeRequestHandler(
         descriptor.Tags,
         descriptor.RequiredCapabilities,
         descriptor.RequiresConfirmation,
+        descriptor.ExecutesUserCode,
         descriptor.TypicalDuration
     };
 

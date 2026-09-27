@@ -10,7 +10,7 @@ All notable changes to this project are documented here. The format is based on 
 - `CONTRIBUTING.md` with prerequisites, build, test and packaging commands, and pull request conventions.
 - This changelog and a public [roadmap](docs/ROADMAP.md).
 - Bundled workflows are embedded in `ArcGISProMCP.Core` and seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` at start-up, so `workflow_list` is populated on a fresh install. Seeding is a no-op once a workflow is present; existing files are never overwritten.
-- Workflow operation allowlists: an optional `allowedOperations` list on workflows, enforced on save and run and reported as the validation issue `operation_not_allowed`. Operation descriptors gain `executesUserCode` (true for `gp.run` and `arcpy.run-script`).
+- Workflow operation allowlists: an optional `allowedOperations` list on workflows, enforced on save and run and reported as the validation issue `operation_not_allowed`. Operation descriptors gain `executesUserCode` (true for `gp.run` and `arcpy.run-script`), which `registry_search` and `registry_browse` entries also report. Allowlist entries are operation ids and are not version-pinned.
 - `registry_search` accepts `capabilities` and `maxRisk` filters.
 - Approval cards show a "Runs user code" warning for `arcpy.*` runs and for `gp.run` requests that use a custom toolbox (`.pyt`/`.atbx`/`.tbx`) or a Python expression; matching `gp.run` results carry a `user_code_execution` notice.
 - Audit records gain `kind` (`operation` or `approval`), `autonomousBypass`, `decision` and `actor`. Unknown operation ids and every local approve/deny decision are now audited.
@@ -35,6 +35,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Fixed
 
+- `invalid_workflow` errors from `workflow_save` and `workflow_run` prefix each issue with its code (for example `operation_not_allowed: ...`), so clients can tell policy violations from other validation failures.
 - A failed audit log rotation (for example while another Pro process holds `operations.jsonl`) no longer drops the audit record; rotation is skipped and the record is appended. The log is appended through a handle that shares read, write and delete access with other processes, and rotation happens only once the file exceeds 16 MiB, as documented.
 - A request cancelled by ArcGIS Pro shutting down now fails with the retryable code `host_stopping` instead of the generic `bridge_request_failed`. `docs/security.md` states that keyed requests cannot be cancelled by callers once started.
 - Idempotent registry and workflow requests run under the host lifetime rather than the first caller's cancellation token, so cancelling one caller no longer cancels work another caller with the same key is waiting on.

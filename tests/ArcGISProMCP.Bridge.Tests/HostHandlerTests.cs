@@ -14,6 +14,7 @@ namespace ArcGISProMCP.Bridge.Tests;
 public sealed class HostHandlerTests
 {
     private static readonly string[] MapsOnly = ["MAPS"];
+    private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
     private static readonly string[] MapsAndLayouts = ["maps", "layouts"];
 
     [Fact]
@@ -61,6 +62,66 @@ public sealed class HostHandlerTests
             [new("one", "does.not-exist", arguments, [])]);
         var response = await fixture.Call("workflow.save", new { workflow });
         Assert.Equal("invalid_workflow", response.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Workflow_run_rejects_an_on_disk_user_code_step_without_an_allowlist()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        // Bypass save-time validation, as a hand-edited or older library file would.
+        var workflow = new WorkflowDefinition("disk-flow", "1.0.0", "Disk", "Hand-edited file", [], [], [],
+            [new("script", fixture.ScriptOperation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), [])]);
+        Directory.CreateDirectory(fixture.WorkflowDirectory);
+        await File.WriteAllTextAsync(
+            Path.Combine(fixture.WorkflowDirectory, "disk-flow@1.0.0.workflow.json"),
+            JsonSerializer.Serialize(workflow, WebJson),
+            TestContext.Current.CancellationToken);
+
+        var response = await fixture.Call("workflow.run", new { workflowId = workflow.Id, parameters = new { }, expectedRevision = "r1" });
+
+        Assert.Equal("invalid_workflow", response.Error!.Code);
+        Assert.Contains("operation_not_allowed", response.Error.Message, StringComparison.Ordinal);
+        Assert.Equal(0, fixture.ScriptOperation.CallCount);
+    }
+
+    [Fact]
+    public async Task Search_and_browse_report_whether_an_operation_executes_user_code()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+
+        var search = await fixture.Call("registry.search", new { query = "script" });
+        var browse = await fixture.Call("registry.browse", new { domain = "sample" });
+
+        var hit = Assert.Single(search.Result!.Value.EnumerateArray()).GetProperty("operation");
+        Assert.True(hit.GetProperty("executesUserCode").GetBoolean());
+        var operations = browse.Result!.Value.GetProperty("operations").EnumerateArray().ToArray();
+        Assert.Contains(operations, operation => operation.GetProperty("id").GetString() == "sample.script" &&
+                                                 operation.GetProperty("executesUserCode").GetBoolean());
+        Assert.Contains(operations, operation => operation.GetProperty("id").GetString() == "sample.project-save" &&
+                                                 !operation.GetProperty("executesUserCode").GetBoolean());
+    }
+
+    [Theory]
+    [InlineData("sample.feature-update")]
+    [InlineData("sample.project-save")]
+    public async Task Confirmation_gated_safe_write_requires_an_approved_token(string operationId)
+    {
+        // Mirrors feature.update and project.save: SafeWrite risk plus requiresConfirmation.
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var operation = fixture.GatedOperations[operationId];
+
+        var denied = await fixture.Call("registry.invoke", new { operationId, arguments = new { }, expectedRevision = "r1" });
+        Assert.Equal("confirmation_required", denied.Result!.Value.GetProperty("errorCode").GetString());
+        Assert.Equal(0, operation.CallCount);
+
+        var pending = await fixture.Call("approval.request", new { operationId, arguments = new { }, expectedRevision = "r1" });
+        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
+        Assert.True(fixture.Approvals.TryResolve(requestId, ApprovalResolution.ApproveOnce));
+        var token = (await fixture.Call("approval.status", new { requestId })).Result!.Value.GetProperty("confirmationToken").GetString();
+        var approved = await fixture.Call("registry.invoke", new { operationId, arguments = new { }, expectedRevision = "r1", confirmationToken = token });
+
+        Assert.True(approved.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(1, operation.CallCount);
     }
 
     [Fact]
@@ -255,7 +316,16 @@ public sealed class HostHandlerTests
         public ApprovalService Approvals { get; } = new();
         public TestOperation Operation { get; }
         public TestOperation ReadOperation { get; } = new(OperationRisk.ReadOnly, "test.read", ["maps"]);
+        // Ids and titles avoid the word "test" so they stay out of the registry.search assertions.
+        public TestOperation ScriptOperation { get; } = new(OperationRisk.ExternalSideEffect, "sample.script",
+            title: "Sample script runner", summary: "Runs a script.", requiresConfirmation: true, executesUserCode: true);
+        public IReadOnlyDictionary<string, TestOperation> GatedOperations { get; } = new[]
+        {
+            new TestOperation(OperationRisk.SafeWrite, "sample.feature-update", title: "Sample feature update", summary: "Updates one feature.", requiresConfirmation: true),
+            new TestOperation(OperationRisk.SafeWrite, "sample.project-save", title: "Sample project save", summary: "Saves the project.", requiresConfirmation: true)
+        }.ToDictionary(operation => operation.Descriptor.Id, StringComparer.Ordinal);
         public FileWorkflowLibrary Workflows { get; }
+        public string WorkflowDirectory => Path.Combine(_root, "workflows");
         private readonly ProBridgeRequestHandler _handler;
         // Test files are isolated and intentionally retained for post-failure diagnosis.
         private readonly string _root = Path.Combine(Path.GetTempPath(), "ArcGISProMCP.Tests", Guid.NewGuid().ToString("N"));
@@ -265,7 +335,9 @@ public sealed class HostHandlerTests
             var registry = new OperationRegistry();
             registry.Register(Operation);
             registry.Register(ReadOperation);
-            Workflows = new FileWorkflowLibrary(Path.Combine(_root, "workflows"), registry);
+            registry.Register(ScriptOperation);
+            foreach (var gated in GatedOperations.Values) registry.Register(gated);
+            Workflows = new FileWorkflowLibrary(WorkflowDirectory, registry);
             var context = new OperationContext(new Dispatcher(), workspace ?? new Workspace(), Approvals, new Audit(), "test", CancellationToken.None);
             _handler = new ProBridgeRequestHandler(registry, context, Workflows, new ProResourceStore(Path.Combine(_root, "resources")), new BridgeAccessState());
         }
@@ -274,11 +346,19 @@ public sealed class HostHandlerTests
         public void Dispose() { _handler.Dispose(); Approvals.Dispose(); Workflows.Dispose(); }
     }
 
-    private sealed class TestOperation(OperationRisk risk, string id = "test.write", string[]? capabilities = null) : IOperation
+    private sealed class TestOperation(
+        OperationRisk risk,
+        string id = "test.write",
+        string[]? capabilities = null,
+        string title = "Test operation",
+        string summary = "Test",
+        bool? requiresConfirmation = null,
+        bool executesUserCode = false) : IOperation
     {
         public int CallCount { get; private set; }
         public bool Fail { get; set; }
-        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(id, "Test operation", "Test", JsonSchemas.EmptyObject, risk: risk, capabilities: capabilities, requiresConfirmation: risk == OperationRisk.Destructive);
+        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(id, title, summary, JsonSchemas.EmptyObject, risk: risk, capabilities: capabilities,
+            requiresConfirmation: requiresConfirmation ?? risk == OperationRisk.Destructive, executesUserCode: executesUserCode);
         public async Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
         {
             CallCount++;
