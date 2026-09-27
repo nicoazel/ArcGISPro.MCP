@@ -13,7 +13,8 @@ The **[documentation hub](docs/README.md)** is the starting point, with a readin
 | **Set up** | [Deployment, status and rollback](docs/deployment.md) · [Architecture](docs/architecture.md) |
 | **Look up** | [Reference](docs/reference.md): 16 gateway tools, 38 operations with risk levels, environment variables, workflows, scripts |
 | **Stay safe** | [Security and limits](docs/security.md) · [ArcPy configuration](docs/arcpy.md) |
-| **Release** | [Status and known limits](docs/deployment.md#status) · [Manual acceptance](docs/manual-acceptance.md) |
+| **Release** | [Status and known limits](docs/deployment.md#status) · [Manual acceptance](docs/manual-acceptance.md) · [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) |
+| **Contribute** | [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) |
 
 ## Implemented
 
