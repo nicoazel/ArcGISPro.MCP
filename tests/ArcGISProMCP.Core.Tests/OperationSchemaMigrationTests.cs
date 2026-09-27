@@ -7,7 +7,7 @@ namespace ArcGISProMCP.Core.Tests;
 
 /// <summary>
 /// Guards the migration of add-in operation input schemas from hand-written JSON strings
-/// (<c>JsonSchemas.ObjectSchema</c>) to the typed builder. Fixtures/operation-input-schemas.json
+/// (the since-removed <c>JsonSchemas.ObjectSchema</c>) to the typed builder. Fixtures/operation-input-schemas.json
 /// was generated from the original source strings before any call site changed. The migrated
 /// schemas live in src/ArcGISProMCP.AddIn/Operations/Schemas, which depends only on Core and is
 /// compiled into this test assembly, so the exact production schema objects are compared here.
@@ -88,14 +88,11 @@ public sealed class OperationSchemaMigrationTests
     }
 
     [Fact]
-    public void Only_geoprocessing_operations_still_declare_string_schemas()
+    public void No_operation_declares_a_string_schema()
     {
-        // gp.run is owned by the geoprocessing work unit and still uses JsonSchemas.ObjectSchema.
+        // The string-based JsonSchemas.ObjectSchema helper was removed once gp.run migrated.
         foreach (var path in Directory.GetFiles(OperationsDirectory(), "*.cs", SearchOption.AllDirectories))
-        {
-            if (Path.GetFileName(path).StartsWith("Geoprocessing", StringComparison.Ordinal)) continue;
             Assert.DoesNotContain("ObjectSchema(", File.ReadAllText(path), StringComparison.Ordinal);
-        }
     }
 
     [Fact]
@@ -137,7 +134,7 @@ public sealed class OperationSchemaMigrationTests
         return schema;
     }
 
-    private static Dictionary<string, JsonElement> LoadFixture()
+    internal static Dictionary<string, JsonElement> LoadFixture()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "operation-input-schemas.json");
         using var document = JsonDocument.Parse(File.ReadAllText(path));

@@ -63,7 +63,6 @@ public sealed class GeoprocessingOperationSourceTests
         Assert.Contains("catalog.Describe(tool)", source, StringComparison.Ordinal);
         Assert.Contains("signature = positional.Select(parameter => parameter.Name)", source, StringComparison.Ordinal);
         Assert.Contains("JsonSchemas.Object(", source, StringComparison.Ordinal);
-        Assert.DoesNotContain("JsonSchemas.ObjectSchema(", source, StringComparison.Ordinal);
         Assert.DoesNotContain("requiresConfirmation", source, StringComparison.Ordinal);
         Assert.DoesNotContain("OperationRisk.", source, StringComparison.Ordinal);
         Assert.Equal(1, Count(source, "Geoprocessing.ExecuteToolAsync"));

@@ -16,7 +16,7 @@ namespace ArcGISProMCP.Core.Operations;
 public static partial class JsonSchemas
 {
     /// <summary>
-    /// Builds an object schema. Like <see cref="ObjectSchema"/>, the result always
+    /// Builds an object schema. The result always
     /// carries <c>properties</c>, <c>required</c> and <c>additionalProperties</c>
     /// (false by default).
     /// </summary>
