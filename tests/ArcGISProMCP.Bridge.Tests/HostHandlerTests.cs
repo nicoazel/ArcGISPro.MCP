@@ -508,6 +508,23 @@ public sealed class HostHandlerTests
     }
 
     [Fact]
+    public async Task Failed_results_of_a_typed_operation_do_not_validate_against_its_result_schema()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        fixture.Listing.Fail = true;
+
+        var describe = await fixture.Call("registry.describe", new { operationId = ListingOperation.Id });
+        var failed = await fixture.Call("registry.invoke", new { operationId = ListingOperation.Id, arguments = new { } });
+
+        var description = describe.Result!.Value.Deserialize<OperationDescription>(BridgeJson.Options)!;
+        Assert.NotNull(description.OutputSchema);
+        Assert.False(failed.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, failed.Result.Value.GetProperty("data").ValueKind);
+        // Documented in docs/reference.md: check success before validating against resultSchema.
+        Assert.NotEmpty(OperationArgumentValidator.Validate(failed.Result.Value, description.ResultSchema));
+    }
+
+    [Fact]
     public async Task Bridge_results_round_trip_through_the_shared_contracts()
     {
         using var fixture = new Fixture(OperationRisk.SafeWrite);
@@ -626,6 +643,7 @@ public sealed class HostHandlerTests
         public ApprovalService Approvals { get; } = new();
         public TestOperation Operation { get; }
         public TestOperation ReadOperation { get; } = new(OperationRisk.ReadOnly, "test.read", ["maps"]);
+        public ListingOperation Listing { get; } = new();
         // Ids and titles avoid the word "test" so they stay out of the registry.search assertions.
         public TestOperation ScriptOperation { get; } = new(OperationRisk.ExternalSideEffect, "sample.script",
             title: "Sample script runner", summary: "Runs a script.", requiresConfirmation: true, executesUserCode: true);
@@ -646,7 +664,7 @@ public sealed class HostHandlerTests
             registry.Register(Operation);
             registry.Register(ReadOperation);
             registry.Register(ScriptOperation);
-            registry.Register(new ListingOperation());
+            registry.Register(Listing);
             foreach (var gated in GatedOperations.Values) registry.Register(gated);
             Workflows = new FileWorkflowLibrary(WorkflowDirectory, registry);
             var context = new OperationContext(new Dispatcher(), workspace ?? new Workspace(), Approvals, new Audit(), "test", CancellationToken.None);
@@ -696,8 +714,11 @@ public sealed class HostHandlerTests
             ["name", "layerCount"]));
         public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(Id, "Listing maps", "Lists maps.", JsonSchemas.EmptyObject,
             outputSchema: OutputSchema);
+        public bool Fail { get; set; }
         public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken) =>
-            Task.FromResult(OperationResult.Ok(JsonSerializer.SerializeToElement(new[] { new { name = "Zoning", layerCount = 3 } }), "r1"));
+            Task.FromResult(Fail
+                ? OperationResult.Fail("listing_failed", "Deliberate failure", "r1")
+                : OperationResult.Ok(JsonSerializer.SerializeToElement(new[] { new { name = "Zoning", layerCount = 3 } }), "r1"));
     }
 
     private sealed class Workspace : IWorkspaceStateProvider
