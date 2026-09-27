@@ -4,4 +4,7 @@
     <RootNamespace>ArcGISProMCP.Core</RootNamespace>
     <AssemblyName>ArcGISProMCP.Core</AssemblyName>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../workflows/*.workflow.json" LogicalName="workflows/%(Filename)%(Extension)" Visible="false" />
+  </ItemGroup>
 </Project>

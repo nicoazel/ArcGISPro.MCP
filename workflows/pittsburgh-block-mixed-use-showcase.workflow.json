@@ -1,6 +1,6 @@
 {
   "id": "workflow.pittsburgh-block-mixed-use-showcase",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "title": "Illustrative Pittsburgh block mixed-use showcase",
   "summary": "Presents a reproducible, illustrative Pittsburgh block study with varied massing, active uses, connected public realm, and three coordinated final layout frames.",
   "tags": ["illustrative", "pittsburgh", "urban-design", "mixed-use", "massing", "public-realm", "layout"],
@@ -74,7 +74,6 @@
     { "id": "stats-jobs", "operation": "table.statistics", "arguments": { "map": "Pittsburgh Showcase Program", "layer": "Mixed-Use Program", "field": "jobs" }, "dependsOn": ["stats-units"] },
     { "id": "stats-gross-area", "operation": "table.statistics", "arguments": { "map": "Pittsburgh Showcase Program", "layer": "Mixed-Use Program", "field": "gross_sf" }, "dependsOn": ["stats-jobs"] },
     { "id": "activate-layout", "operation": "layout.activate", "arguments": { "layout": "Illustrative Pittsburgh Block Showcase" }, "dependsOn": ["stats-gross-area"] },
-    { "id": "capture", "operation": "view.capture", "arguments": { "view": "layout", "layout": "Illustrative Pittsburgh Block Showcase", "width": 2400, "height": 1553 }, "dependsOn": ["activate-layout"], "expectedObservation": "pittsburgh-block-showcase-layout-png" },
-    { "id": "save", "operation": "project.save", "arguments": {}, "dependsOn": ["capture"] }
+    { "id": "capture", "operation": "view.capture", "arguments": { "view": "layout", "layout": "Illustrative Pittsburgh Block Showcase", "width": 2400, "height": 1553 }, "dependsOn": ["activate-layout"], "expectedObservation": "pittsburgh-block-showcase-layout-png" }
   ]
 }

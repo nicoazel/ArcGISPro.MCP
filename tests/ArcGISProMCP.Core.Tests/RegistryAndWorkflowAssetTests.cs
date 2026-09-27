@@ -64,7 +64,7 @@ public sealed class RegistryAndWorkflowAssetTests
         var ids = steps.Select(s => s.GetProperty("id").GetString()!).ToHashSet(StringComparer.Ordinal);
 
         Assert.Equal("workflow.master-cartography", root.GetProperty("id").GetString());
-        Assert.Equal("1.0.0", root.GetProperty("version").GetString());
+        Assert.Equal("1.1.0", root.GetProperty("version").GetString());
         Assert.Contains(steps, s => s.GetProperty("arguments").ToString().Contains("Zoning", StringComparison.Ordinal));
         Assert.Contains(steps, s => s.GetProperty("arguments").ToString().Contains("Transit", StringComparison.Ordinal));
         Assert.Contains(steps, s => s.GetProperty("arguments").ToString().Contains("Buildings-SiteDesign", StringComparison.Ordinal));
@@ -123,7 +123,6 @@ public sealed class RegistryAndWorkflowAssetTests
 
             Assert.True(IsAcyclic(steps));
             Assert.Equal(3, steps.Count(step => step.GetProperty("operation").GetString() == "layout.add-map-frame"));
-            Assert.Equal("view.capture", steps[^2].GetProperty("operation").GetString());
             Assert.DoesNotContain("D:\\", source, StringComparison.Ordinal);
             Assert.DoesNotContain("rhino", source, StringComparison.OrdinalIgnoreCase);
 
@@ -134,6 +133,21 @@ public sealed class RegistryAndWorkflowAssetTests
                 Assert.Equal("relative-to-ground", elevation.GetProperty("arguments").GetProperty("mode").GetString());
             }
         }
+    }
+
+    [Theory]
+    [InlineData("master-cartography.workflow.json")]
+    [InlineData("pittsburgh-block-mixed-use-showcase.workflow.json")]
+    [InlineData("urban-tod-corridor.workflow.json")]
+    [InlineData("urban-green-loop.workflow.json")]
+    [InlineData("urban-mixed-use-massing.workflow.json")]
+    public void Bundled_workflows_end_with_capture_and_never_run_confirmation_gated_project_save(string fileName)
+    {
+        using var document = JsonDocument.Parse(ReadAsset("workflows", fileName));
+        var steps = document.RootElement.GetProperty("steps").EnumerateArray().ToArray();
+
+        Assert.DoesNotContain(steps, step => step.GetProperty("operation").GetString() == "project.save");
+        Assert.Equal("view.capture", steps[^1].GetProperty("operation").GetString());
     }
 
     private static bool IsAcyclic(JsonElement[] steps)

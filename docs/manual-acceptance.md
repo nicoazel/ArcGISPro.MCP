@@ -4,7 +4,7 @@ Use the exact packaged add-in and gateway against a disposable ArcGIS Pro projec
 
 ## Baseline
 
-1. Run `./tools/verify-release.ps1` and `./tools/package-release.ps1` from `D:\_11_Git\ArcGISPro.MCP`.
+1. Run `./tools/verify-release.ps1` and `./tools/package-release.ps1` from the repository root.
 2. Close ArcGIS Pro, install the exact package, reopen the disposable project, and confirm the loaded assembly hash matches the package.
 3. Verify MCP initialize, 16 gateway tools, live state, registry search/describe/validate, skill lookup, and a native image observation.
 4. Confirm the registry contains no `rhino.*` operation and the workspace reports no Rhino capability.

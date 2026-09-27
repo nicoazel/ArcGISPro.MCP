@@ -10,10 +10,11 @@ The **[documentation hub](docs/README.md)** is the starting point, with a readin
 
 | | |
 | --- | --- |
-| **Set up** | [Deployment and rollback](docs/deployment.md) · [Architecture](docs/architecture.md) |
+| **Set up** | [Deployment, status and rollback](docs/deployment.md) · [Architecture](docs/architecture.md) |
 | **Look up** | [Reference](docs/reference.md): 16 gateway tools, 38 operations with risk levels, environment variables, workflows, scripts |
 | **Stay safe** | [Security and limits](docs/security.md) · [ArcPy configuration](docs/arcpy.md) |
-| **Release** | [Manual acceptance](docs/manual-acceptance.md) · [Production readiness](docs/production-readiness.md) |
+| **Release** | [Status and known limits](docs/deployment.md#status) · [Manual acceptance](docs/manual-acceptance.md) · [Changelog](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md) · [Roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md) |
+| **Contribute** | [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) |
 
 ## Implemented
 
@@ -29,11 +30,11 @@ The **[documentation hub](docs/README.md)** is the starting point, with a readin
 - Same-user concurrent named-pipe transport, bounded connection slots/framing timeouts, exclusive pipe ownership, serialized host operations, audit records and write revisions.
 - Expiring modeless local review, exact argument/version/revision binding, and single-use approval tokens. Default mode does not allow remote self-approval; an explicit host-startup autonomous mode can bypass review while retaining revision checks and warning notices.
 
-This is a working development preview, not full coverage of the ArcGIS SDK. See the operation registry for the actual installed capability set. Advanced cartography, workspace connection management, PDF export, durable background jobs and complete cancellation are not release features.
+**Status: development preview.** Supported: interactive same-user workstation with dockpane approvals. Autonomous mode is an opt-in expert setting, not recommended. The operation set is curated, not full coverage of the ArcGIS SDK. See the operation registry for the actual installed capability set. Advanced cartography, workspace connection management, PDF export, durable background jobs and complete cancellation are not release features.
 
 ## Build and install
 
-Requires Windows, a licensed ArcGIS Pro 3.7.1 installation, and .NET SDK 10. Rhino and Rhino.Inside are not dependencies of this repository or package.
+Requires Windows, a licensed ArcGIS Pro 3.7.1 installation, and .NET SDK 10. This repository has no Rhino dependency.
 
 ```powershell
 dotnet build ArcGISPro.MCP.slnx -c Debug
@@ -54,7 +55,7 @@ Each ArcGIS Pro process publishes a per-process pipe and lightweight local disco
 
 ## Live verification
 
-To build the complete unsigned preview bundle (add-in, Windows x64 gateway, skills, workflows, documentation and checksums), run `./tools/package-release.ps1`. It smoke-tests the published gateway's MCP handshake and skill lookup without Pro. See [deployment and rollback](docs/deployment.md). The exact ArcGIS-only package completed its trusted-workstation live acceptance pass. It remains an unsigned development-preview distribution; see the acceptance matrix and known limits before wider deployment.
+To build the complete unsigned preview bundle (add-in, Windows x64 gateway, skills, workflows, documentation and checksums), run `./tools/package-release.ps1`. It smoke-tests the published gateway's MCP handshake and skill lookup without Pro. See [deployment](docs/deployment.md). The bundle is unsigned. A live acceptance pass was run on the maintainer's workstation, but its evidence is local and not committed; run [manual acceptance](docs/manual-acceptance.md) on your own installation and read the [known limits](docs/deployment.md#known-limits) first.
 
 For a fail-fast Release build, both portable suites, whitespace checks and package-content inspection, run `./tools/verify-release.ps1`. Add `-Live` for actual MCP discovery/state and a pending/cancelled local-review probe (it never approves or runs a geoprocessing tool). Pass `-ImageUri` to verify native image content. This does not replace feature, metadata, geoprocessing, ArcPy, or local-review acceptance in ArcGIS Pro.
 
@@ -70,14 +71,14 @@ The local demonstration artifacts are in `artifacts/demo` (git-ignored). Its lan
 
 The final standalone showcase is `workflows/pittsburgh-block-mixed-use-showcase.workflow.json`. It composes a plausible Pittsburgh mixed-use block concept into 3D massing, program and public-realm maps with live layout surrounds and dynamic text. Generated evidence is under `artifacts/pittsburgh-showcase`.
 
-The [live demo report](docs/master-plan-demo.md) records the earlier integrated presentation as historical evidence only. The [production readiness checklist](docs/production-readiness.md) tracks the current ArcGIS-only acceptance boundary.
-
 ## Design and limits
 
-See [architecture](docs/architecture.md), [security](docs/security.md), [ArcPy configuration](docs/arcpy.md), the [reference](docs/reference.md), and the [historical integrated demo](docs/master-plan-demo.md).
+See [architecture](docs/architecture.md), [security](docs/security.md), [ArcPy configuration](docs/arcpy.md), and the [reference](docs/reference.md).
 
 ArcPy is an optional, explicitly enabled external-worker escape hatch; it is not a core dependency. Normal geoprocessing continues through the ArcGIS Pro SDK.
 
-For trusted unattended workstations, set `ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true` for the ArcGIS Pro process before startup. This intentionally lets the connected same-user client run risky operations without panel review. It is off by default, advertised in workspace capabilities and the panel, and does not bypass workspace revisions, schema validation, audit, idempotency, or operation-specific limits.
+Autonomous mode (`ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true` for the ArcGIS Pro process before startup) is an opt-in expert setting and is not recommended. It lets the connected same-user client run risky operations, including arbitrary Python through `gp.run` or ArcPy, without panel review. It is off by default, advertised in workspace capabilities and the panel, and does not bypass workspace revisions, schema validation, audit, idempotency, or operation-specific limits.
+
+In default mode, `workflow_run` cannot execute confirmation-gated steps such as `gp.run` or `metadata.update`; there is no per-step approval yet. Run those operations individually through local review.
 
 Apache-2.0. Esri products require their own licenses.

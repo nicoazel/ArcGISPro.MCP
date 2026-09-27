@@ -77,7 +77,7 @@ try {
 
         $bundleDocs = Join-Path $bundleRoot 'docs'
         New-Item -ItemType Directory -Path $bundleDocs | Out-Null
-        $docs = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs') -File -Filter '*.md' | Sort-Object Name)
+        $docs = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'docs') -File -Filter '*.md' | Where-Object Name -ne 'ROADMAP.md' | Sort-Object Name)
         if ($docs.Count -eq 0) { throw 'No documentation was found to package.' }
         foreach ($doc in $docs) { Copy-Item -LiteralPath $doc.FullName -Destination $bundleDocs }
 

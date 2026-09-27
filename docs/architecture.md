@@ -15,12 +15,12 @@ The gateway exposes discovery, validation, invocation, workflow, skill, and reso
 
 ## Boundaries
 
-- `ArcGISProMCP.Core` owns descriptors, risk policy, revision checks, audit contracts, and declarative workflows. It has no Esri, WPF, Rhino, or MCP transport dependency.
+- `ArcGISProMCP.Core` owns descriptors, risk policy, revision checks, audit contracts, and declarative workflows. It has no Esri, WPF, or MCP transport dependency.
 - `ArcGISProMCP.Bridge` owns the local transport. Messages carry a protocol version and request id and are capped at 8 MiB.
-- `ArcGISProMCP.Server` is the stateless stdio MCP gateway. It has no Esri or Rhino reference.
+- `ArcGISProMCP.Server` is the stateless stdio MCP gateway. It has no Esri reference.
 - `ArcGISProMCP.AddIn` owns ArcGIS Pro SDK operations, lifecycle, the named-pipe listener, and the thin MVVM dockpane.
 - Each Pro process defaults to `ArcGISProMCP.v1.<pid>` and publishes a local host record containing PID, process start, pipe, and current project. The gateway auto-selects a sole live host, honors `ARCGIS_PRO_MCP_HOST_PID` or `ARCGIS_PRO_MCP_PIPE`, and fails closed when multiple hosts are ambiguous.
-- Rhino.Inside-ArcGIS interoperability and McNeel's Rhino MCP are separate products and endpoints. This repository has no Rhino or RhinoCommon dependency and does not register `rhino.*` operations.
+- The product is ArcGIS-only: it has no Rhino dependency and registers no `rhino.*` operations.
 
 ## Operation lifecycle
 

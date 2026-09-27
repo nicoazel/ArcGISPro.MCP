@@ -2,6 +2,8 @@
 
 ArcGIS Pro MCP Studio lets a Model Context Protocol client drive a running ArcGIS Pro 3.7 session through a small gateway, a searchable operation registry, and a local review panel. Start with the path that matches what you are doing.
 
+**Status: development preview.** Supported: interactive same-user workstation with dockpane approvals. Autonomous mode is an opt-in expert setting, not recommended. See [deployment](deployment.md#status).
+
 ```mermaid
 flowchart LR
     client["MCP client"] -->|stdio| server["ArcGISProMCP.Server<br/>16 gateway tools"]
@@ -21,13 +23,13 @@ flowchart LR
 | Look up a tool, operation, environment variable, or workflow | [Reference](reference.md) |
 | Decide whether it is safe to run on a workstation | [Security and operational limits](security.md) |
 | Enable the optional Python escape hatch | [ArcPy configuration](arcpy.md) |
-| Sign off a build on a live ArcGIS Pro install | [Manual acceptance](manual-acceptance.md), then [production readiness](production-readiness.md) |
-| Pick up development in a new session | [Fresh-context handoff](FRESH_CONTEXT_HANDOFF.md) |
+| Check release status, evidence, and known limits | [Deployment: status and known limits](deployment.md#status) |
+| Sign off a build on a live ArcGIS Pro install | [Manual acceptance](manual-acceptance.md) |
 
 ## Guides
 
 ### Get started
-- **[Deployment and rollback](deployment.md)**: builds the release bundle, verifies it before installing, configures the MCP client, and rolls back a bad install.
+- **[Deployment, status and rollback](deployment.md)**: the release status and supported configuration, building and verifying the bundle, configuring the MCP client, acceptance evidence, known limits, and rollback.
 - **[Architecture](architecture.md)**: process boundaries, the six-step operation lifecycle, threading rules, and how to add a new operation.
 
 ### Operate safely
@@ -36,7 +38,7 @@ flowchart LR
 
 ### Verify and release
 - **[Manual acceptance](manual-acceptance.md)**: the live checklist for feature data, metadata, geoprocessing, ArcPy, and stability on a disposable project.
-- **[Production readiness](production-readiness.md)**: the current acceptance result by gate, the implemented surface, known scope limits, and where the evidence is.
+- **[Roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md)**: planned work, in priority order. Released changes are in the [changelog](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md).
 
 ## How a model uses the gateway
 
@@ -45,18 +47,8 @@ The gateway exposes only 16 tools. The full catalog of GIS operations stays serv
 1. `system_get_state`: read the project snapshot and keep its **workspace revision**.
 2. `registry_search` / `registry_browse`: find candidate operations by intent.
 3. `registry_describe`: load the schema for the few operations the task needs.
-4. `registry_validate`: check arguments against live state without changing anything.
+4. `registry_validate`: check arguments against the schema and the current workspace revision without changing anything. It does not resolve layers or paths.
 5. `registry_invoke`: run the operation with the revision. Destructive and external-side-effect operations first need `approval_request`, a person approving in the panel, and `approval_status` to return a single-use token.
 6. `resource_read`: fetch returned images and larger observations by `arcgis://` handle.
 
-Reusable multi-step recipes go through `workflow_list` → `workflow_get` → `workflow_run`, and `skill_search` / `skill_get` supply the guidance for them. See the [reference](reference.md) for every tool and operation.
-
-## Historical records
-
-These documents come from the earlier combined ArcGIS + Rhino.Inside product. They are kept as evidence and **do not describe the current ArcGIS-only package**.
-
-- [Live master-plan demonstration](master-plan-demo.md): the 0.1.0 integrated presentation run.
-- [Integrated production readiness](integrated-rhino-production-readiness.md)
-- [Integrated manual acceptance](integrated-rhino-manual-acceptance.md)
-- [Integrated native-host crash, 2026-09-08](integrated-rhino-native-crash-2026-09-08.md)
-- [Integrated East Liberty presentation workflow](integrated-rhino-east-liberty-presentation.workflow.json)
+Reusable multi-step recipes go through `workflow_list` → `workflow_get` → `workflow_run`, and `skill_search` / `skill_get` supply the guidance for them. In default mode a workflow cannot run confirmation-gated steps, because there is no per-step approval yet. See the [reference](reference.md) for every tool and operation.

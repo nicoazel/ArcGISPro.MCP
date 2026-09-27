@@ -81,6 +81,7 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
         var approvals = _approvals = new LocalApprovalService();
 
         foreach (var operation in ProOperationCatalog.Create(resources)) registry.Register(operation);
+        SeedBundledWorkflows(workflows);
         Registry = registry;
         var context = new OperationContext(
             dispatcher,
@@ -101,6 +102,28 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
         RefreshHostDiscovery(Project.Current?.Name, Project.Current?.URI);
         PanelStateSourceProvider.Factory = () => new ProPanelStateSource(context, handler, workflows, resources, access);
         return true;
+    }
+
+    // Runs after operation registration because workflow validation rejects unknown operation ids.
+    // Every await in the library and seeder, including async disposal, uses ConfigureAwait(false),
+    // so a synchronous wait cannot deadlock.
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Workflow seeding must never block ArcGIS Pro startup.")]
+    private static void SeedBundledWorkflows(IWorkflowLibrary workflows)
+    {
+        try
+        {
+            var report = WorkflowSeeder.SeedAsync(workflows, CancellationToken.None).GetAwaiter().GetResult();
+            foreach (var item in report.Skipped)
+            {
+                Trace.TraceWarning(
+                    "ArcGIS Pro MCP skipped bundled workflow {0} ({1}@{2}): {3} {4}",
+                    item.ResourceName, item.WorkflowId, item.Version, item.Outcome, item.Message);
+            }
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError("ArcGIS Pro MCP workflow seeding failed: {0}", exception);
+        }
     }
 
     internal void RefreshHostDiscovery(string? projectName, string? projectUri)
