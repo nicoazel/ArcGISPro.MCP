@@ -13,8 +13,7 @@ namespace ArcGISProMCP.AddIn.Operations;
 internal sealed class ViewCaptureOperation(ProResourceStore resources) : ProOperationBase(OperationDescriptor.Create(
     "view.capture", "Capture map or layout view",
     "Captures the active map view or a named layout as PNG visual evidence and returns a resource handle plus semantic context.",
-    JsonSchemas.ObjectSchema(
-        "\"view\": {\"type\": \"string\", \"enum\": [\"active-map\", \"layout\"]}, \"layout\": {\"type\": \"string\"}, \"width\": {\"type\": \"integer\", \"minimum\": 64, \"maximum\": 4096}, \"height\": {\"type\": \"integer\", \"minimum\": 64, \"maximum\": 4096}"),
+    ViewOperationSchemas.CaptureInput,
     executionTarget: ExecutionTarget.ArcGISUiThread, capabilities: ["visual-observations"],
     tags: ["view", "capture", "screenshot", "visual evidence"], aliases: ["see map", "inspect map", "take screenshot"],
     related: ["map.activate", "layout.activate"]))

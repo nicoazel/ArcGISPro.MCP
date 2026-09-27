@@ -51,6 +51,7 @@ public sealed class OperationSchemaMigrationTests
         ["label.configure"] = (SymbologyOperationSchemas.LabelConfigureInput, "SymbologyOperationSchemas.LabelConfigureInput"),
         ["table.query"] = (TableOperationSchemas.QueryInput, "TableOperationSchemas.QueryInput"),
         ["table.statistics"] = (TableOperationSchemas.StatisticsInput, "TableOperationSchemas.StatisticsInput"),
+        ["view.capture"] = (ViewOperationSchemas.CaptureInput, "ViewOperationSchemas.CaptureInput"),
     };
 
     [Fact]
