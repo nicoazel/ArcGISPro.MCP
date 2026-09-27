@@ -61,15 +61,15 @@ internal sealed class ProBridgeRequestHandler(
         {
             return Failure(request.RequestId, exception.Code, exception.Message, exception.Retryable);
         }
+        catch (OperationCanceledException) when (baseContext.ApplicationStopping.IsCancellationRequested)
+        {
+            // Checked before caller cancellation: the pipe server cancels in-flight requests with its own
+            // stopping token on shutdown, and keyed work runs under the host lifetime.
+            return Failure(request.RequestId, "host_stopping", "ArcGIS Pro is shutting down, so the request did not complete. A write may already have been accepted; check state on the next host before repeating it.", true);
+        }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             return Failure(request.RequestId, "request_cancelled", "The bridge request was cancelled.", true);
-        }
-        catch (OperationCanceledException) when (baseContext.ApplicationStopping.IsCancellationRequested)
-        {
-            // Keyed work runs under the host lifetime, so shutdown surfaces here rather than as a
-            // caller cancellation.
-            return Failure(request.RequestId, "host_stopping", "ArcGIS Pro is shutting down, so the request did not complete. A write may already have been accepted; check state on the next host before repeating it.", true);
         }
         catch (Exception exception)
         {
