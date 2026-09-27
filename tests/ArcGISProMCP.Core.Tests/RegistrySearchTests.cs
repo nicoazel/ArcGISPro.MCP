@@ -6,6 +6,8 @@ namespace ArcGISProMCP.Core.Tests;
 
 public sealed class RegistrySearchTests
 {
+    private static readonly string[] RemovedWords = ["to", "the", "in", "on"];
+
     [Fact]
     public void Maximum_risk_read_only_excludes_write_operations()
     {
@@ -36,6 +38,60 @@ public sealed class RegistrySearchTests
 
         Assert.Equal(["layout.export"], layouts.Select(hit => hit.Descriptor.Id));
         Assert.Empty(both);
+    }
+
+    [Fact]
+    public void Articles_and_prepositions_do_not_count_as_search_terms()
+    {
+        var registry = CreateRegistry();
+
+        var noisy = registry.Search(new OperationQuery("set the transparency of a layer"));
+        var plain = registry.Search(new OperationQuery("set transparency layer"));
+
+        Assert.Equal(plain.Select(hit => (hit.Descriptor.Id, hit.Score)), noisy.Select(hit => (hit.Descriptor.Id, hit.Score)));
+        Assert.Equal("layer.set-transparency", noisy[0].Descriptor.Id);
+        Assert.All(noisy, hit => Assert.DoesNotContain(hit.MatchedTerms, term => term is "the" or "of" or "a"));
+    }
+
+    [Fact]
+    public void Stop_words_do_not_match_unrelated_operations()
+    {
+        var registry = CreateRegistry();
+
+        // Without stop-word removal "a" and "to" substring-match most of the catalog.
+        var hits = registry.Search(new OperationQuery("export a layout to disk"));
+
+        var top = Assert.Single(hits);
+        Assert.Equal("layout.export", top.Descriptor.Id);
+        Assert.Equal(["disk", "export", "layout"], top.MatchedTerms.Order(StringComparer.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("zoom to the layer")]
+    [InlineData("layer in map")]
+    [InlineData("layer on the map")]
+    public void Domain_words_survive_stop_word_removal(string query)
+    {
+        var registry = CreateRegistry();
+
+        var hits = registry.Search(new OperationQuery(query));
+
+        Assert.NotEmpty(hits);
+        Assert.All(hits, hit => Assert.All(hit.MatchedTerms, term =>
+            Assert.DoesNotContain(term, RemovedWords)));
+        Assert.Contains(hits, hit => hit.MatchedTerms.Contains("layer"));
+    }
+
+    [Fact]
+    public void Query_of_only_stop_words_is_not_treated_as_empty()
+    {
+        var registry = CreateRegistry();
+
+        var hits = registry.Search(new OperationQuery("the"));
+
+        // An empty query would list every operation; "the" still has to match text.
+        Assert.DoesNotContain(hits, hit => hit.Descriptor.Id == "layout.export");
+        Assert.NotEmpty(hits);
     }
 
     private static OperationRegistry CreateRegistry()
