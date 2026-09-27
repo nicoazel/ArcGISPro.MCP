@@ -9,19 +9,19 @@ The stdio gateway (`ArcGISProMCP.Server`) exposes exactly these 16 MCP tools.
 | Tool | Read-only | Purpose |
 | --- | :---: | --- |
 | `system_get_state` | ✓ | Revisioned snapshot of the project, maps, layouts, active view, capabilities, and connection. |
-| `registry_search` | ✓ | Searches operations by intent, GIS terms, aliases, domain, capability, and risk. |
+| `registry_search` | ✓ | Searches operations by intent, GIS terms and aliases. Optional filters: `domain`, `capabilities` (a result must require every listed capability) and `maxRisk` (highest risk to include, for example `ReadOnly`). `limit` defaults to 12 and is clamped to 1–100. Articles and prepositions such as "the", "a", "of" and "to" are ignored in the query. |
 | `registry_browse` | ✓ | Lists concise registry entries by domain. |
-| `registry_describe` | ✓ | Returns one operation's full descriptor, including its input/output schemas, requirements, examples, risk, and related operations. |
-| `registry_validate` | ✓ | Checks an operation and its arguments against the registry and live state without writing. |
-| `registry_invoke` | | Runs one operation. Writes need the current revision, and risky operations also need an approval token. |
+| `registry_describe` | ✓ | Returns one operation's full descriptor: input schema, required capabilities, examples, risk, confirmation requirement, and related operations. Operations do not declare result schemas yet. |
+| `registry_validate` | ✓ | Checks arguments against the operation's input schema and, for writes, the expected revision against the current one. It does not resolve layers, maps or paths, so a valid result does not guarantee success. Never writes. |
+| `registry_invoke` | | Runs one operation. Writes need the current revision, and confirmation-gated operations also need an approval token. |
 | `approval_request` | | Queues local review of one exact risky call in the ArcGIS Pro panel. It cannot approve itself. |
 | `approval_status` | ✓ | Returns `pending`, `approved`, `denied`, `expired`, `cancelled`, or `consumed`. Only an `approved` status carries the single-use token. |
 | `approval_cancel` | | Cancels a pending or approved request and revokes its token. |
 | `workflow_list` | ✓ | Lists versioned workflows with evidence-based ranking. |
 | `workflow_get` | ✓ | Returns one immutable workflow version: its parameters, steps, dependencies, and observation hints. |
-| `workflow_save` | | Validates and saves a declarative, operation-allowlisted workflow as a new version. |
-| `workflow_run` | | Runs a saved workflow sequentially and returns per-step observations. |
-| `resource_read` | ✓ | Reads a bounded semantic or image observation by `arcgis://` handle. |
+| `workflow_save` | | Validates a declarative workflow against the registry and its `allowedOperations` policy, then saves it as a new immutable version. |
+| `workflow_run` | | Runs a saved workflow sequentially and returns per-step observations. Stops with `workspace_changed` if the project changes mid-run. |
+| `resource_read` | ✓ | Reads a bounded semantic or image observation by `arcgis://` handle. Non-image payloads are returned as JSON with camelCase fields: `uri`, `mimeType`, `name`, `encoding`, `data`, `createdAt`. |
 | `skill_search` | ✓ | Finds bundled skill summaries by intent. |
 | `skill_get` | ✓ | Returns one skill manifest: preconditions, allowed operations, visual checks, and recovery guidance. |
 
@@ -32,6 +32,9 @@ The add-in registers these operations. Risk determines the gate each one passes 
 - **ReadOnly**: runs freely.
 - **SafeWrite**: requires the current workspace revision.
 - **Destructive** and **ExternalSideEffect**: require the current revision *and* a local-review token, unless the host was started in [autonomous mode](security.md).
+- **SafeWrite + approval**: `project.open`, `project.save` and `feature.update` are SafeWrite but also require a local-review token.
+
+`gp.run` and `arcpy.run-script` execute user code. A saved workflow may use them only when its `allowedOperations` lists them explicitly (see [security](security.md)).
 
 ### Project and maps
 
@@ -115,6 +118,8 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 
 ## Bundled workflows and skills
 
+All bundled workflows are version 1.1.0 and none of them save the project; save with an explicit, approved `project.save` call. They are seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` on first load without overwriting existing files.
+
 | File | Title |
 | --- | --- |
 | [`master-cartography.workflow.json`](../workflows/master-cartography.workflow.json) | Three-map master cartography. Its guidance is in [`master-cartography.skill.json`](../skills/master-cartography.skill.json). |
@@ -124,6 +129,22 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 | [`urban-mixed-use-massing.workflow.json`](../workflows/urban-mixed-use-massing.workflow.json) | Urban test 3: mixed-use massing and public realm. |
 
 Workflows are immutable JSON DAGs of registered operation ids and cannot contain script steps. See [architecture](architecture.md#extension-rules).
+
+## Error codes
+
+Codes a client should handle. The message carries the details.
+
+| Code | Where | Meaning |
+| --- | --- | --- |
+| `workspace_revision_required` | invoke, workflow run | A write was sent without `expectedRevision`. |
+| `workspace_revision_mismatch` | invoke, workflow run | The expected revision is stale. Nothing ran. Refresh state and review. |
+| `workspace_changed` | workflow run result | The project changed before a later write step. The run stopped at `stoppedAtStep`/`stepIndex`; earlier steps are not rolled back and the run is not repeated. |
+| `confirmation_required` | invoke, workflow step | The operation needs an approval token bound to these arguments and revision. |
+| `operation_not_allowed` | workflow validation issue | A step's operation is not permitted by the workflow's `allowedOperations`. Only the issue message reaches the client: inside `invalid_workflow` on run, and inside the `workflow_save` failure (currently `bridge_request_failed`). |
+| `invalid_workflow` | workflow run (and malformed save input) | The definition failed validation; the message lists each issue. |
+| `operation_not_found` | describe, invoke | Unknown operation id. Invocations with unknown ids are audited. |
+| `request_cancelled` | any bridge call | The caller cancelled the request before it completed. A write may already have been accepted; check state. |
+| `outcome_unknown` | gateway | The connection failed after the request was sent. Inspect state before repeating. |
 
 ## Scripts
 

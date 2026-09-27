@@ -6,7 +6,7 @@
 
 - Target: ArcGIS Pro 3.7.1 on Windows x64, one signed-in user, a model client running as that same user.
 - The add-in and bundle are unsigned. This is not a signed public release and must not be deployed as an unattended or organization-wide service.
-- By default, risky operations require a short-lived approval issued by a person in the ArcGIS Pro dockpane, and the gateway cannot approve its own request.
+- By default, confirmation-gated operations (destructive and external-side-effect operations, plus `project.open`, `project.save` and `feature.update`) require a short-lived approval issued by a person in the ArcGIS Pro dockpane, and the gateway cannot approve its own request.
 - `ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true` bypasses dockpane review for the whole host session and effectively grants the connected client the user's ArcGIS authority. It exists for trusted experimentation and is not a supported deployment mode. See [security](security.md).
 
 ## Build the bundle
@@ -93,7 +93,9 @@ ArcPy is absent from the operation registry unless explicitly enabled before Arc
 - Metadata read/update that preserves unrelated ArcGIS XML, plus scene elevation placement metadata.
 - Live legends, north arrows, scale bars and dynamic project/date/map-frame-scale text.
 - Per-PID host discovery with fail-closed ambiguity for concurrent ArcGIS Pro projects.
-- Dockpane local review with single-use approval tokens bound to operation version, arguments and workspace revision.
+- Dockpane local review with single-use approval tokens bound to operation version, arguments and workspace revision, with a "Runs user code" warning on requests that execute Python.
+- Workflow operation allowlists: user-code operations (`gp.run`, `arcpy.run-script`) must be listed explicitly in a workflow's `allowedOperations`.
+- Audit log of operations, unknown operation ids, autonomous bypasses and approval decisions, rotated at 16 MiB (five rotated files kept).
 
 ## Acceptance evidence
 
@@ -106,11 +108,11 @@ The evidence from that pass (result JSON, hashes and images under `artifacts/`) 
 
 ## Known limits
 
-- **Workflows cannot execute confirmation-gated steps in default mode.** `workflow_run` invokes each step without an approval token, and there is no per-step approval yet. A step such as `gp.run`, `metadata.update`, `feature.delete` or `arcpy.run-script` fails with `confirmation_required` unless the host runs in autonomous mode. Run such operations individually through `approval_request` and `registry_invoke`.
-- Workflows are not transactional or resumable after a crash. There is no automatic rollback.
+- **Workflows cannot execute confirmation-gated steps in default mode.** `workflow_run` invokes each step without an approval token, and there is no per-step approval yet. A step such as `gp.run`, `metadata.update`, `feature.update`, `feature.delete`, `project.save` or `arcpy.run-script` fails with `confirmation_required` unless the host runs in autonomous mode. Run such operations individually through `approval_request` and `registry_invoke`.
+- Workflows are not transactional or resumable after a crash. There is no automatic rollback. A run that detects a mid-run workspace change stops with `workspace_changed` and leaves its completed steps in place.
 - Feature editing excludes batch edits, multipoint construction, multipart construction and complete subtype/domain/range validation.
 - Metadata update targets a map layer's ArcGIS metadata API; standalone catalog-item metadata editing is not supported.
-- Once an SDK geoprocessing write is accepted, the protocol has no durable job id or explicit remote cancel command. A disconnected caller receives `outcome_unknown` and must inspect state or retry with the same idempotency key.
+- Once an SDK geoprocessing write is accepted, the protocol has no durable job id or explicit remote cancel command. A disconnected caller receives `outcome_unknown` and must inspect state or repeat the call with the same idempotency key.
 - Process-lifetime idempotency, workflow history and resources are not a durable cross-restart job store.
 - Advanced renderers, workspace connection management and PDF export are outside the curated registry. The registry is not a complete ArcGIS SDK wrapper.
 - ArcPy and `gp.run` can execute arbitrary user code; neither is a sandbox. See [security](security.md).
