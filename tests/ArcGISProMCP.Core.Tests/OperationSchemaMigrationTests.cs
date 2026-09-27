@@ -21,6 +21,12 @@ public sealed class OperationSchemaMigrationTests
     {
         ["arcpy.inspect-script"] = (ArcPyOperationSchemas.InspectScriptInput, "ArcPyOperationSchemas.InspectScriptInput"),
         ["arcpy.run-script"] = (ArcPyOperationSchemas.RunScriptInput, "ArcPyOperationSchemas.RunScriptInput"),
+        ["feature.layer.describe"] = (FeatureOperationSchemas.LayerDescribeInput, "FeatureOperationSchemas.LayerDescribeInput"),
+        ["feature.query"] = (FeatureOperationSchemas.QueryInput, "FeatureOperationSchemas.QueryInput"),
+        ["feature.select"] = (FeatureOperationSchemas.SelectInput, "FeatureOperationSchemas.SelectInput"),
+        ["feature.create"] = (FeatureOperationSchemas.CreateInput, "FeatureOperationSchemas.CreateInput"),
+        ["feature.update"] = (FeatureOperationSchemas.UpdateInput, "FeatureOperationSchemas.UpdateInput"),
+        ["feature.delete"] = (FeatureOperationSchemas.DeleteInput, "FeatureOperationSchemas.DeleteInput"),
     };
 
     [Fact]

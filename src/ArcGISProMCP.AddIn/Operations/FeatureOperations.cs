@@ -15,7 +15,7 @@ namespace ArcGISProMCP.AddIn.Operations;
 internal sealed class FeatureLayerDescribeOperation() : ProOperationBase(OperationDescriptor.Create(
     "feature.layer.describe", "Describe editable feature layer",
     "Returns the feature layer schema, geometry type, stable identifier fields, and editability needed before a feature edit.",
-    JsonSchemas.ObjectSchema("\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}", "layer"),
+    FeatureOperationSchemas.LayerDescribeInput,
     capabilities: ["maps"], tags: ["feature", "layer", "schema", "inspect", "metadata"],
     related: ["feature.query", "feature.create", "feature.update", "feature.delete"]))
 {
@@ -67,9 +67,7 @@ internal sealed class FeatureLayerDescribeOperation() : ProOperationBase(Operati
 internal sealed class FeatureQueryOperation() : ProOperationBase(OperationDescriptor.Create(
     "feature.query", "Query features by attributes and extent",
     "Runs a bounded feature query with a safe where clause and optional layer-coordinate envelope/spatial relationship. Results always include ObjectID and GlobalID when available.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"where\": {\"type\": \"string\", \"maxLength\": 4096}, \"fields\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}, \"maxItems\": 64}, \"envelope\": {\"type\": \"object\", \"properties\": {\"xmin\": {\"type\": \"number\"}, \"ymin\": {\"type\": \"number\"}, \"xmax\": {\"type\": \"number\"}, \"ymax\": {\"type\": \"number\"}}, \"required\": [\"xmin\", \"ymin\", \"xmax\", \"ymax\"], \"additionalProperties\": false}, \"spatialRelationship\": {\"type\": \"string\", \"enum\": [\"intersects\", \"envelopeIntersects\", \"contains\", \"within\", \"touches\", \"crosses\", \"overlaps\"]}, \"limit\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 500}",
-        "layer"),
+    FeatureOperationSchemas.QueryInput,
     capabilities: ["maps"], tags: ["feature", "query", "spatial", "selection", "attributes"],
     related: ["feature.layer.describe", "feature.select", "table.query"]))
 {
@@ -112,9 +110,7 @@ internal sealed class FeatureQueryOperation() : ProOperationBase(OperationDescri
 internal sealed class FeatureSelectOperation() : ProOperationBase(OperationDescriptor.Create(
     "feature.select", "Select bounded features",
     "Replaces or adds to a layer selection using a bounded attribute/spatial query. This changes selection only; it does not edit feature data.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"where\": {\"type\": \"string\", \"maxLength\": 4096}, \"envelope\": {\"type\": \"object\", \"properties\": {\"xmin\": {\"type\": \"number\"}, \"ymin\": {\"type\": \"number\"}, \"xmax\": {\"type\": \"number\"}, \"ymax\": {\"type\": \"number\"}}, \"required\": [\"xmin\", \"ymin\", \"xmax\", \"ymax\"], \"additionalProperties\": false}, \"spatialRelationship\": {\"type\": \"string\", \"enum\": [\"intersects\", \"envelopeIntersects\", \"contains\", \"within\", \"touches\", \"crosses\", \"overlaps\"]}, \"mode\": {\"type\": \"string\", \"enum\": [\"new\", \"add\"]}, \"limit\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 500}",
-        "layer"),
+    FeatureOperationSchemas.SelectInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["feature", "select", "spatial", "selection"],
     related: ["feature.query", "map.clear-selection"]))
 {
@@ -149,9 +145,7 @@ internal sealed class FeatureSelectOperation() : ProOperationBase(OperationDescr
 internal sealed class FeatureCreateOperation() : ProOperationBase(OperationDescriptor.Create(
     "feature.create", "Create one feature",
     "Creates one point, single-part polyline, or single-part polygon in an editable layer using schema-validated attributes. Coordinates must use the layer spatial reference.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"attributes\": {\"type\": \"object\", \"additionalProperties\": true}, \"geometry\": {\"type\": \"object\", \"properties\": {\"type\": {\"type\": \"string\", \"enum\": [\"point\", \"polyline\", \"polygon\"]}, \"x\": {\"type\": \"number\"}, \"y\": {\"type\": \"number\"}, \"z\": {\"type\": \"number\"}, \"coordinates\": {\"type\": \"array\", \"minItems\": 2, \"items\": {\"type\": \"array\", \"minItems\": 2, \"maxItems\": 3, \"items\": {\"type\": \"number\"}}}}, \"required\": [\"type\"], \"additionalProperties\": false}",
-        "layer", "geometry"),
+    FeatureOperationSchemas.CreateInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["feature", "create", "edit", "geometry", "attributes"],
     related: ["feature.layer.describe", "feature.update", "feature.delete"], undoable: true))
 {
@@ -182,9 +176,7 @@ internal sealed class FeatureCreateOperation() : ProOperationBase(OperationDescr
 internal sealed class FeatureUpdateOperation() : ProOperationBase(OperationDescriptor.Create(
     "feature.update", "Update one feature's attributes or geometry",
     "Updates exactly one feature selected by ObjectID or GlobalID. Attribute names and values are validated against the layer schema; coordinates use the layer spatial reference.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"target\": {\"type\": \"object\", \"properties\": {\"objectId\": {\"type\": \"integer\", \"minimum\": 0}, \"globalId\": {\"type\": \"string\", \"minLength\": 32, \"maxLength\": 38}}, \"minProperties\": 1, \"maxProperties\": 1, \"additionalProperties\": false}, \"attributes\": {\"type\": \"object\", \"additionalProperties\": true}, \"geometry\": {\"type\": \"object\", \"properties\": {\"type\": {\"type\": \"string\", \"enum\": [\"point\", \"polyline\", \"polygon\"]}, \"x\": {\"type\": \"number\"}, \"y\": {\"type\": \"number\"}, \"z\": {\"type\": \"number\"}, \"coordinates\": {\"type\": \"array\", \"minItems\": 2, \"items\": {\"type\": \"array\", \"minItems\": 2, \"maxItems\": 3, \"items\": {\"type\": \"number\"}}}}, \"required\": [\"type\"], \"additionalProperties\": false}",
-        "layer", "target"),
+    FeatureOperationSchemas.UpdateInput,
     risk: OperationRisk.SafeWrite, requiresConfirmation: true, capabilities: ["maps"], tags: ["feature", "update", "edit", "geometry", "attributes"],
     related: ["feature.layer.describe", "feature.create", "feature.delete"], undoable: true))
 {
@@ -222,9 +214,7 @@ internal sealed class FeatureUpdateOperation() : ProOperationBase(OperationDescr
 internal sealed class FeatureDeleteOperation() : ProOperationBase(OperationDescriptor.Create(
     "feature.delete", "Delete one feature",
     "Deletes exactly one editable-layer feature selected by stable ObjectID or GlobalID. This is deliberately not a where-clause or bulk-delete operation.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"target\": {\"type\": \"object\", \"properties\": {\"objectId\": {\"type\": \"integer\", \"minimum\": 0}, \"globalId\": {\"type\": \"string\", \"minLength\": 32, \"maxLength\": 38}}, \"minProperties\": 1, \"maxProperties\": 1, \"additionalProperties\": false}",
-        "layer", "target"),
+    FeatureOperationSchemas.DeleteInput,
     risk: OperationRisk.Destructive, requiresConfirmation: true, capabilities: ["maps"], tags: ["feature", "delete", "edit", "destructive"],
     related: ["feature.query", "feature.update"], undoable: true))
 {
