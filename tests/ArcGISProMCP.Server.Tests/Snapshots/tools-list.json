@@ -2198,6 +2198,41 @@
                   "userCorrections",
                   "score"
                 ]
+              },
+              "parameters": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "defaultValue": true,
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "type",
+                    "required",
+                    "defaultValue",
+                    "description"
+                  ]
+                },
+                "default": null
               }
             },
             "required": [

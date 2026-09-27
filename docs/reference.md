@@ -19,7 +19,7 @@ Every tool declares all four MCP hints. `openWorldHint` is always false: nothing
 | `approval_request` | | | | approval | Queues local review of one exact risky call in the ArcGIS Pro panel. It cannot approve itself. |
 | `approval_status` | ✓ | | ✓ | approval | Returns `pending`, `approved`, `denied`, `expired`, `cancelled`, or `consumed`. Only an `approved` status carries the single-use token. `waitSeconds` (0–120, clamped) holds a pending request until a person decides or the wait elapses, then returns the status either way; keep it below your client's tool-call timeout. The host holds at most two waits at once; a further waiting call returns immediately with `waitNotice` set, so poll again. |
 | `approval_cancel` | | | ✓ | `{requestId, cancelled}` | Cancels a pending or approved request and revokes its token. |
-| `workflow_list` | ✓ | | ✓ | workflow[] | Lists versioned workflows with evidence-based ranking. |
+| `workflow_list` | ✓ | | ✓ | workflow[] | Lists versioned workflows with evidence-based ranking and their `parameters` (older hosts omit `parameters`). |
 | `workflow_get` | ✓ | | ✓ | workflow | Returns one immutable workflow version: its parameters, steps, dependencies, and observation hints. |
 | `workflow_save` | | | ✓ | `{saved, id, version}` | Validates a declarative workflow against the registry and its `allowedOperations` policy, then saves it as a new immutable version. |
 | `workflow_run` | | ✓ | | run | Runs a saved workflow sequentially and returns per-step observations. Stops with `workspace_changed` if the project changes mid-run. A run with `success: false` makes the call an error that still carries every step. |

@@ -170,14 +170,18 @@ public sealed record ApprovalStatusResult(
 /// <summary>approval.cancel</summary>
 public sealed record ApprovalCancelResult(string RequestId, bool Cancelled);
 
-/// <summary>One workflow.list entry (the method returns an array of these).</summary>
+/// <summary>
+/// One workflow.list entry (the method returns an array of these). <see cref="Parameters"/> lets
+/// prompts/list build prompt arguments without a workflow.get per workflow; older hosts omit it.
+/// </summary>
 public sealed record WorkflowSummary(
     string Id,
     string Version,
     string Title,
     string Summary,
     IReadOnlyList<string> Tags,
-    WorkflowRanking? Ranking);
+    WorkflowRanking? Ranking,
+    IReadOnlyList<WorkflowParameter>? Parameters = null);
 
 // workflow.get returns ArcGISProMCP.Core.Workflows.WorkflowDefinition unchanged.
 

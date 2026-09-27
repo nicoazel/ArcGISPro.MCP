@@ -135,9 +135,11 @@ public static class ArcGisPrompts
             };
             try
             {
-                // workflow.list omits parameters; the definition supplies the prompt arguments.
-                var workflow = await GetWorkflowAsync(bridge, id, null, cancellationToken).ConfigureAwait(false);
-                prompt.Arguments = [.. workflow.Parameters.Select(parameter => new PromptArgument
+                // workflow.list carries the parameters; hosts that predate it need one workflow.get each.
+                IReadOnlyList<WorkflowParameter> parameters = ListedParameters(item) is { } listed
+                    ? listed
+                    : (await GetWorkflowAsync(bridge, id, null, cancellationToken).ConfigureAwait(false)).Parameters;
+                prompt.Arguments = [.. parameters.Select(parameter => new PromptArgument
                 {
                     Name = parameter.Name,
                     Description = ParameterDescription(parameter),
@@ -152,6 +154,12 @@ public static class ArcGisPrompts
         }
         return prompts;
     }
+
+    /// <summary>The <c>parameters</c> of a workflow.list entry, or null when the host did not send them.</summary>
+    private static WorkflowParameter[]? ListedParameters(JsonElement item) =>
+        item.TryGetProperty("parameters", out var parameters) && parameters.ValueKind == JsonValueKind.Array
+            ? parameters.Deserialize<WorkflowParameter[]>(WireOptions)
+            : null;
 
     private static async Task<WorkflowDefinition> GetWorkflowAsync(
         IBridgeClient bridge,

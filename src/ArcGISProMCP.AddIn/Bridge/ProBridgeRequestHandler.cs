@@ -341,7 +341,8 @@ internal sealed class ProBridgeRequestHandler(
             workflow.Title,
             workflow.Summary,
             [.. workflow.Tags],
-            rankingByKey.GetValueOrDefault((workflow.Id, workflow.Version))))];
+            rankingByKey.GetValueOrDefault((workflow.Id, workflow.Version)),
+            workflow.Parameters))];
         return JsonSerializer.SerializeToElement(items, JsonOptions);
     }
 

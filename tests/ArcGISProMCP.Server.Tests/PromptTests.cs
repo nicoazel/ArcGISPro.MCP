@@ -40,7 +40,25 @@ public sealed class PromptTests
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
+    // A current host's workflow.list entry carries the parameters, so prompts/list needs no workflow.get.
+    private const string WorkflowListWithParameters = """
+        [
+          {
+            "id": "workflow.master-cartography", "version": "1.1.0", "title": "Three-map master cartography", "summary": "Build three maps and a layout.", "tags": ["cartography"], "ranking": null,
+            "parameters": [
+              { "name": "zoningSource", "type": "path", "required": true, "description": "Zoning polygons." },
+              { "name": "labelSize", "type": "number", "required": false, "defaultValue": 9, "description": "Label size in points." },
+              { "name": "labelExpression", "type": "string", "required": true, "defaultValue": "$feature.NAME", "description": "Arcade label expression." }
+            ]
+          }
+        ]
+        """;
+
     private static FakeBridgeClient WorkflowBridge() => new FakeBridgeClient()
+        .ReturnsJson("workflow.list", WorkflowListWithParameters)
+        .ReturnsJson("workflow.get", WorkflowDefinition);
+
+    private static FakeBridgeClient LegacyWorkflowBridge() => new FakeBridgeClient()
         .ReturnsJson("workflow.list", WorkflowList)
         .ReturnsJson("workflow.get", WorkflowDefinition);
 
@@ -83,6 +101,20 @@ public sealed class PromptTests
         Assert.Equal(["zoningSource", "labelSize", "labelExpression"], arguments.Select(argument => argument.Name));
         // A required parameter with a default does not force the client to ask for a value.
         Assert.Equal([true, false, false], arguments.Select(argument => argument.Required ?? false));
+        // The parameters came with workflow.list: no per-workflow workflow.get (no N+1).
+        Assert.Equal("workflow.list", Assert.Single(server.Bridge.Calls).Method);
+    }
+
+    [Fact]
+    public async Task Workflow_prompt_arguments_fall_back_to_workflow_get_for_older_hosts()
+    {
+        await using var server = await McpTestServer.StartAsync(LegacyWorkflowBridge(), Token);
+
+        var prompts = await server.Client.ListPromptsAsync(cancellationToken: Token);
+
+        var workflow = Assert.Single(prompts, prompt => prompt.Name == WorkflowPrompt).ProtocolPrompt;
+        Assert.Equal(["zoningSource", "labelSize", "labelExpression"], workflow.Arguments!.Select(argument => argument.Name));
+        Assert.Equal(["workflow.list", "workflow.get"], server.Bridge.Calls.Select(call => call.Method));
     }
 
     [Fact]

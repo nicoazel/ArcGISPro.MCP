@@ -511,7 +511,8 @@ public sealed class HostHandlerTests
     public async Task Bridge_results_round_trip_through_the_shared_contracts()
     {
         using var fixture = new Fixture(OperationRisk.SafeWrite);
-        var workflow = new WorkflowDefinition("contract-flow", "1.0.0", "Contract", "Test", [], [], [],
+        var workflow = new WorkflowDefinition("contract-flow", "1.0.0", "Contract", "Test", [], [],
+            [new WorkflowParameter("label", "string", false, JsonSerializer.SerializeToElement("x"), "A label.")],
             [new("one", "test.write", JsonSerializer.SerializeToElement(new { }), [])]);
         await fixture.Workflows.SaveAsync(workflow, TestContext.Current.CancellationToken);
 
@@ -530,7 +531,8 @@ public sealed class HostHandlerTests
         Assert.Equal("sample", domain.Domain);
         Assert.NotEmpty(domain.Operations!);
         Assert.True(validation.Valid);
-        Assert.Contains(workflows, item => item.Id == workflow.Id);
+        var listed = Assert.Single(workflows, item => item.Id == workflow.Id);
+        Assert.Equal("label", Assert.Single(listed.Parameters!).Name);
         Assert.True(run.Success);
         Assert.Null(run.ErrorCode);
         Assert.Equal("one", Assert.Single(run.Results).Step);
