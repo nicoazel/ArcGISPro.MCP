@@ -1,6 +1,6 @@
 {
   "id": "workflow.urban-green-loop",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "title": "Urban test 2 - green loop and stormwater network",
   "summary": "Builds a green-infrastructure test with open-space context, connected corridors, neighborhood nodes, and an exported review sheet.",
   "tags": ["urban-design", "green-infrastructure", "public-realm", "layout", "stress-test"],
@@ -53,7 +53,6 @@
     { "id": "stats-population", "operation": "table.statistics", "arguments": { "map": "UD2 Open Space Context", "layer": "Open Space Context", "field": "pop" }, "dependsOn": ["stats-area"] },
     { "id": "stats-dwellings", "operation": "table.statistics", "arguments": { "map": "UD2 Open Space Context", "layer": "Open Space Context", "field": "du" }, "dependsOn": ["stats-population"] },
     { "id": "stats-employment", "operation": "table.statistics", "arguments": { "map": "UD2 Open Space Context", "layer": "Open Space Context", "field": "emp" }, "dependsOn": ["stats-dwellings"] },
-    { "id": "capture", "operation": "view.capture", "arguments": { "view": "layout", "layout": "Urban Test 2 - Green Loop", "width": 2400, "height": 1553 }, "dependsOn": ["stats-employment"], "expectedObservation": "green-loop-layout-png" },
-    { "id": "save", "operation": "project.save", "arguments": {}, "dependsOn": ["capture"] }
+    { "id": "capture", "operation": "view.capture", "arguments": { "view": "layout", "layout": "Urban Test 2 - Green Loop", "width": 2400, "height": 1553 }, "dependsOn": ["stats-employment"], "expectedObservation": "green-loop-layout-png" }
   ]
 }

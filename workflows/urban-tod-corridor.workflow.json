@@ -1,6 +1,6 @@
 {
   "id": "workflow.urban-tod-corridor",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "title": "Urban test 1 - transit-oriented corridor",
   "summary": "Builds a transit-oriented development test with program, mobility, and existing-fabric maps and exports a landscape review sheet.",
   "tags": ["urban-design", "tod", "mobility", "layout", "stress-test"],
@@ -51,7 +51,6 @@
     { "id": "stats-population", "operation": "table.statistics", "arguments": { "map": "UD1 TOD Program", "layer": "Land Use Program", "field": "pop" }, "dependsOn": ["stats-area"] },
     { "id": "stats-dwellings", "operation": "table.statistics", "arguments": { "map": "UD1 TOD Program", "layer": "Land Use Program", "field": "du" }, "dependsOn": ["stats-population"] },
     { "id": "stats-employment", "operation": "table.statistics", "arguments": { "map": "UD1 TOD Program", "layer": "Land Use Program", "field": "emp" }, "dependsOn": ["stats-dwellings"] },
-    { "id": "capture", "operation": "view.capture", "arguments": { "view": "layout", "layout": "Urban Test 1 - TOD Corridor", "width": 2400, "height": 1553 }, "dependsOn": ["stats-employment"], "expectedObservation": "tod-layout-png" },
-    { "id": "save", "operation": "project.save", "arguments": {}, "dependsOn": ["capture"] }
+    { "id": "capture", "operation": "view.capture", "arguments": { "view": "layout", "layout": "Urban Test 1 - TOD Corridor", "width": 2400, "height": 1553 }, "dependsOn": ["stats-employment"], "expectedObservation": "tod-layout-png" }
   ]
 }

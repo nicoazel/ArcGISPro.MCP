@@ -1,6 +1,6 @@
 {
   "id": "workflow.master-cartography",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "title": "Three-map master cartography",
   "summary": "Build zoning, transit, and buildings/site-design maps, compose one landscape layout, and capture visual evidence.",
   "tags": ["cartography", "multi-map", "layout", "master-plan"],
@@ -37,8 +37,7 @@
     { "id": "place-zoning", "operation": "layout.add-map-frame", "arguments": { "layout": "Master Multi-Map", "map": "Zoning", "name": "Zoning Overview", "x": 0.5, "y": 1.0, "width": 8.0, "height": 9.2 }, "dependsOn": ["ensure-layout"] },
     { "id": "place-transit", "operation": "layout.add-map-frame", "arguments": { "layout": "Master Multi-Map", "map": "Transit", "name": "Transit Context", "x": 8.75, "y": 5.65, "width": 7.75, "height": 4.55 }, "dependsOn": ["place-zoning"] },
     { "id": "place-site-design", "operation": "layout.add-map-frame", "arguments": { "layout": "Master Multi-Map", "map": "Buildings-SiteDesign", "name": "Buildings and Site Design", "x": 8.75, "y": 1.0, "width": 7.75, "height": 4.35 }, "dependsOn": ["place-transit"] },
-    { "id": "save-project", "operation": "project.save", "arguments": {}, "dependsOn": ["place-site-design"] },
-    { "id": "activate-layout", "operation": "layout.activate", "arguments": { "layout": "Master Multi-Map" }, "dependsOn": ["save-project"] },
+    { "id": "activate-layout", "operation": "layout.activate", "arguments": { "layout": "Master Multi-Map" }, "dependsOn": ["place-site-design"] },
     { "id": "capture-layout", "operation": "view.capture", "arguments": { "view": "layout", "layout": "Master Multi-Map", "width": 2400, "height": 1553 }, "dependsOn": ["activate-layout"], "expectedObservation": "final-layout-png" }
   ]
 }
