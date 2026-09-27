@@ -1,5 +1,5 @@
 using ArcGISProMCP.Bridge.Transport;
-using ArcGISProMCP.Server.Tools;
+using ArcGISProMCP.Server;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,12 +10,8 @@ builder.Services.AddSingleton<IBridgeClient>(_ => new DiscoveringBridgeClient(
     TimeSpan.FromSeconds(5),
     TimeSpan.FromMinutes(15)));
 builder.Services
-    .AddMcpServer(options =>
-    {
-        options.ServerInfo = new() { Name = "arcgis-pro-mcp", Version = typeof(KernelTools).Assembly.GetName().Version!.ToString(3) };
-    })
+    .AddMcpServer(McpServerSetup.ConfigureServerOptions)
     .WithStdioServerTransport()
-    .WithTools<KernelTools>()
-    .WithTools<SkillTools>();
+    .AddArcGisProMcp();
 
 await builder.Build().RunAsync().ConfigureAwait(false);

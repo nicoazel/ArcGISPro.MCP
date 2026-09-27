@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using ArcGISProMCP.Core.Workflows;
+using ArcGISProMCP.Server.Skills;
 using ModelContextProtocol.Server;
 
 namespace ArcGISProMCP.Server.Tools;
@@ -8,7 +9,7 @@ namespace ArcGISProMCP.Server.Tools;
 [McpServerToolType]
 public sealed class SkillTools
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = SkillCatalog.JsonOptions;
 
     [McpServerTool(Name = "skill_search", Title = "Find ArcGIS skills", ReadOnly = true, Destructive = false, OpenWorld = false)]
     [Description("Finds compact bundled skill summaries by intent; use skill_get for preconditions, allowed operations, visual checks, recovery guidance, and the linked reusable workflow.")]
@@ -39,25 +40,6 @@ public sealed class SkillTools
         return JsonSerializer.Serialize(skill, JsonOptions);
     }
 
-    private static async Task<IReadOnlyList<SkillManifest>> LoadAsync(CancellationToken cancellationToken)
-    {
-        var root = Path.Combine(AppContext.BaseDirectory, "skills");
-        if (!Directory.Exists(root)) return [];
-        var skills = new List<SkillManifest>();
-        foreach (var path in Directory.EnumerateFiles(root, "*.skill.json").Take(100))
-        {
-            await using var stream = File.OpenRead(path);
-            var skill = await JsonSerializer.DeserializeAsync<SkillManifest>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
-            if (skill is null) continue;
-            // A skill must declare an explicit, nonempty operation allowlist; manifests that
-            // omit it would read as "anything goes" and are not exposed.
-            if (skill.AllowedOperations is null || skill.AllowedOperations.IsEmpty)
-            {
-                System.Diagnostics.Trace.TraceWarning("Skipping skill manifest '{0}': allowedOperations is missing or empty.", path);
-                continue;
-            }
-            skills.Add(skill);
-        }
-        return skills;
-    }
+    private static Task<IReadOnlyList<SkillManifest>> LoadAsync(CancellationToken cancellationToken) =>
+        SkillCatalog.LoadAsync(cancellationToken);
 }

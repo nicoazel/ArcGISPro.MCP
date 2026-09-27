@@ -147,7 +147,7 @@ public sealed class WorkflowOperationPolicyTests : IDisposable
     [Fact]
     public void Skill_loader_rejects_manifests_without_an_operation_allowlist()
     {
-        var source = File.ReadAllText(Path.Combine(RepoPath("src"), "ArcGISProMCP.Server", "Tools", "SkillTools.cs"));
+        var source = File.ReadAllText(Path.Combine(RepoPath("src"), "ArcGISProMCP.Server", "Skills", "SkillCatalog.cs"));
 
         Assert.Contains("skill.AllowedOperations is null || skill.AllowedOperations.IsEmpty", source, StringComparison.Ordinal);
     }
