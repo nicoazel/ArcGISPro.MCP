@@ -1,0 +1,18 @@
+{
+  "protocolVersion": "2026-07-28",
+  "serverInfo": {
+    "name": "arcgis-pro-mcp",
+    "version": "<assembly-version>"
+  },
+  "capabilities": {
+    "logging": {},
+    "prompts": {},
+    "resources": {
+      "listChanged": true
+    },
+    "tools": {
+      "listChanged": true
+    }
+  },
+  "instructions": null
+}
