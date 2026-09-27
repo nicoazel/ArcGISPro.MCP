@@ -6,24 +6,40 @@ This page lists everything a client or operator can use. The live registry is au
 
 The stdio gateway (`ArcGISProMCP.Server`) exposes exactly these 16 MCP tools.
 
-| Tool | Read-only | Purpose |
-| --- | :---: | --- |
-| `system_get_state` | ✓ | Revisioned snapshot of the project, maps, layouts, active view, capabilities, and connection. |
-| `registry_search` | ✓ | Searches operations by intent, GIS terms and aliases. Optional filters: `domain`, `capabilities` (a result must require every listed capability) and `maxRisk` (highest risk to include, for example `ReadOnly`). `limit` defaults to 12 and is clamped to 1–100. Articles and prepositions such as "the", "a", "of" and "to" are ignored in the query. |
-| `registry_browse` | ✓ | Lists concise registry entries by domain. Search and browse entries include `executesUserCode`. |
-| `registry_describe` | ✓ | Returns one operation's full descriptor: input schema, required capabilities, examples, risk, confirmation requirement, and related operations. Operations do not declare result schemas yet. |
-| `registry_validate` | ✓ | Checks arguments against the operation's input schema and, for writes, the expected revision against the current one. It does not resolve layers, maps or paths, so a valid result does not guarantee success. Never writes. |
-| `registry_invoke` | | Runs one operation. Writes need the current revision, and confirmation-gated operations also need an approval token. |
-| `approval_request` | | Queues local review of one exact risky call in the ArcGIS Pro panel. It cannot approve itself. |
-| `approval_status` | ✓ | Returns `pending`, `approved`, `denied`, `expired`, `cancelled`, or `consumed`. Only an `approved` status carries the single-use token. |
-| `approval_cancel` | | Cancels a pending or approved request and revokes its token. |
-| `workflow_list` | ✓ | Lists versioned workflows with evidence-based ranking. |
-| `workflow_get` | ✓ | Returns one immutable workflow version: its parameters, steps, dependencies, and observation hints. |
-| `workflow_save` | | Validates a declarative workflow against the registry and its `allowedOperations` policy, then saves it as a new immutable version. |
-| `workflow_run` | | Runs a saved workflow sequentially and returns per-step observations. Stops with `workspace_changed` if the project changes mid-run. |
-| `resource_read` | ✓ | Reads a bounded semantic or image observation by `arcgis://` handle. Non-image payloads are returned as JSON with camelCase fields: `uri`, `mimeType`, `name`, `encoding`, `data`, `createdAt`. |
-| `skill_search` | ✓ | Finds bundled skill summaries by intent. |
-| `skill_get` | ✓ | Returns one skill manifest: preconditions, allowed operations, visual checks, and recovery guidance. |
+Every tool declares all four MCP hints. `openWorldHint` is always false: nothing reaches beyond the local ArcGIS Pro session. Read-only tools are also idempotent and non-destructive.
+
+| Tool | Read-only | Destructive | Idempotent | `result` | Purpose |
+| --- | :---: | :---: | :---: | --- | --- |
+| `system_get_state` | ✓ | | ✓ | state | Revisioned snapshot of the project, maps, layouts, active view, capabilities, and connection. |
+| `registry_search` | ✓ | | ✓ | hit[] | Searches operations by intent, GIS terms and aliases. Optional filters: `domain`, `capabilities` (a result must require every listed capability) and `maxRisk` (highest risk to include, for example `ReadOnly`). `limit` defaults to 12 and is clamped to 1–100. Articles and prepositions such as "the", "a", "of" and "to" are ignored in the query. |
+| `registry_browse` | ✓ | | ✓ | browse | Without `domain`: `total` and per-domain `domains` counts. With `domain`: that domain's `operations`. The unused pair is null. Search and browse entries include `executesUserCode`. |
+| `registry_describe` | ✓ | | ✓ | descriptor | Returns one operation's full descriptor: input schema, required capabilities, examples, risk, confirmation requirement, related operations, and `resultSchema`, the JSON schema of that operation's `registry_invoke` result (`success`, `data`, `errorCode`, `message`, `workspaceRevision`, `notices`, `resources`). `outputSchema` describes `data` and is null while the operation declares none; `data` is then unconstrained. |
+| `registry_validate` | ✓ | | ✓ | validation | Checks arguments against the operation's input schema and, for writes, the expected revision against the current one. It does not resolve layers, maps or paths, so a valid result does not guarantee success. Never writes. |
+| `registry_invoke` | | ✓ | | operation result | Runs one operation. Writes need the current revision, and confirmation-gated operations also need an approval token. An operation result with `success: false` makes the call an error that still carries the result. |
+| `approval_request` | | | | approval | Queues local review of one exact risky call in the ArcGIS Pro panel. It cannot approve itself. |
+| `approval_status` | ✓ | | ✓ | approval | Returns `pending`, `approved`, `denied`, `expired`, `cancelled`, or `consumed`. Only an `approved` status carries the single-use token. `waitSeconds` (0–120, clamped) holds a pending request until a person decides or the wait elapses, then returns the status either way; keep it below your client's tool-call timeout. |
+| `approval_cancel` | | | ✓ | `{requestId, cancelled}` | Cancels a pending or approved request and revokes its token. |
+| `workflow_list` | ✓ | | ✓ | workflow[] | Lists versioned workflows with evidence-based ranking. |
+| `workflow_get` | ✓ | | ✓ | workflow | Returns one immutable workflow version: its parameters, steps, dependencies, and observation hints. |
+| `workflow_save` | | | ✓ | `{saved, id, version}` | Validates a declarative workflow against the registry and its `allowedOperations` policy, then saves it as a new immutable version. |
+| `workflow_run` | | ✓ | | run | Runs a saved workflow sequentially and returns per-step observations. Stops with `workspace_changed` if the project changes mid-run. A run with `success: false` makes the call an error that still carries every step. |
+| `resource_read` | ✓ | | ✓ | resource | Reads a bounded semantic or image observation by `arcgis://` handle. The result has camelCase fields `uri`, `mimeType`, `name`, `encoding`, `data` (base64), `createdAt`. Images are returned as an MCP image block and `data` is then null. |
+| `skill_search` | ✓ | | ✓ | skill[] | Finds bundled skill summaries by intent. |
+| `skill_get` | ✓ | | ✓ | skill | Returns one skill manifest: preconditions, allowed operations, visual checks, and recovery guidance. |
+
+### Tool results
+
+Every tool returns the same envelope as `structuredContent`, and the same JSON as its text block for clients without structured-content support. Each tool's `outputSchema` describes the envelope with its typed `result`:
+
+```json
+{ "ok": true, "result": { }, "error": null }
+{ "ok": false, "result": null, "error": { "code": "arcgis_unavailable", "message": "...", "retryable": true, "revision": null } }
+```
+
+- `ok: false` always comes with `isError: true` and an `error` (`code`, `message`, `retryable`, `revision`). `retryable` means the same call may succeed later, for example once ArcGIS Pro is running.
+- `registry_invoke` and `workflow_run` keep `result` on failure: the operation or workflow ran (or was refused) and reported `success: false`. `error.code` repeats its `errorCode` and `error.revision` is the workspace revision it reported.
+- Field names are camelCase and null members are written. `risk` and `executionTarget` are numbers: risk `0` ReadOnly, `1` SafeWrite, `2` Destructive, `3` ExternalSideEffect.
+- Exceptions that are not ArcGIS bridge errors are reported by the MCP SDK as a plain error result without an envelope.
 
 ## Operations
 
@@ -172,6 +188,11 @@ Codes a client should handle. The message carries the details.
 | `request_cancelled` | any bridge call | The caller cancelled the request before it completed. A write may already have been accepted; check state. |
 | `host_stopping` | any bridge call | ArcGIS Pro is shutting down and cancelled the request, including keyed work shared by several callers. Retryable against a new host; a write may already have been accepted, so check state first. |
 | `outcome_unknown` | gateway | The connection failed after the request was sent. Inspect state before repeating. |
+| `arcgis_unavailable` | gateway | No ArcGIS Pro host accepted the connection. Retryable. |
+| `approval_not_found` | approval status | Unknown or no longer retained approval id. Fails closed. |
+| `bridge_contract_mismatch` | gateway | The add-in returned a result this gateway cannot read. Install matching add-in and gateway versions. |
+| `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped). |
+| `skill_not_found` | skill get | Unknown bundled skill id. |
 
 ## Scripts
 

@@ -17,6 +17,10 @@ All notable changes to this project are documented here. The format is based on 
 - Audit log rotation: `operations.jsonl` rotates at 16 MiB and the newest five rotated files are kept.
 - MCP resources: `arcgis://project/state` plus templates for operations, workflows (`id@version`), skills and observation handles.
 - MCP prompts: one per bundled skill (`skill.<id>`) and, while ArcGIS Pro is running, one per saved workflow (`run.<id>`) with arguments from the workflow parameters.
+- Typed tool results: every tool returns `{ ok, result, error }` as `structuredContent` (and the same JSON as its text block) with an `outputSchema`, and sets `isError` on failure with `error` = `code`, `message`, `retryable`, `revision`. `registry_invoke` and `workflow_run` results with `success: false` are errors that keep `result`. Bridge results are typed records shared by the add-in and the gateway (`ArcGISProMCP.Bridge.Protocol.BridgeContracts`).
+- Every tool declares `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint` (always false). Only `registry_invoke` and `workflow_run` are destructive.
+- `registry_describe` returns `resultSchema`, the JSON schema of the operation's `registry_invoke` result envelope.
+- `approval_status` accepts `waitSeconds` (0-120) to wait for the dockpane decision instead of polling.
 - `tests/ArcGISProMCP.Server.Tests`: in-process MCP client/server harness with a scriptable fake bridge and `tools/list`, `resources/list` and `prompts/list` snapshots (`UPDATE_SNAPSHOTS=1` regenerates them).
 
 - Geoprocessing operations `gp.search` and `gp.describe` (ReadOnly) over the installed system toolbox metadata, returning execution names, risk tiers and the positional parameter `signature` `gp.run` expects.
@@ -27,7 +31,8 @@ All notable changes to this project are documented here. The format is based on 
 ### Changed
 
 - **Breaking:** in autonomous mode `gp.run` refuses Destructive and UserCode tools, and requests flagged as running user code, with `destructive_tool_requires_review`.
-
+- **Breaking:** tool text content is now the `{ ok, result, error }` envelope rather than the bare bridge result; read `result` (or `structuredContent.result`). Failed bridge calls are `isError` results instead of protocol errors, and `skill_get` for an unknown id returns `skill_not_found`. `registry_browse` and `workflow_run` results now always carry all their members (unused ones are null). Enum fields such as `risk` remain numbers.
+- `tools/test-mcp.ps1` checks every tool's hints and envelope `outputSchema` and reads results from `structuredContent`.
 - **Breaking:** `project.open`, `project.save` and `feature.update` now require a local-review approval token (or autonomous mode). Dockpane buttons that trigger them approve through the same audited approval queue.
 - **Breaking:** a workflow whose workspace revision changes mid-run now stops with `workspace_changed` (reporting `stoppedAtStep`, `stepIndex`, `expectedRevision`, `currentRevision`) instead of retrying the step against the new revision. `continueOnError` does not override this, and completed steps are not rolled back.
 - **Breaking:** saved workflows can no longer use `gp.run` or `arcpy.run-script` unless their `allowedOperations` lists them. When `allowedOperations` is present it is exhaustive.
@@ -45,6 +50,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Fixed
 
+- In-process hosts built concurrently could intermittently publish the injected bridge client as a required `bridge` tool argument (a race on the reflection `ParameterInfo` cache that the MCP SDK relies on). Tools and resources are now built once per process, and the server tests run in parallel again.
 - The dockpane no longer shows a hard-coded "Skills 1" count. Skills are loaded by the MCP gateway process, which the add-in cannot see, so the expander header now shows only the workflow count.
 - An audit write failure for an unknown operation id now adds the `audit_write_failed` notice, like every other invocation. A failed approval audit write in the dockpane is reported in the activity feed whatever the exception type, instead of surfacing as an error after the decision was already applied.
 - `invalid_workflow` errors from `workflow_save` and `workflow_run` prefix each issue with its code (for example `operation_not_allowed: ...`), so clients can tell policy violations from other validation failures.
