@@ -45,6 +45,7 @@ All notable changes to this project are documented here. The format is based on 
 - User-code operations are opt-in per workflow, and approvals that execute Python are visibly labelled.
 - `gp.run` requests for Calculate Field, Calculate Fields and Calculate Value are labelled as running user code even without an explicit expression type, because ArcGIS Pro defaults it to Python 3. Python toolboxes called by an imported alias remain a documented false negative.
 - Approval decisions, autonomous bypasses and unknown operation ids are recorded in the audit log.
+- A dockpane button click (for example **Open project**) can no longer approve an identical request that an MCP client queued for review. The panel's self-approval always creates its own approval entry (`IApprovalService.Request(..., reuseExisting: false)`), and the transient entry no longer flashes in the approval cards.
 
 ### Removed
 

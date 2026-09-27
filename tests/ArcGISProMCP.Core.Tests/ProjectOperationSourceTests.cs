@@ -33,7 +33,7 @@ public sealed class ProjectOperationSourceTests
         Assert.Contains("WriteApprovalAuditAsync(request, ApprovalResolution.ApproveOnce, \"panel-action\")", panel, StringComparison.Ordinal);
         Assert.Contains("WriteApprovalAuditAsync(request, resolution, \"panel-card\")", panel, StringComparison.Ordinal);
         Assert.Contains("Kind: OperationAuditKinds.Approval", panel, StringComparison.Ordinal);
-        Assert.Contains("approvals.Request(descriptor, arguments, workspace)", panel, StringComparison.Ordinal);
+        Assert.Contains("approvals.Request(descriptor, arguments, workspace, reuseExisting: false)", panel, StringComparison.Ordinal);
         Assert.Contains("approvals.TryResolve(request.Id, ApprovalResolution.ApproveOnce)", panel, StringComparison.Ordinal);
         Assert.Contains("approvals.GetStatus(request.Id)", panel, StringComparison.Ordinal);
         Assert.Contains("confirmationToken }", panel, StringComparison.Ordinal);

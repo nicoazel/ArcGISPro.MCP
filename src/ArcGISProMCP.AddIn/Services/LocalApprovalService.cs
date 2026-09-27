@@ -24,7 +24,8 @@ internal sealed class LocalApprovalService : IApprovalService, IAutonomousExecut
     public ApprovalRequestSnapshot Request(
         OperationDescriptor descriptor,
         JsonElement arguments,
-        WorkspaceSnapshot workspace) => _inner.Request(descriptor, arguments, workspace);
+        WorkspaceSnapshot workspace,
+        bool reuseExisting = true) => _inner.Request(descriptor, arguments, workspace, reuseExisting);
 
     public ApprovalRequestSnapshot? GetStatus(string requestId) => _inner.GetStatus(requestId);
 

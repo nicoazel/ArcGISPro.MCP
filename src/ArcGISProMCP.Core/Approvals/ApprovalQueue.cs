@@ -40,10 +40,18 @@ public interface IApprovalService : IConfirmationValidator, IDisposable
 {
     event EventHandler? Changed;
 
+    /// <summary>
+    /// Queues a request for a local decision. By default an identical pending request (same
+    /// operation version, canonical arguments and revision) is returned instead of a new one.
+    /// Pass <paramref name="reuseExisting"/> = false when the caller will resolve the request itself
+    /// (for example a dockpane button click): it then always gets a new entry and can never decide a
+    /// pending request that someone else queued.
+    /// </summary>
     ApprovalRequestSnapshot Request(
         OperationDescriptor descriptor,
         JsonElement arguments,
-        WorkspaceSnapshot workspace);
+        WorkspaceSnapshot workspace,
+        bool reuseExisting = true);
 
     ApprovalRequestSnapshot? GetStatus(string requestId);
 
@@ -94,7 +102,8 @@ public sealed class ApprovalService : IApprovalService
     public ApprovalRequestSnapshot Request(
         OperationDescriptor descriptor,
         JsonElement arguments,
-        WorkspaceSnapshot workspace)
+        WorkspaceSnapshot workspace,
+        bool reuseExisting = true)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(workspace);
@@ -111,7 +120,7 @@ public sealed class ApprovalService : IApprovalService
         {
             ThrowIfDisposed();
             changed = ExpireLocked(now);
-            var existing = _entries.Values.FirstOrDefault(entry =>
+            var existing = !reuseExisting ? null : _entries.Values.FirstOrDefault(entry =>
                 entry.State == ApprovalRequestState.Pending &&
                 string.Equals(entry.Fingerprint, fingerprint, StringComparison.Ordinal));
             if (existing is not null)

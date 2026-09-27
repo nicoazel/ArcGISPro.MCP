@@ -28,6 +28,7 @@ internal sealed class ProPanelStateSource(
     private readonly List<ActivitySnapshot> _activity = [];
     private PanelStateSnapshot _current = PanelStateSnapshot.Unavailable;
     private int _approvalSubscribed;
+    private int _approvalPublishSuppressed;
     private bool _disposed;
 
     public event EventHandler<PanelStateSnapshot>? StateChanged;
@@ -265,9 +266,22 @@ internal sealed class ProPanelStateSource(
             return null;
 
         var approvals = _approvals ?? throw new InvalidOperationException("The local approval service is unavailable.");
-        var request = approvals.Request(descriptor, arguments, workspace);
-        if (!approvals.TryResolve(request.Id, ApprovalResolution.ApproveOnce))
-            throw new InvalidOperationException($"Could not approve the panel request for '{id}'.");
+        // Never reuse a pending entry: an identical request queued remotely must stay pending for
+        // its own review instead of being approved by this click. Hide the transient pending entry
+        // from the cards, then publish once the click's own request is resolved.
+        ApprovalRequestSnapshot request;
+        Interlocked.Increment(ref _approvalPublishSuppressed);
+        try
+        {
+            request = approvals.Request(descriptor, arguments, workspace, reuseExisting: false);
+            if (!approvals.TryResolve(request.Id, ApprovalResolution.ApproveOnce))
+                throw new InvalidOperationException($"Could not approve the panel request for '{id}'.");
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _approvalPublishSuppressed);
+            OnApprovalsChanged(this, EventArgs.Empty);
+        }
         await WriteApprovalAuditAsync(request, ApprovalResolution.ApproveOnce, "panel-action").ConfigureAwait(false);
         return approvals.GetStatus(request.Id) is { ConfirmationToken: not null } approved
             ? approved
@@ -380,7 +394,7 @@ internal sealed class ProPanelStateSource(
 
     private void OnApprovalsChanged(object? sender, EventArgs eventArgs)
     {
-        if (_disposed) return;
+        if (_disposed || Volatile.Read(ref _approvalPublishSuppressed) != 0) return;
         try
         {
             Publish(Current with { Approvals = CreateApprovalSnapshots() });
