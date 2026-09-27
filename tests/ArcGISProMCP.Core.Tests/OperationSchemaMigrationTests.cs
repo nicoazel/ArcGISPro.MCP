@@ -33,6 +33,10 @@ public sealed class OperationSchemaMigrationTests
         ["layer.set-elevation"] = (LayerOperationSchemas.SetElevationInput, "LayerOperationSchemas.SetElevationInput"),
         ["basemap.set"] = (LayerOperationSchemas.BasemapSetInput, "LayerOperationSchemas.BasemapSetInput"),
         ["style.search"] = (LayerOperationSchemas.StyleSearchInput, "LayerOperationSchemas.StyleSearchInput"),
+        ["layout.inspect"] = (LayoutOperationSchemas.InspectInput, "LayoutOperationSchemas.InspectInput"),
+        ["layout.ensure"] = (LayoutOperationSchemas.EnsureInput, "LayoutOperationSchemas.EnsureInput"),
+        ["layout.add-map-frame"] = (LayoutOperationSchemas.AddMapFrameInput, "LayoutOperationSchemas.AddMapFrameInput"),
+        ["layout.activate"] = (LayoutOperationSchemas.ActivateInput, "LayoutOperationSchemas.ActivateInput"),
     };
 
     [Fact]
