@@ -6,6 +6,7 @@ using System.Text.Json;
 using ArcGISProMCP.AddIn.UI;
 using ArcGISProMCP.Bridge.Protocol;
 using ArcGISProMCP.Core.Approvals;
+using ArcGISProMCP.Core.Execution;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Workflows;
 using Microsoft.Win32;
@@ -358,8 +359,17 @@ internal sealed class ProPanelStateSource(
                 approval.Risk == OperationRisk.SafeWrite ? ApprovalRisk.Moderate : ApprovalRisk.High,
                 $"Requested {approval.RequestedAt.ToLocalTime():g}",
                 $"Expires {approval.ExpiresAt.ToLocalTime():g}",
-                false))
+                false,
+                UserCodeWarning(approval)))
             .ToArray();
+    }
+
+    private static string? UserCodeWarning(ApprovalRequestSnapshot approval)
+    {
+        var registry = ArcGISProMcpModule.Instance?.Registry;
+        return registry is not null && registry.TryGet(approval.OperationId, out var operation)
+            ? UserCodeExecutionDetector.GetWarning(operation.Descriptor, approval.Arguments)
+            : null;
     }
 
     private void EnsureApprovalSubscription()

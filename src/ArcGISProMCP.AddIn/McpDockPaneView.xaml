@@ -183,6 +183,13 @@
                                             <Run Text="{Binding Risk, Mode=OneWay}" />
                                         </TextBlock>
                                         <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Margin="0,2" />
+                                        <Border Background="#FFFFF4CE" BorderBrush="#FFC19C00" BorderThickness="1"
+                                                CornerRadius="2" Padding="4,2" Margin="0,2"
+                                                Visibility="{Binding HasWarning, Converter={StaticResource BooleanToVisibility}}">
+                                            <TextBlock Text="{Binding Warning, Mode=OneWay}" TextWrapping="Wrap"
+                                                       FontWeight="SemiBold" Foreground="#FF3B2F00"
+                                                       AutomationProperties.Name="Runs user code warning" />
+                                        </Border>
                                         <TextBlock Style="{StaticResource MutedText}">
                                             <Run Text="Revision " /><Run Text="{Binding WorkspaceRevision, Mode=OneWay}" />
                                             <Run Text=" · " /><Run Text="{Binding RequestedAtText, Mode=OneWay}" />
