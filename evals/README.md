@@ -8,6 +8,8 @@ run by hand.
 |---|---|---:|---|
 | `registry-search` (E1) | `OperationRegistry.Search`, as `registry_search` calls it, over the add-in's 38 operation descriptors | 30 | always |
 | `gp-search` (E2) | `ToolboxCatalog.Search`, as `gp.search` calls it, over the installed ArcGIS Pro system toolboxes | 30 | when `C:\Program Files\ArcGIS\Pro\Resources\ArcToolBox\toolboxes` exists |
+| `registry-search-holdout` (E1) | as `registry-search`; held out from tuning | 16 | always |
+| `gp-search-holdout` (E2) | as `gp-search`; held out from tuning | 16 | when Pro is installed |
 | `gp-search-fixture` (E2 subset) | `ToolboxCatalog.Search` over the synthetic toolboxes in `tests/ArcGISProMCP.Core.Tests/Fixtures/toolboxes` | 5 | always |
 | `live` | Claude choosing MCP tool calls against a running gateway | see `live/live-tasks.jsonl` | by hand |
 
@@ -21,6 +23,7 @@ evals/
   tasks/registry-search.jsonl     E1 tasks
   tasks/gp-search.jsonl           E2 tasks (installed Pro)
   tasks/gp-search-fixture.jsonl   E2 CI subset (synthetic toolboxes)
+  tasks/*-holdout.jsonl           held-out E1/E2 tasks, not used for tuning
   fixtures/operation-descriptors.json   interim descriptor fixture (see below)
   baseline.json                   measured metrics the tests gate on
   ArcGISProMCP.Evals/             task loader, runner, metrics, scorecard writer (net10.0)
@@ -46,6 +49,14 @@ One JSON object per line; blank lines and `//` comments are skipped.
 
 Tasks are written the way a person asks, not copied from descriptor aliases. A task that fails stays
 in the suite; the failure is the measurement.
+
+### Held-out sets
+
+`registry-search-holdout.jsonl` and `gp-search-holdout.jsonl` were written and committed before the
+Phase 4 search tuning, and were not read while choosing synonyms, weights or toolbox priority. Report
+them next to the main suites: a change that lifts the main suite but not the held-out one is fitting
+the task wording, not improving search. Do not tune against them; write a fresh held-out set when
+they stop being unseen.
 
 ## Metrics
 

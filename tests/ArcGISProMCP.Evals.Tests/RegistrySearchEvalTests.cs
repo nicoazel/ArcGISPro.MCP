@@ -35,4 +35,28 @@ public sealed class RegistrySearchEvalTests
 
         EvalReporting.ReportAndCheck(result);
     }
+
+    [Fact]
+    public void E1_holdout_tasks_expect_registered_operations()
+    {
+        var ids = DescriptorFixtures.Load(EvalPaths.DescriptorFixture).Operations.Select(entry => entry.Id).ToHashSet(StringComparer.Ordinal);
+        var tasks = EvalTaskLoader.LoadJsonl(EvalPaths.Tasks("registry-search-holdout.jsonl"));
+
+        Assert.Equal(16, tasks.Length);
+        Assert.All(tasks, task => Assert.All(task.Expected, id => Assert.Contains(id, ids)));
+    }
+
+    /// <summary>Held-out tasks written before search tuning; never used to choose synonyms or weights.</summary>
+    [Fact]
+    public void E1_registry_search_holdout_holds_its_baseline()
+    {
+        var fixture = DescriptorFixtures.Load(EvalPaths.DescriptorFixture);
+        var registry = DescriptorFixtures.CreateRegistry(fixture);
+        var tasks = EvalTaskLoader.LoadJsonl(EvalPaths.Tasks("registry-search-holdout.jsonl"));
+
+        var result = EvalRunner.Run(Suite + "-holdout", $"OperationRegistry over {fixture.Operations.Length} add-in descriptors (source fixture)",
+            tasks, EvalSearches.Registry(registry));
+
+        EvalReporting.ReportAndCheck(result);
+    }
 }

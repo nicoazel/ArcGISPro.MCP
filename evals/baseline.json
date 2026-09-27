@@ -2,7 +2,9 @@
   "note": "Measured 2026-09-26, not aspirational. The eval tests fail when recall@5 drops more than 0.05 below these values. gp-search was measured against ArcGIS Pro 3.7.1.1904 system toolboxes (2210 tools). Raise a value only in a commit that shows the new scorecard.",
   "suites": {
     "registry-search": { "recall@1": 0.5, "recall@5": 0.8333, "mrr": 0.6128, "tasks": 30 },
+    "registry-search-holdout": { "recall@1": 0.8125, "recall@5": 0.9375, "mrr": 0.8563, "tasks": 16 },
     "gp-search": { "recall@1": 0.5333, "recall@5": 0.6667, "mrr": 0.5864, "tasks": 30 },
+    "gp-search-holdout": { "recall@1": 0.5, "recall@5": 0.6875, "mrr": 0.5589, "tasks": 16 },
     "gp-search-fixture": { "recall@1": 0.8, "recall@5": 1, "mrr": 0.9, "tasks": 5 }
   }
 }

@@ -1,0 +1,18 @@
+// Held-out E2 tasks: written before search tuning (p4/search-tuning) and never used to choose
+// synonyms, weights or toolbox priority. Report them next to gp-search; do not tune against them.
+{"id":"gph-01","group":"overlay","task":"erase the parts of the parcels that fall inside the floodplain","expected":["analysis.Erase","analysis.PairwiseErase"]}
+{"id":"gph-02","group":"overlay","task":"union two land cover layers so every piece is kept","expected":["analysis.Union"]}
+{"id":"gph-03","group":"overlay","task":"stitch adjacent polygons together into one outline","expected":["management.Dissolve","analysis.PairwiseDissolve","cartography.AggregatePolygons"]}
+{"id":"gph-04","group":"proximity","task":"rings at 1, 2 and 5 miles around each store","expected":["analysis.MultipleRingBuffer"]}
+{"id":"gph-05","group":"selection","task":"pull out the roads whose type is highway into a new feature class","expected":["analysis.Select","conversion.ExportFeatures"]}
+{"id":"gph-06","group":"table","task":"remove a column from a table","expected":["management.DeleteField"]}
+{"id":"gph-07","group":"table","task":"rename a field and change its alias","expected":["management.AlterField"]}
+{"id":"gph-08","group":"table","task":"turn x y coordinates in a CSV into points","expected":["management.XYTableToPoint"]}
+{"id":"gph-09","group":"data-management","task":"define the spatial reference of a shapefile that has none","expected":["management.DefineProjection"]}
+{"id":"gph-10","group":"data-management","task":"rename a dataset in the geodatabase","expected":["management.Rename"]}
+{"id":"gph-11","group":"data-management","task":"sort features by a field value","expected":["management.Sort"]}
+{"id":"gph-12","group":"data-management","task":"polygon centroids as points","expected":["management.FeatureToPoint"]}
+{"id":"gph-13","group":"conversion","task":"export a layer to a shapefile","expected":["conversion.FeatureClassToShapefile","conversion.ExportFeatures"]}
+{"id":"gph-14","group":"conversion","task":"turn a raster into polygons","expected":["conversion.RasterToPolygon"]}
+{"id":"gph-15","group":"raster","task":"reclassify land cover values into new classes","expected":["sa.Reclassify","3d.Reclassify"]}
+{"id":"gph-16","group":"raster","task":"stitch several rasters into one mosaic","expected":["management.MosaicToNewRaster","management.Mosaic"]}

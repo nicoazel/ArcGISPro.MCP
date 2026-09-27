@@ -37,6 +37,30 @@ public sealed class GpSearchEvalTests
     }
 
     [Fact]
+    public void E2_holdout_tasks_expect_installed_tools()
+    {
+        SkipWithoutPro();
+        var tasks = EvalTaskLoader.LoadJsonl(EvalPaths.Tasks("gp-search-holdout.jsonl"));
+
+        Assert.Equal(16, tasks.Length);
+        Assert.All(tasks, task => Assert.All(task.Expected, name =>
+            Assert.True(Installed.Value.Describe(name) is not null, $"{task.Id}: '{name}' is not an installed tool.")));
+    }
+
+    /// <summary>Held-out tasks written before search tuning; never used to choose synonyms, weights or toolbox priority.</summary>
+    [Fact]
+    public void E2_gp_search_holdout_on_installed_pro_holds_its_baseline()
+    {
+        SkipWithoutPro();
+        var tasks = EvalTaskLoader.LoadJsonl(EvalPaths.Tasks("gp-search-holdout.jsonl"));
+
+        var result = EvalRunner.Run("gp-search-holdout", $"ArcGIS Pro {ProVersion()} system toolboxes ({Installed.Value.ToolCount} tools)",
+            tasks, EvalSearches.Geoprocessing(Installed.Value));
+
+        EvalReporting.ReportAndCheck(result);
+    }
+
+    [Fact]
     public void E2_fixture_tasks_expect_fixture_tools()
     {
         var catalog = new ToolboxCatalog(EvalPaths.FixtureToolboxRoot);

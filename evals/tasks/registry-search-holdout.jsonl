@@ -1,0 +1,18 @@
+// Held-out E1 tasks: written before search tuning (p4/search-tuning) and never used to choose
+// synonyms or weights. Report them next to registry-search; do not tune against them.
+{"id":"rsh-01","group":"project-maps","task":"Open the Riverside.aprx project from the shared drive","expected":["project.open"]}
+{"id":"rsh-02","group":"project-maps","task":"Switch the basemap to a dark gray canvas","expected":["basemap.set"]}
+{"id":"rsh-03","group":"project-maps","task":"Make sure there is a 2D map named Site Plan","expected":["map.ensure"]}
+{"id":"rsh-04","group":"layers-cartography","task":"Hide the contours layer and lower its opacity","expected":["layer.set-appearance"]}
+{"id":"rsh-05","group":"layers-cartography","task":"Change the outline width and fill of the lakes symbol","expected":["symbology.set-simple"]}
+{"id":"rsh-06","group":"layers-cartography","task":"Turn on labels for the rivers layer","expected":["label.configure"]}
+{"id":"rsh-07","group":"layers-cartography","task":"Look for a hospital marker in the project's styles","expected":["style.search"],"filters":{"maxRisk":"ReadOnly"}}
+{"id":"rsh-08","group":"features-tables-metadata","task":"Deselect everything on the active map","expected":["map.clear-selection"]}
+{"id":"rsh-09","group":"features-tables-metadata","task":"Count the schools and sum their enrollment","expected":["table.statistics"]}
+{"id":"rsh-10","group":"features-tables-metadata","task":"Read the description and credits of the wetlands layer","expected":["metadata.get"],"filters":{"maxRisk":"ReadOnly"}}
+{"id":"rsh-11","group":"features-tables-metadata","task":"Move this manhole to a new location","expected":["feature.update"]}
+{"id":"rsh-12","group":"layouts-observation","task":"Which layouts exist in this project?","expected":["layout.list"]}
+{"id":"rsh-13","group":"layouts-observation","task":"Open the Council Exhibit layout view","expected":["layout.activate"]}
+{"id":"rsh-14","group":"layouts-observation","task":"Insert a map frame showing the Zoning map onto the page","expected":["layout.add-map-frame"]}
+{"id":"rsh-15","group":"layouts-observation","task":"Take a screenshot of the layout","expected":["view.capture"]}
+{"id":"rsh-16","group":"geoprocessing-arcpy","task":"Execute the approved python script against the project","expected":["arcpy.run-script"]}
