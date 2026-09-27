@@ -363,6 +363,7 @@ namespace ArcGISProMCP.AddIn.UI
             RequestedAtText = snapshot.RequestedAtText;
             ExpiresAtText = snapshot.ExpiresAtText;
             IsDeciding = snapshot.IsDeciding;
+            Warning = snapshot.Warning;
             ApproveCommand = new AsyncCommand(
                 token => resolve(Id, ApprovalDecision.ApproveOnce, token),
                 reportError,
@@ -384,6 +385,8 @@ namespace ArcGISProMCP.AddIn.UI
         public string RequestedAtText { get; }
         public string ExpiresAtText { get; }
         public bool IsDeciding { get; }
+        public string? Warning { get; }
+        public bool HasWarning => !string.IsNullOrWhiteSpace(Warning);
         public bool IsExpanded { get => _isExpanded; set => Set(ref _isExpanded, value); }
         public ICommand ApproveCommand { get; }
         public ICommand RejectCommand { get; }
