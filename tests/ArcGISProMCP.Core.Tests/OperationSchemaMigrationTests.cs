@@ -44,6 +44,8 @@ public sealed class OperationSchemaMigrationTests
         ["map.ensure"] = (MapOperationSchemas.EnsureInput, "MapOperationSchemas.EnsureInput"),
         ["map.activate"] = (MapOperationSchemas.ActivateInput, "MapOperationSchemas.ActivateInput"),
         ["map.clear-selection"] = (MapSelectionOperationSchemas.ClearSelectionInput, "MapSelectionOperationSchemas.ClearSelectionInput"),
+        ["metadata.get"] = (MetadataOperationSchemas.GetInput, "MetadataOperationSchemas.GetInput"),
+        ["metadata.update"] = (MetadataOperationSchemas.UpdateInput, "MetadataOperationSchemas.UpdateInput"),
     };
 
     [Fact]
