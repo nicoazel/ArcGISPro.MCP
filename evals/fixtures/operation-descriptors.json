@@ -196,9 +196,62 @@
       "source": "src/ArcGISProMCP.AddIn/Operations/FeatureOperations.cs"
     },
     {
+      "id": "gp.describe",
+      "title": "Describe geoprocessing tool",
+      "summary": "Describes one system geoprocessing tool from its toolbox metadata: parameters (data types, required/optional/derived, direction, defaults, domains such as coded values and ranges), the positional signature gp.run expects, environments, attributes and the risk tier with its reasons. Never runs the tool.",
+      "tags": [
+        "gp",
+        "geoprocessing",
+        "toolbox",
+        "parameters",
+        "signature",
+        "describe"
+      ],
+      "aliases": [
+        "tool parameters",
+        "tool help",
+        "tool syntax"
+      ],
+      "capabilities": [
+        "geoprocessing"
+      ],
+      "risk": "ReadOnly",
+      "domain": "gp",
+      "requiresConfirmation": false,
+      "executesUserCode": false,
+      "source": "src/ArcGISProMCP.AddIn/Operations/GeoprocessingCatalogOperations.cs"
+    },
+    {
+      "id": "gp.query",
+      "title": "Run read-only geoprocessing query",
+      "summary": "Runs one read-only system geoprocessing query tool (management.GetCount, management.GetRasterProperties, management.GetCellValue) without review and returns its result values and messages. Outputs are not added to the map, nothing is overwritten and nothing is written to geoprocessing history. Use gp.run for every other tool.",
+      "tags": [
+        "gp",
+        "geoprocessing",
+        "count",
+        "raster",
+        "query",
+        "read-only"
+      ],
+      "aliases": [
+        "get count",
+        "row count",
+        "raster properties",
+        "cell value"
+      ],
+      "capabilities": [
+        "geoprocessing"
+      ],
+      "risk": "ReadOnly",
+      "domain": "gp",
+      "requiresConfirmation": false,
+      "executesUserCode": false,
+      "source": "src/ArcGISProMCP.AddIn/Operations/GeoprocessingCatalogOperations.cs"
+    },
+    {
       "id": "gp.run",
       "title": "Run geoprocessing tool",
-      "summary": "Runs an ArcGIS geoprocessing tool by toolbox-qualified name with bounded ordered parameters, explicit environments, deterministic history/output flags, and complete result messages and derived values.",
+      "summary": "Runs an ArcGIS geoprocessing tool by toolbox-qualified name with bounded positional parameters (gp.describe \u0027signature\u0027 order), explicit environments, deterministic history/output flags, and complete result messages and derived values. Always requires review; autonomous mode refuses Destructive and UserCode tools. A dry run statically validates the parameters and reports the risk tier.",
       "tags": [
         "gp",
         "geoprocessing",
@@ -219,6 +272,32 @@
       "requiresConfirmation": true,
       "executesUserCode": true,
       "source": "src/ArcGISProMCP.AddIn/Operations/GeoprocessingOperations.cs"
+    },
+    {
+      "id": "gp.search",
+      "title": "Search geoprocessing tools",
+      "summary": "Searches the installed ArcGIS Pro system toolboxes by name, display name, keywords and summary. Returns execution names (alias.ToolName) for gp.describe and gp.run, with each tool\u0027s risk tier. Reads toolbox metadata only; never runs a tool.",
+      "tags": [
+        "gp",
+        "geoprocessing",
+        "toolbox",
+        "tool",
+        "search",
+        "discover"
+      ],
+      "aliases": [
+        "find tool",
+        "which tool",
+        "list tools"
+      ],
+      "capabilities": [
+        "geoprocessing"
+      ],
+      "risk": "ReadOnly",
+      "domain": "gp",
+      "requiresConfirmation": false,
+      "executesUserCode": false,
+      "source": "src/ArcGISProMCP.AddIn/Operations/GeoprocessingCatalogOperations.cs"
     },
     {
       "id": "label.configure",
