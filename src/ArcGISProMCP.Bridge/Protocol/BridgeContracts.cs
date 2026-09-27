@@ -150,7 +150,11 @@ public sealed record RegistryValidationResult(
 
 // registry.invoke returns ArcGISProMCP.Core.Operations.OperationResult unchanged.
 
-/// <summary>approval.request and approval.status</summary>
+/// <summary>
+/// approval.request and approval.status. <see cref="WaitNotice"/> is set when an approval.status
+/// wait was requested but the host was already holding its maximum number of waits, so the current
+/// status was returned immediately and the client should poll; older hosts never send it.
+/// </summary>
 public sealed record ApprovalStatusResult(
     string RequestId,
     string OperationId,
@@ -160,7 +164,8 @@ public sealed record ApprovalStatusResult(
     DateTimeOffset RequestedAt,
     DateTimeOffset ExpiresAt,
     string? ConfirmationToken,
-    string? Instructions);
+    string? Instructions,
+    string? WaitNotice = null);
 
 /// <summary>approval.cancel</summary>
 public sealed record ApprovalCancelResult(string RequestId, bool Cancelled);

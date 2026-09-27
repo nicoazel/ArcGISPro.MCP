@@ -168,6 +168,13 @@
                 "string",
                 "null"
               ]
+            },
+            "waitNotice": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
             }
           },
           "required": [
@@ -299,6 +306,13 @@
                 "string",
                 "null"
               ]
+            },
+            "waitNotice": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
             }
           },
           "required": [

@@ -17,10 +17,24 @@ internal sealed class ProBridgeRequestHandler(
     OperationContext baseContext,
     IWorkflowLibrary workflows,
     ProResourceStore resources,
-    BridgeAccessState access) : IBridgeRequestHandler, IDisposable
+    BridgeAccessState access,
+    TimeProvider? timeProvider = null) : IBridgeRequestHandler, IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = BridgeJson.Options;
     private const int MaximumApprovalWaitSeconds = 120;
+
+    /// <summary>
+    /// At most this many <c>approval.status</c> calls wait at once. Each waiting call holds one of the
+    /// pipe server's connection slots (eight, including the listener) for up to two minutes, so
+    /// unbounded waiters could starve every other bridge request.
+    /// </summary>
+    internal const int MaximumConcurrentApprovalWaits = 2;
+
+    internal const string ApprovalWaitUnavailableNotice =
+        "The host is already holding the maximum number of approval_status waits, so this call returned the current status immediately. Poll approval_status again after a short delay (with or without waitSeconds).";
+
+    private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
+    private readonly SemaphoreSlim _approvalWaiters = new(MaximumConcurrentApprovalWaits, MaximumConcurrentApprovalWaits);
     private readonly ConcurrentDictionary<string, IdempotencyEntry> _idempotency = new(StringComparer.Ordinal);
     private readonly Dictionary<string, WorkflowIdempotencyEntry> _workflowIdempotency = new(StringComparer.Ordinal);
     private readonly object _idempotencyGate = new();
@@ -228,7 +242,9 @@ internal sealed class ProBridgeRequestHandler(
     /// <summary>
     /// Returns the request's status. With <c>waitSeconds</c> (clamped to 0-120) a pending request is
     /// held until its state changes or the wait elapses, and the current status is returned either
-    /// way; waiting never decides anything. Other bridge requests keep running meanwhile.
+    /// way; waiting never decides anything. A waiting call occupies one pipe connection slot for its
+    /// whole duration, so at most <see cref="MaximumConcurrentApprovalWaits"/> calls wait at once;
+    /// further calls return the current status immediately with a notice asking the client to poll.
     /// </summary>
     private async Task<JsonElement> ApprovalStatusAsync(JsonElement parameters, CancellationToken cancellationToken)
     {
@@ -238,28 +254,43 @@ internal sealed class ProBridgeRequestHandler(
         var approval = GetApproval(approvals, requestId);
         if (waitSeconds == 0 || approval.State != ApprovalRequestState.Pending)
             return SerializeApproval(approval);
+        if (!await _approvalWaiters.WaitAsync(0, CancellationToken.None).ConfigureAwait(false))
+            return SerializeApproval(approval, ApprovalWaitUnavailableNotice);
+        try
+        {
+            return await WaitForApprovalChangeAsync(approvals, requestId, waitSeconds, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _approvalWaiters.Release();
+        }
+    }
 
+    private async Task<JsonElement> WaitForApprovalChangeAsync(
+        IApprovalService approvals, string requestId, int waitSeconds, CancellationToken cancellationToken)
+    {
         var changed = NewSignal();
         void OnChanged(object? sender, EventArgs args) => Volatile.Read(ref changed).TrySetResult();
         approvals.Changed += OnChanged;
         try
         {
-            using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, baseContext.ApplicationStopping);
-            wait.CancelAfter(TimeSpan.FromSeconds(waitSeconds));
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(waitSeconds), _time);
+            using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, baseContext.ApplicationStopping, timeout.Token);
             while (true)
             {
                 // Arm a fresh signal before reading the state, so a change that lands between the
                 // read and the await is never lost.
                 var signal = NewSignal();
                 Volatile.Write(ref changed, signal);
-                approval = GetApproval(approvals, requestId);
+                var approval = GetApproval(approvals, requestId);
                 if (approval.State != ApprovalRequestState.Pending)
                     return SerializeApproval(approval);
                 try
                 {
                     await signal.Task.WaitAsync(wait.Token).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested &&
+                catch (OperationCanceledException) when (timeout.IsCancellationRequested &&
+                                                         !cancellationToken.IsCancellationRequested &&
                                                          !baseContext.ApplicationStopping.IsCancellationRequested)
                 {
                     // The wait elapsed: report whatever the state is now (usually still pending).
@@ -285,7 +316,7 @@ internal sealed class ProBridgeRequestHandler(
         return JsonSerializer.SerializeToElement(new ApprovalCancelResult(requestId, Approvals.TryCancel(requestId)), JsonOptions);
     }
 
-    private static JsonElement SerializeApproval(ApprovalRequestSnapshot approval) => JsonSerializer.SerializeToElement(new ApprovalStatusResult(
+    private static JsonElement SerializeApproval(ApprovalRequestSnapshot approval, string? waitNotice = null) => JsonSerializer.SerializeToElement(new ApprovalStatusResult(
         approval.Id,
         approval.OperationId,
         approval.OperationVersion,
@@ -296,7 +327,8 @@ internal sealed class ProBridgeRequestHandler(
         approval.ConfirmationToken,
         approval.State == ApprovalRequestState.Pending
             ? "A person must approve or deny this exact request in the ArcGIS Pro MCP panel. Call approval_status again, optionally with waitSeconds (up to 120) to wait for the decision; there is no remote approval operation."
-            : null), JsonOptions);
+            : null,
+        waitNotice), JsonOptions);
 
     private async Task<JsonElement> ListWorkflowsAsync(CancellationToken cancellationToken)
     {
@@ -590,5 +622,9 @@ internal sealed class ProBridgeRequestHandler(
     private sealed record WorkflowIdempotencyEntry(string Fingerprint, Lazy<Task<JsonElement>> Result);
 
     // Owner must first stop accepting and drain the bridge before disposing its handler.
-    public void Dispose() => _executionGate.Dispose();
+    public void Dispose()
+    {
+        _executionGate.Dispose();
+        _approvalWaiters.Dispose();
+    }
 }

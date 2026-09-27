@@ -112,7 +112,7 @@ public sealed class KernelTools
     [McpServerTool(Name = "approval_status", Title = "Check local review",
         ReadOnly = true, Destructive = false, Idempotent = true, OpenWorld = false,
         UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<ApprovalStatusResult>))]
-    [Description("Returns pending, approved, denied, expired, cancelled or consumed. Only approved requests include a short-lived, single-use token. With waitSeconds, a pending request is held until a person decides or the wait elapses; the status is returned either way and waiting never approves anything. Unknown ids fail closed. This does not enable autonomous-control mode.")]
+    [Description("Returns pending, approved, denied, expired, cancelled or consumed. Only approved requests include a short-lived, single-use token. With waitSeconds, a pending request is held until a person decides or the wait elapses; the status is returned either way and waiting never approves anything. The host holds at most two waits at once; beyond that the status returns immediately with waitNotice set, so poll again. Unknown ids fail closed. This does not enable autonomous-control mode.")]
     public static Task<CallToolResult> ApprovalStatus(
         IBridgeClient bridge,
         [Description("Opaque id returned by approval_request.")] string requestId,

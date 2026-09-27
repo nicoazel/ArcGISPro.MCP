@@ -354,37 +354,87 @@ public sealed class HostHandlerTests
     [Fact]
     public async Task Approval_status_wait_returns_as_soon_as_a_person_decides()
     {
-        using var fixture = new Fixture(OperationRisk.Destructive);
-        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
-        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
-        var started = System.Diagnostics.Stopwatch.StartNew();
+        var time = new ManualTimeProvider();
+        using var fixture = new Fixture(OperationRisk.Destructive, time: time);
+        var requestId = await RequestApprovalAsync(fixture);
 
         var waiting = fixture.Call("approval.status", new { requestId, waitSeconds = 60 });
-        await Task.Delay(200, TestContext.Current.CancellationToken);
+        // The wait timer is created after the change subscription, so the waiter is armed now.
+        await time.WaitForTimersAsync(1).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.False(waiting.IsCompleted);
         Assert.True(fixture.Approvals.TryResolve(requestId, ApprovalResolution.ApproveOnce));
-        var status = await waiting;
+        var status = await waiting.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         Assert.True(status.Success, status.Error?.Message);
         Assert.Equal("approved", status.Result!.Value.GetProperty("status").GetString());
         Assert.False(string.IsNullOrEmpty(status.Result.Value.GetProperty("confirmationToken").GetString()));
-        Assert.True(started.Elapsed < TimeSpan.FromSeconds(30));
+        Assert.Equal(0, time.FiredCount);
     }
 
     [Fact]
     public async Task Approval_status_wait_reports_pending_when_the_wait_elapses()
     {
-        using var fixture = new Fixture(OperationRisk.Destructive);
-        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
-        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
-        var started = System.Diagnostics.Stopwatch.StartNew();
+        var time = new ManualTimeProvider();
+        using var fixture = new Fixture(OperationRisk.Destructive, time: time);
+        var requestId = await RequestApprovalAsync(fixture);
 
-        var status = await fixture.Call("approval.status", new { requestId, waitSeconds = 1 });
+        var waiting = fixture.Call("approval.status", new { requestId, waitSeconds = 30 });
+        await time.WaitForTimersAsync(1).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.False(waiting.IsCompleted);
+        Assert.Equal(TimeSpan.FromSeconds(30), Assert.Single(time.DueTimes));
+        time.FireAll();
+        var status = await waiting.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         Assert.True(status.Success, status.Error?.Message);
         Assert.Equal("pending", status.Result!.Value.GetProperty("status").GetString());
         Assert.Equal(JsonValueKind.Null, status.Result.Value.GetProperty("confirmationToken").ValueKind);
-        Assert.True(started.Elapsed >= TimeSpan.FromMilliseconds(900));
+        Assert.Equal(JsonValueKind.Null, status.Result.Value.GetProperty("waitNotice").ValueKind);
+    }
+
+    [Fact]
+    public async Task Approval_status_waits_are_bounded_so_they_cannot_starve_bridge_slots()
+    {
+        var time = new ManualTimeProvider();
+        using var fixture = new Fixture(OperationRisk.Destructive, time: time);
+        var requestId = await RequestApprovalAsync(fixture);
+        var limit = ProBridgeRequestHandler.MaximumConcurrentApprovalWaits;
+        Assert.Equal(2, limit);
+
+        var waiters = Enumerable.Range(0, limit)
+            .Select(_ => fixture.Call("approval.status", new { requestId, waitSeconds = 120 }))
+            .ToArray();
+        await time.WaitForTimersAsync(limit).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.All(waiters, waiter => Assert.False(waiter.IsCompleted));
+
+        // The third waiter does not take a slot: it gets the current status and a hint to poll.
+        var third = await fixture.Call("approval.status", new { requestId, waitSeconds = 120 })
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.True(third.Success, third.Error?.Message);
+        Assert.Equal("pending", third.Result!.Value.GetProperty("status").GetString());
+        Assert.Equal(ProBridgeRequestHandler.ApprovalWaitUnavailableNotice, third.Result.Value.GetProperty("waitNotice").GetString());
+        Assert.Equal(limit, time.DueTimes.Count);
+
+        // Cancelling while the waiters are held completes promptly and releases them.
+        var cancel = await fixture.Call("approval.cancel", new { requestId })
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.True(cancel.Result!.Value.GetProperty("cancelled").GetBoolean());
+        var released = await Task.WhenAll(waiters).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.All(released, status => Assert.Equal("cancelled", status.Result!.Value.GetProperty("status").GetString()));
+
+        // Released slots are reusable.
+        var next = await RequestApprovalAsync(fixture);
+        var reused = fixture.Call("approval.status", new { requestId = next, waitSeconds = 120 });
+        await time.WaitForTimersAsync(limit + 1).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.True(fixture.Approvals.TryCancel(next));
+        var reusedStatus = await reused.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Equal(JsonValueKind.Null, reusedStatus.Result!.Value.GetProperty("waitNotice").ValueKind);
+    }
+
+    private static async Task<string> RequestApprovalAsync(Fixture fixture)
+    {
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        Assert.True(pending.Success, pending.Error?.Message);
+        return pending.Result!.Value.GetProperty("requestId").GetString()!;
     }
 
     [Fact]
@@ -500,6 +550,75 @@ public sealed class HostHandlerTests
             .ToArray();
     }
 
+    /// <summary>A time provider whose timers only fire when the test says so.</summary>
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private readonly object _gate = new();
+        private readonly List<ManualTimer> _timers = [];
+        private readonly List<(int Count, TaskCompletionSource Signal)> _waiters = [];
+        private int _fired;
+
+        public int FiredCount => Volatile.Read(ref _fired);
+
+        public IReadOnlyList<TimeSpan> DueTimes
+        {
+            get { lock (_gate) return [.. _timers.Select(timer => timer.DueTime)]; }
+        }
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new ManualTimer(this, callback, state, dueTime);
+            lock (_gate)
+            {
+                _timers.Add(timer);
+                foreach (var waiter in _waiters.Where(waiter => _timers.Count >= waiter.Count).ToArray())
+                {
+                    waiter.Signal.TrySetResult();
+                    _waiters.Remove(waiter);
+                }
+            }
+            return timer;
+        }
+
+        /// <summary>Completes once at least <paramref name="count"/> timers have been created.</summary>
+        public Task WaitForTimersAsync(int count)
+        {
+            lock (_gate)
+            {
+                if (_timers.Count >= count) return Task.CompletedTask;
+                var signal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _waiters.Add((count, signal));
+                return signal.Task;
+            }
+        }
+
+        public void FireAll()
+        {
+            ManualTimer[] timers;
+            lock (_gate) timers = [.. _timers];
+            foreach (var timer in timers) timer.Fire();
+        }
+
+        private sealed class ManualTimer(ManualTimeProvider owner, TimerCallback callback, object? state, TimeSpan dueTime) : ITimer
+        {
+            private int _done;
+            public TimeSpan DueTime { get; } = dueTime;
+            public void Fire()
+            {
+                if (Interlocked.Exchange(ref _done, 1) != 0) return;
+                Interlocked.Increment(ref owner._fired);
+                callback(state);
+            }
+            public bool Change(TimeSpan dueTime, TimeSpan period) => Volatile.Read(ref _done) == 0;
+            public void Dispose() => Interlocked.Exchange(ref _done, 1);
+            public ValueTask DisposeAsync()
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+        }
+    }
+
     private sealed class Fixture : IDisposable
     {
         public ApprovalService Approvals { get; } = new();
@@ -518,7 +637,7 @@ public sealed class HostHandlerTests
         private readonly ProBridgeRequestHandler _handler;
         // Test files are isolated and intentionally retained for post-failure diagnosis.
         private readonly string _root = Path.Combine(Path.GetTempPath(), "ArcGISProMCP.Tests", Guid.NewGuid().ToString("N"));
-        public Fixture(OperationRisk risk, IWorkspaceStateProvider? workspace = null)
+        public Fixture(OperationRisk risk, IWorkspaceStateProvider? workspace = null, TimeProvider? time = null)
         {
             Operation = new(risk);
             var registry = new OperationRegistry();
@@ -529,7 +648,7 @@ public sealed class HostHandlerTests
             foreach (var gated in GatedOperations.Values) registry.Register(gated);
             Workflows = new FileWorkflowLibrary(WorkflowDirectory, registry);
             var context = new OperationContext(new Dispatcher(), workspace ?? new Workspace(), Approvals, new Audit(), "test", CancellationToken.None);
-            _handler = new ProBridgeRequestHandler(registry, context, Workflows, new ProResourceStore(Path.Combine(_root, "resources")), new BridgeAccessState());
+            _handler = new ProBridgeRequestHandler(registry, context, Workflows, new ProResourceStore(Path.Combine(_root, "resources")), new BridgeAccessState(), time);
         }
         public Task<BridgeResponse> Call(string method, object parameters) => CallWithToken(method, parameters, TestContext.Current.CancellationToken);
         public Task<BridgeResponse> CallWithToken(string method, object parameters, CancellationToken cancellationToken) => _handler.HandleAsync(
