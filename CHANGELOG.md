@@ -10,14 +10,40 @@ All notable changes to this project are documented here. The format is based on 
 - `CONTRIBUTING.md` with prerequisites, build, test and packaging commands, and pull request conventions.
 - This changelog and a public [roadmap](docs/ROADMAP.md).
 - Bundled workflows are embedded in `ArcGISProMCP.Core` and seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` on first load, so `workflow_list` is populated on a fresh install. Existing files are never overwritten.
+- Workflow operation allowlists: an optional `allowedOperations` list on workflows, enforced on save and run and reported as the validation issue `operation_not_allowed`. Operation descriptors gain `executesUserCode` (true for `gp.run` and `arcpy.run-script`).
+- `registry_search` accepts `capabilities` and `maxRisk` filters.
+- Approval cards show a "Runs user code" warning for `arcpy.*` runs and for `gp.run` requests that use a custom toolbox (`.pyt`/`.atbx`/`.tbx`) or a Python expression; matching `gp.run` results carry a `user_code_execution` notice.
+- Audit records gain `kind` (`operation` or `approval`), `autonomousBypass`, `decision` and `actor`. Unknown operation ids and every local approve/deny decision are now audited.
+- Audit log rotation: `operations.jsonl` rotates at 16 MiB and the newest five rotated files are kept.
 
 ### Changed
+
+- **Breaking:** `project.open`, `project.save` and `feature.update` now require a local-review approval token (or autonomous mode). Dockpane buttons that trigger them approve through the same audited approval queue.
+- **Breaking:** a workflow whose workspace revision changes mid-run now stops with `workspace_changed` (reporting `stoppedAtStep`, `stepIndex`, `expectedRevision`, `currentRevision`) instead of retrying the step against the new revision. `continueOnError` does not override this, and completed steps are not rolled back.
+- **Breaking:** saved workflows can no longer use `gp.run` or `arcpy.run-script` unless their `allowedOperations` lists them. When `allowedOperations` is present it is exhaustive.
+- **Breaking:** skill manifests without a non-empty `allowedOperations` are skipped when loading. The bundled master-cartography skill no longer lists `project.save`.
+- **Breaking:** `resource.read` payloads use camelCase field names (`mimeType`, `name`, `createdAt`) instead of PascalCase.
+- Registry search ignores articles and prepositions in queries.
+- Tool descriptions no longer over-promise: `registry_describe` does not claim output schemas, `registry_validate` is described as a schema and revision check that does not resolve layers or paths, and the `registry_search` limit is documented as 1–100 to match the registry clamp.
+- `JsonLineAuditLog` moved to `ArcGISProMCP.Core.Infrastructure`, and the Add-In resource store facade is renamed `ProResourceStore`.
+- The live feature/GP/ArcPy acceptance script documents that it requires autonomous mode and asserts the `autonomous_control` notice for `feature.update` and `project.save`.
 
 - One release status across all documentation: development preview; supported configuration is an interactive same-user workstation with dockpane approvals; autonomous mode is an opt-in expert setting, not recommended.
 - `docs/production-readiness.md` merged into `docs/deployment.md`, which now also covers the implemented surface, acceptance evidence and known limits. The 2026-09-09 live acceptance evidence is described as local only and not verifiable from the repository.
 - `docs/security.md` describes the implemented per-PID multi-instance discovery, states that `gp.run` can execute arbitrary Python (Python toolboxes, script tools, Calculate Field expressions) without ArcPy, and documents that workflows cannot execute confirmation-gated steps in default mode.
 - The release bundle no longer includes the roadmap in its `docs/` folder.
 - Bundled workflows are now version 1.1.0 and no longer end with `project.save`; save the project with an explicit, approved `project.save` call.
+
+### Fixed
+
+- Idempotent registry and workflow requests run under the host lifetime rather than the first caller's cancellation token, so cancelling one caller no longer cancels work another caller with the same key is waiting on.
+
+### Security
+
+- Confirmation now covers project replacement (`project.open`), project persistence (`project.save`) and attribute/geometry edits (`feature.update`).
+- Workflows can no longer silently adopt a newer workspace revision and continue writing against state nobody reviewed.
+- User-code operations are opt-in per workflow, and approvals that execute Python are visibly labelled.
+- Approval decisions, autonomous bypasses and unknown operation ids are recorded in the audit log.
 
 ### Removed
 
