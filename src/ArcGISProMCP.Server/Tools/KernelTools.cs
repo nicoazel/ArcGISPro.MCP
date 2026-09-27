@@ -20,7 +20,7 @@ public sealed class KernelTools
         IBridgeClient bridge,
         [Description("Natural-language intent such as 'make parcels transparent' or 'compose three map frames'.")] string query,
         [Description("Optional domain: project, map, layer, feature, table, metadata, basemap, style, symbology, label, layout, gp, arcpy, view, workspace, workflow.")] string? domain = null,
-        [Description("Maximum results from 1 to 50.")] int limit = 12,
+        [Description("Maximum results from 1 to 100; values outside the range are clamped.")] int limit = 12,
         [Description("Optional capabilities every result must require, e.g. ['maps'], ['layouts'], ['geoprocessing'], ['arcpy'], ['metadata'], ['visual-observations'].")] string[]? capabilities = null,
         [Description("Optional highest risk to include: ReadOnly, SafeWrite, Destructive or ExternalSideEffect. Use ReadOnly to find only operations that never change the project.")] string? maxRisk = null,
         CancellationToken cancellationToken = default) =>
@@ -36,7 +36,7 @@ public sealed class KernelTools
         CallAsync(bridge, "registry.browse", new { domain, limit }, cancellationToken);
 
     [McpServerTool(Name = "registry_describe", Title = "Describe an ArcGIS operation", ReadOnly = true, Destructive = false)]
-    [Description("Returns the complete descriptor for one registry id: JSON input schema, output schema where the operation declares one, required capabilities, examples, risk, confirmation requirement and related operations.")]
+    [Description("Returns the complete descriptor for one registry id: JSON input schema, required capabilities, examples, risk, confirmation requirement and related operations.")]
     public static Task<string> Describe(
         IBridgeClient bridge,
         [Description("Stable operation id returned by registry_search or registry_browse.")] string operationId,
