@@ -78,7 +78,19 @@ public sealed class FileWorkflowLibrary : IWorkflowLibrary, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!stepIds.Add(step.Id)) issues.Add(new("duplicate_step", $"Duplicate step id '{step.Id}'.", step.Id));
-            if (!_registry.TryGet(step.Operation, out _)) issues.Add(new("unknown_operation", $"Unknown operation '{step.Operation}'.", step.Id));
+            if (!_registry.TryGet(step.Operation, out var operation))
+            {
+                issues.Add(new("unknown_operation", $"Unknown operation '{step.Operation}'.", step.Id));
+            }
+            else if (!IsOperationAllowed(workflow, operation.Descriptor))
+            {
+                issues.Add(new(
+                    "operation_not_allowed",
+                    operation.Descriptor.ExecutesUserCode
+                        ? $"Operation '{operation.Descriptor.Id}' executes user code and must be listed explicitly in the workflow's allowedOperations."
+                        : $"Operation '{operation.Descriptor.Id}' is not listed in the workflow's allowedOperations.",
+                    step.Id));
+            }
             if (step.Arguments.ValueKind != JsonValueKind.Object) issues.Add(new("invalid_arguments", "Step arguments must be a JSON object.", step.Id));
         }
 
@@ -219,6 +231,17 @@ public sealed class FileWorkflowLibrary : IWorkflowLibrary, IDisposable
         }
 
         return value;
+    }
+
+    /// <summary>
+    /// A workflow without an allowlist may use any registered operation except those that execute
+    /// user code (gp.run, arcpy.run-script). When an allowlist is present it is exhaustive.
+    /// </summary>
+    private static bool IsOperationAllowed(WorkflowDefinition workflow, OperationDescriptor descriptor)
+    {
+        var allowed = workflow.AllowedOperations;
+        if (allowed is null) return !descriptor.ExecutesUserCode;
+        return allowed.Any(id => string.Equals(id, descriptor.Id, StringComparison.OrdinalIgnoreCase));
     }
 
     private static Version ParseVersion(string value) => Version.TryParse(value, out var version) ? version : new Version(0, 0);

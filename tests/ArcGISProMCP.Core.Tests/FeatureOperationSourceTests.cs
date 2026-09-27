@@ -68,6 +68,35 @@ public sealed class FeatureOperationSourceTests
         Assert.Contains("MCP delete one feature", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Update_is_single_target_and_confirmation_gated()
+    {
+        var descriptor = Descriptor(ReadSource(), "feature.update");
+
+        Assert.Contains("risk: OperationRisk.SafeWrite, requiresConfirmation: true", descriptor, StringComparison.Ordinal);
+        Assert.Contains("Updates exactly one feature", descriptor, StringComparison.Ordinal);
+        Assert.Contains("maxProperties", descriptor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Create_and_read_operations_do_not_require_confirmation()
+    {
+        var source = ReadSource();
+
+        foreach (var id in new[] { "feature.layer.describe", "feature.query", "feature.select", "feature.create" })
+            Assert.DoesNotContain("requiresConfirmation: true", Descriptor(source, id), StringComparison.Ordinal);
+    }
+
+    private static string Descriptor(string source, string id)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            source, $@"OperationDescriptor\.Create\(\s*""{System.Text.RegularExpressions.Regex.Escape(id)}""");
+        Assert.True(match.Success, $"Descriptor {id} not found.");
+        var start = match.Index;
+        var end = source.IndexOf("protected override", start, StringComparison.Ordinal);
+        return source[start..end];
+    }
+
     private static string ReadSource()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);

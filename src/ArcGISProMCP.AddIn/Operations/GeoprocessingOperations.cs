@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using ArcGIS.Desktop.Core.Geoprocessing;
+using ArcGISProMCP.Core.Execution;
 using ArcGISProMCP.Core.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
@@ -19,7 +20,8 @@ internal sealed class GeoprocessingRunOperation() : ProOperationBase(OperationDe
         "tool", "parameters"),
     risk: OperationRisk.ExternalSideEffect, requiresConfirmation: true, executionTarget: ExecutionTarget.Background, capabilities: ["geoprocessing"],
     tags: ["gp", "geoprocessing", "analysis", "data processing"], aliases: ["run tool", "spatial analysis", "buffer", "clip"],
-    examples: ["Run analysis.Buffer with input, output, and distance parameters."], related: ["layer.add", "view.capture"], typicalDuration: "seconds-to-hours"))
+    examples: ["Run analysis.Buffer with input, output, and distance parameters."], related: ["layer.add", "view.capture"], typicalDuration: "seconds-to-hours",
+    executesUserCode: true))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
@@ -58,16 +60,22 @@ internal sealed class GeoprocessingRunOperation() : ProOperationBase(OperationDe
             },
             messages = result.Messages.Select(message => new { type = message.Type.ToString(), message.Text, message.ErrorCode }).ToArray()
         });
+        OperationNotice[] userCodeNotice = UserCodeExecutionDetector.RunsUserCode(Descriptor, arguments)
+            ? [new OperationNotice(
+                UserCodeExecutionDetector.NoticeCode,
+                "This geoprocessing request executed user-supplied Python (custom toolbox or Python expression).",
+                "warning")]
+            : [];
         return result.IsFailed || result.IsCanceled
             ? OperationResult.Fail(result.IsCanceled ? "geoprocessing_cancelled" : "geoprocessing_failed",
                 result.ErrorMessages.FirstOrDefault()?.Text ?? $"Geoprocessing tool '{request.Tool}' did not complete.", snapshot.Revision) with
-            { Data = data }
+            { Data = data, Notices = [.. userCodeNotice] }
             : OperationResult.Ok(
                 data,
                 snapshot.Revision,
-                result.Messages
+                userCodeNotice.Concat(result.Messages
                     .Where(message => message.Type == GPMessageType.Warning)
-                    .Select(message => new OperationNotice("geoprocessing_warning", message.Text, "warning")));
+                    .Select(message => new OperationNotice("geoprocessing_warning", message.Text, "warning"))));
     }
 }
 

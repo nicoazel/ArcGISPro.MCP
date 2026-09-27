@@ -63,7 +63,21 @@ public sealed record OperationAuditEvent(
     string StartRevision,
     string EndRevision,
     string? ErrorCode,
-    string ArgumentsHash);
+    string ArgumentsHash,
+    string Kind = OperationAuditKinds.Operation,
+    bool AutonomousBypass = false,
+    string? Decision = null,
+    string? Actor = null);
+
+/// <summary>Audit record kinds written to the operation audit log.</summary>
+public static class OperationAuditKinds
+{
+    /// <summary>An operation invocation (including rejected and unknown operation ids).</summary>
+    public const string Operation = "operation";
+
+    /// <summary>A local approval decision; <see cref="OperationAuditEvent.Decision"/> is "approved" or "denied".</summary>
+    public const string Approval = "approval";
+}
 
 public sealed record OperationContext(
     IOperationDispatcher Dispatcher,

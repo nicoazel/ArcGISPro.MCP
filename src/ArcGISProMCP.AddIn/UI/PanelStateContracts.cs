@@ -103,7 +103,8 @@ internal sealed record ApprovalSnapshot(
     ApprovalRisk Risk,
     string RequestedAtText,
     string ExpiresAtText,
-    bool IsDeciding);
+    bool IsDeciding,
+    string? Warning = null);
 
 internal sealed record VisualEvidenceSnapshot(
     string? ImagePath,

@@ -10,6 +10,9 @@ public sealed class GeoprocessingOperationSourceTests
         Assert.Contains("\"gp.run\"", source, StringComparison.Ordinal);
         Assert.Contains("OperationRisk.ExternalSideEffect", source, StringComparison.Ordinal);
         Assert.Contains("requiresConfirmation: true", source, StringComparison.Ordinal);
+        Assert.Contains("executesUserCode: true", source, StringComparison.Ordinal);
+        Assert.Contains("UserCodeExecutionDetector.RunsUserCode(Descriptor, arguments)", source, StringComparison.Ordinal);
+        Assert.Contains("UserCodeExecutionDetector.NoticeCode", source, StringComparison.Ordinal);
         Assert.Contains("MaximumParameterCount = 256", source, StringComparison.Ordinal);
         Assert.Contains("MaximumEnvironmentCount = 128", source, StringComparison.Ordinal);
         Assert.Contains("MaximumValueLength = 32_768", source, StringComparison.Ordinal);

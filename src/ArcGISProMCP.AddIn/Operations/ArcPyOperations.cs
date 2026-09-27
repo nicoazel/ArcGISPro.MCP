@@ -65,7 +65,8 @@ internal sealed class ArcPyRunScriptOperation(
     aliases: ["run arcpy script", "execute python script"],
     examples: ["Run analysis.py after obtaining its SHA-256 and approving the exact path, hash, arguments, and workspace revision."],
     related: ["gp.run"],
-    typicalDuration: "seconds-to-minutes"))
+    typicalDuration: "seconds-to-minutes",
+    executesUserCode: true))
 {
     private readonly ArcPyProcessRunner _runner = runner ?? new ArcPyProcessRunner();
 

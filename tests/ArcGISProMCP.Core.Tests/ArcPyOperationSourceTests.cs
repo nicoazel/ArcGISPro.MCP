@@ -12,6 +12,7 @@ public sealed class ArcPyOperationSourceTests
         Assert.Contains("OperationRisk.ExternalSideEffect", operation, StringComparison.Ordinal);
         Assert.Contains("requiresConfirmation: true", operation, StringComparison.Ordinal);
         Assert.Contains("ExecutionTarget.ExternalWorker", operation, StringComparison.Ordinal);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(operation, "executesUserCode: true"));
         Assert.Contains("\"scriptSha256\"", operation, StringComparison.Ordinal);
         Assert.Contains("\"timeoutSeconds\"", operation, StringComparison.Ordinal);
         Assert.Contains("stdoutTruncated", operation, StringComparison.Ordinal);

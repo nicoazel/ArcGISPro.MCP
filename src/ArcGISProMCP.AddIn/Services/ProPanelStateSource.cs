@@ -6,6 +6,7 @@ using System.Text.Json;
 using ArcGISProMCP.AddIn.UI;
 using ArcGISProMCP.Bridge.Protocol;
 using ArcGISProMCP.Core.Approvals;
+using ArcGISProMCP.Core.Execution;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Workflows;
 using Microsoft.Win32;
@@ -125,21 +126,23 @@ internal sealed class ProPanelStateSource(
     public Task ActivateLayoutAsync(string layoutId, CancellationToken cancellationToken) =>
         RunOperationAsync("layout.activate", new { layout = layoutId }, cancellationToken);
 
-    public Task ResolveApprovalAsync(string approvalId, ApprovalDecision decision, CancellationToken cancellationToken)
+    public async Task ResolveApprovalAsync(string approvalId, ApprovalDecision decision, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var approvals = _approvals ?? throw new InvalidOperationException("The local approval service is unavailable.");
         var resolution = decision == ApprovalDecision.ApproveOnce
             ? ApprovalResolution.ApproveOnce
             : ApprovalResolution.Deny;
+        var request = approvals.GetStatus(approvalId);
         if (!approvals.TryResolve(approvalId, resolution))
             throw new InvalidOperationException("This approval request is no longer pending. Refresh before deciding.");
 
+        if (request is not null)
+            await WriteApprovalAuditAsync(request, resolution, "panel-card").ConfigureAwait(false);
         AddActivity(
             decision == ApprovalDecision.ApproveOnce ? ActivityLevel.Success : ActivityLevel.Warning,
             decision == ApprovalDecision.ApproveOnce ? "Approved once" : "Request denied",
             $"Approval request {approvalId} was resolved locally.");
-        return Task.CompletedTask;
     }
 
     public async Task CaptureVisualAsync(CancellationToken cancellationToken)
@@ -226,21 +229,95 @@ internal sealed class ProPanelStateSource(
     private async Task RunOperationAsync(string id, object arguments, CancellationToken cancellationToken)
     {
         var workspace = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        var result = await ExecuteAsync(id, JsonSerializer.SerializeToElement(arguments), workspace.Revision, cancellationToken).ConfigureAwait(false);
+        var argumentElement = JsonSerializer.SerializeToElement(arguments);
+        var approval = await SelfApprovePanelRequestAsync(id, argumentElement, workspace).ConfigureAwait(false);
+        OperationResult result;
+        try
+        {
+            result = await ExecuteAsync(id, argumentElement, workspace.Revision, cancellationToken, approval?.ConfirmationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            // Never leave an unconsumed panel token behind (for example after a revision race).
+            if (approval is not null) _approvals?.TryCancel(approval.Id);
+        }
         if (!result.Success) throw new InvalidOperationException(result.Message ?? result.ErrorCode ?? $"Operation '{id}' failed.");
         AddActivity(ActivityLevel.Success, id, result.Message ?? "Completed");
         await RefreshAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// A dockpane button click is itself the human approval. Route it through the same approval
+    /// queue as MCP requests so the executor validates a real single-use token bound to these exact
+    /// arguments and revision, and so the decision is audited like any other approval.
+    /// </summary>
+    private async Task<ApprovalRequestSnapshot?> SelfApprovePanelRequestAsync(
+        string id,
+        JsonElement arguments,
+        Core.Workspaces.WorkspaceSnapshot workspace)
+    {
+        var registry = ArcGISProMcpModule.Instance?.Registry;
+        if (registry is null || !registry.TryGet(id, out var operation)) return null;
+        var descriptor = operation.Descriptor;
+        if (!descriptor.RequiresConfirmation &&
+            descriptor.Risk is not (OperationRisk.Destructive or OperationRisk.ExternalSideEffect))
+            return null;
+
+        var approvals = _approvals ?? throw new InvalidOperationException("The local approval service is unavailable.");
+        var request = approvals.Request(descriptor, arguments, workspace);
+        if (!approvals.TryResolve(request.Id, ApprovalResolution.ApproveOnce))
+            throw new InvalidOperationException($"Could not approve the panel request for '{id}'.");
+        await WriteApprovalAuditAsync(request, ApprovalResolution.ApproveOnce, "panel-action").ConfigureAwait(false);
+        return approvals.GetStatus(request.Id) is { ConfirmationToken: not null } approved
+            ? approved
+            : throw new InvalidOperationException($"The panel approval for '{id}' expired before it could be used.");
+    }
+
+    /// <summary>
+    /// Records every local approval decision. A failed audit write is surfaced in the activity feed
+    /// but does not undo the person's decision.
+    /// </summary>
+    private async Task WriteApprovalAuditAsync(ApprovalRequestSnapshot request, ApprovalResolution resolution, string actor)
+    {
+        var now = DateTimeOffset.UtcNow;
+        try
+        {
+            await context.Audit.WriteAsync(new OperationAuditEvent(
+                request.Id,
+                request.OperationId,
+                request.OperationVersion,
+                request.RequestedAt,
+                now,
+                true,
+                request.WorkspaceRevision,
+                request.WorkspaceRevision,
+                null,
+                ArgumentsHash(request.Arguments),
+                Kind: OperationAuditKinds.Approval,
+                Decision: resolution == ApprovalResolution.ApproveOnce ? "approved" : "denied",
+                Actor: actor), CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ObjectDisposedException)
+        {
+            Trace.TraceError("Approval audit write failed: {0}", exception);
+            AddActivity(ActivityLevel.Warning, "Audit write failed", $"Approval {request.Id} was decided but could not be written to the audit log.");
+        }
+    }
+
+    private static string ArgumentsHash(JsonElement arguments) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(arguments.GetRawText())));
+
     private async Task<OperationResult> ExecuteAsync(
         string id,
         JsonElement arguments,
         string revision,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? confirmationToken = null)
     {
         var result = await CallBridgeAsync(
             "registry.invoke",
-            new { operationId = id, arguments, expectedRevision = revision },
+            new { operationId = id, arguments, expectedRevision = revision, confirmationToken },
             cancellationToken).ConfigureAwait(false);
         return result.Deserialize<OperationResult>(JsonOptions)
             ?? throw new InvalidOperationException($"Operation '{id}' returned an invalid result.");
@@ -282,8 +359,17 @@ internal sealed class ProPanelStateSource(
                 approval.Risk == OperationRisk.SafeWrite ? ApprovalRisk.Moderate : ApprovalRisk.High,
                 $"Requested {approval.RequestedAt.ToLocalTime():g}",
                 $"Expires {approval.ExpiresAt.ToLocalTime():g}",
-                false))
+                false,
+                UserCodeWarning(approval)))
             .ToArray();
+    }
+
+    private static string? UserCodeWarning(ApprovalRequestSnapshot approval)
+    {
+        var registry = ArcGISProMcpModule.Instance?.Registry;
+        return registry is not null && registry.TryGet(approval.OperationId, out var operation)
+            ? UserCodeExecutionDetector.GetWarning(operation.Descriptor, approval.Arguments)
+            : null;
     }
 
     private void EnsureApprovalSubscription()

@@ -35,7 +35,8 @@ public sealed record OperationDescriptor(
     ImmutableArray<string> RelatedOperations,
     bool RequiresConfirmation = false,
     bool Undoable = false,
-    string? TypicalDuration = null)
+    string? TypicalDuration = null,
+    bool ExecutesUserCode = false)
 {
     public static OperationDescriptor Create(
         string id,
@@ -53,7 +54,8 @@ public sealed record OperationDescriptor(
         bool undoable = false,
         string version = "1.0.0",
         JsonElement? outputSchema = null,
-        string? typicalDuration = null) =>
+        string? typicalDuration = null,
+        bool executesUserCode = false) =>
         new(
             id,
             version,
@@ -70,7 +72,8 @@ public sealed record OperationDescriptor(
             (related ?? []).ToImmutableArray(),
             requiresConfirmation,
             undoable,
-            typicalDuration);
+            typicalDuration,
+            executesUserCode);
 }
 
 public sealed record OperationRequest(

@@ -38,8 +38,8 @@ The add-in registers these operations. Risk determines the gate each one passes 
 | Id | Risk | Does |
 | --- | --- | --- |
 | `project.get` | ReadOnly | Project identity, path, dirty state, and revision. |
-| `project.open` | SafeWrite | Opens an existing `.aprx`. |
-| `project.save` | SafeWrite | Saves the current project. |
+| `project.open` | SafeWrite + **approval** | Opens an existing `.aprx`, replacing the current project. |
+| `project.save` | SafeWrite + **approval** | Saves the current project to disk. |
 | `map.list` | ReadOnly | Every map and scene, with handles, view state, type, and layer counts. |
 | `map.ensure` | SafeWrite | Returns a named map, or creates it as 2D/3D with the requested basemap. |
 | `map.activate` | SafeWrite | Opens or activates a map view. |
@@ -67,7 +67,7 @@ The add-in registers these operations. Risk determines the gate each one passes 
 | `feature.query` | ReadOnly | Bounded query with a safe where clause and an optional spatial envelope. |
 | `feature.select` | SafeWrite | Replaces or adds to a selection from a bounded query. |
 | `feature.create` | SafeWrite | Creates one point, single-part polyline, or single-part polygon. |
-| `feature.update` | SafeWrite | Updates one feature, addressed by ObjectID or GlobalID. |
+| `feature.update` | SafeWrite + **approval** | Updates one feature, addressed by ObjectID or GlobalID. |
 | `feature.delete` | **Destructive** | Deletes exactly one feature by stable id. There is intentionally no where-clause delete. |
 | `table.query` | ReadOnly | Bounded attribute rows plus schema metadata. |
 | `table.statistics` | ReadOnly | Count, null count, min, max, sum, and mean for one numeric field. |

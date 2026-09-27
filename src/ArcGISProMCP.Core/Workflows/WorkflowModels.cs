@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ArcGISProMCP.Core.Workflows;
 
@@ -25,7 +26,9 @@ public sealed record WorkflowDefinition(
     ImmutableHashSet<string> RequiredCapabilities,
     ImmutableArray<WorkflowParameter> Parameters,
     ImmutableArray<WorkflowStep> Steps,
-    string? ContentHash = null);
+    string? ContentHash = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    ImmutableHashSet<string>? AllowedOperations = null);
 
 public sealed record WorkflowParameter(
     string Name,

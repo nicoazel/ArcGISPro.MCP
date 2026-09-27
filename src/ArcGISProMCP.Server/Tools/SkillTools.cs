@@ -48,7 +48,15 @@ public sealed class SkillTools
         {
             await using var stream = File.OpenRead(path);
             var skill = await JsonSerializer.DeserializeAsync<SkillManifest>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
-            if (skill is not null) skills.Add(skill);
+            if (skill is null) continue;
+            // A skill must declare an explicit, nonempty operation allowlist; manifests that
+            // omit it would read as "anything goes" and are not exposed.
+            if (skill.AllowedOperations is null || skill.AllowedOperations.IsEmpty)
+            {
+                System.Diagnostics.Trace.TraceWarning("Skipping skill manifest '{0}': allowedOperations is missing or empty.", path);
+                continue;
+            }
+            skills.Add(skill);
         }
         return skills;
     }
