@@ -18,6 +18,7 @@ All notable changes to this project are documented here. The format is based on 
 - MCP resources: `arcgis://project/state` plus templates for operations, workflows (`id@version`), skills and observation handles.
 - MCP prompts: one per bundled skill (`skill.<id>`) and, while ArcGIS Pro is running, one per saved workflow (`run.<id>`) with arguments from the workflow parameters.
 - `tests/ArcGISProMCP.Server.Tests`: in-process MCP client/server harness with a scriptable fake bridge and `tools/list`, `resources/list` and `prompts/list` snapshots (`UPDATE_SNAPSHOTS=1` regenerates them).
+- Draft MCP registry packaging: `dotnet pack` on `ArcGISProMCP.Server` now produces the `ArcGISProMCP.Gateway` NuGet dotnet tool (package type `McpServer`, command `arcgis-pro-mcp`) with `.mcp/server.json` for `io.github.nicoazel/arcgis-pro-mcp` and the bundled skills. `tools/pack-gateway.ps1` packs into `artifacts/packages` and verifies the package; nothing is published. The single-file release bundle is unchanged. See [deployment](docs/deployment.md#mcp-registry-package).
 
 ### Changed
 
