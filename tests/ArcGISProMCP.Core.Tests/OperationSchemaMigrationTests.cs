@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using ArcGISProMCP.AddIn.Operations;
 
 namespace ArcGISProMCP.Core.Tests;
 
@@ -18,6 +19,8 @@ public sealed class OperationSchemaMigrationTests
     /// </summary>
     private static readonly Dictionary<string, (JsonElement Schema, string Reference)> Migrated = new(StringComparer.Ordinal)
     {
+        ["arcpy.inspect-script"] = (ArcPyOperationSchemas.InspectScriptInput, "ArcPyOperationSchemas.InspectScriptInput"),
+        ["arcpy.run-script"] = (ArcPyOperationSchemas.RunScriptInput, "ArcPyOperationSchemas.RunScriptInput"),
     };
 
     [Fact]
