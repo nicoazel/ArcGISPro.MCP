@@ -2,21 +2,112 @@ name: Build and test
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
 jobs:
-  windows:
+  build-test:
+    name: Build and test (Windows)
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.x'
-      - shell: pwsh
+      - name: Build
+        shell: pwsh
+        run: dotnet build ArcGISPro.MCP.slnx -c Release
+      - name: Test
+        shell: pwsh
+        run: |
+          $results = Join-Path $env:GITHUB_WORKSPACE 'artifacts/test-results'
+          $failed = @()
+          foreach ($project in @('ArcGISProMCP.Core.Tests', 'ArcGISProMCP.Bridge.Tests', 'ArcGISProMCP.Server.Tests')) {
+            dotnet test "tests/$project" -c Release --no-build --logger "trx;LogFileName=$project.trx" --results-directory $results
+            if ($LASTEXITCODE -ne 0) { $failed += $project }
+          }
+          if ($failed.Count -gt 0) { throw "Tests failed: $($failed -join ', ')" }
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-results
+          path: artifacts/test-results/*.trx
+          if-no-files-found: warn
+          retention-days: 7
+
+  package:
+    name: Package development preview
+    needs: build-test
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Package release bundle
+        shell: pwsh
         run: ./tools/package-release.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: arcgis-pro-mcp-development-preview
           path: artifacts/releases/ArcGISProMCP-*-win-x64-development-preview.zip
           if-no-files-found: error
           retention-days: 7
+
+  lint:
+    name: Lint scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser -Force
+          # tools/test-mcp.ps1 is owned by another change set; only its unused-variable
+          # warnings are excluded here until that script is cleaned up.
+          $excludedRules = @{
+            'test-mcp.ps1' = @('PSUseDeclaredVarsMoreThanAssignments')
+          }
+          $findings = foreach ($script in Get-ChildItem -Path tools -Filter *.ps1 -File) {
+            $analyzerArgs = @{ Path = $script.FullName; Settings = './PSScriptAnalyzerSettings.psd1' }
+            if ($excludedRules.ContainsKey($script.Name)) { $analyzerArgs.ExcludeRule = $excludedRules[$script.Name] }
+            Invoke-ScriptAnalyzer @analyzerArgs
+          }
+          foreach ($finding in $findings) {
+            $file = [IO.Path]::GetRelativePath($env:GITHUB_WORKSPACE, $finding.ScriptPath)
+            Write-Output "::error file=$file,line=$($finding.Line),col=$($finding.Column),title=$($finding.RuleName)::$($finding.Message)"
+          }
+          if (@($findings).Count -gt 0) { throw "PSScriptAnalyzer reported $(@($findings).Count) finding(s)." }
+      - name: ruff check
+        uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
+        with:
+          version: '0.16.9'
+          args: check
+          src: tools
+      - name: ruff format
+        uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
+        with:
+          version: '0.16.9'
+          args: format --check --diff
+          src: tools
