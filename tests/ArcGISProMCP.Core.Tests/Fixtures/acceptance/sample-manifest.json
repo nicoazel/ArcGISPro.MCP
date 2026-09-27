@@ -1,0 +1,102 @@
+{
+    "schemaVersion": 1,
+    "date": "2026-09-26",
+    "generatedAtUtc": "2026-09-26T21:14:34.9133488Z",
+    "sha": "059d0cb26a47bbcacad8789b1b3280cd5cab2cbc",
+    "dirty": false,
+    "describe": "v0.2.0-65-g059d0cb",
+    "version": "0.2.0",
+    "dotnet": "10.0.400",
+    "powershell": "5.1.26100.9549",
+    "operator": "fixture",
+    "pro": {
+        "installDir": "C:\\Program Files\\ArcGIS\\Pro\\",
+        "realVersion": "3.7.0",
+        "exeProductVersion": "3.7.1.1904",
+        "runningProcessIds": [59932],
+        "addInId": "{D48E59D8-23D2-44C1-B3E2-39196360DA7A}",
+        "hostProcessId": 59932,
+        "operationCount": 37
+    },
+    "dlls": {
+        "built": [
+            { "name": "ArcGISProMCP.AddIn.dll", "sha256": "42c53e716ba363dd4a5995aba7680a42809b2d7431f7ca0f88bad714798e7281" },
+            { "name": "ArcGISProMCP.Bridge.dll", "sha256": "ec046c3c1c166b1803e5f4906c0427c93c47cc4cd91efd4665630368ae7e130a" },
+            { "name": "ArcGISProMCP.Core.dll", "sha256": "c4cc9c0955d9f72145d30045d0ae3ce49d8c77a1dbe44f8546f4dcc872a0f0da" }
+        ],
+        "loaded": [
+            { "name": "ArcGISProMCP.AddIn.dll", "sha256": "42c53e716ba363dd4a5995aba7680a42809b2d7431f7ca0f88bad714798e7281" },
+            { "name": "ArcGISProMCP.Bridge.dll", "sha256": "ec046c3c1c166b1803e5f4906c0427c93c47cc4cd91efd4665630368ae7e130a" },
+            { "name": "ArcGISProMCP.Core.dll", "sha256": "c4cc9c0955d9f72145d30045d0ae3ce49d8c77a1dbe44f8546f4dcc872a0f0da" }
+        ]
+    },
+    "sections": [
+        {
+            "name": "preflight",
+            "status": "passed",
+            "mutatesProject": false,
+            "requiresAutonomousMode": false,
+            "startedAtUtc": "2026-09-26T21:10:31.4047085Z",
+            "durationSeconds": 0,
+            "detail": "sha 059d0cb, dirty=False, version 0.2.0, dotnet 10.0.400",
+            "evidence": ["preflight.json"]
+        },
+        {
+            "name": "verify",
+            "status": "passed",
+            "mutatesProject": false,
+            "requiresAutonomousMode": false,
+            "startedAtUtc": "2026-09-26T21:10:31.4222606Z",
+            "durationSeconds": 184.512,
+            "detail": "Release build, Core/Bridge/Server tests, diff check and package contents passed",
+            "evidence": ["logs/verify.stdout.log"]
+        },
+        {
+            "name": "pro-install",
+            "status": "passed",
+            "mutatesProject": false,
+            "requiresAutonomousMode": false,
+            "startedAtUtc": "2026-09-26T21:13:36.0100000Z",
+            "durationSeconds": 0.029,
+            "detail": "ArcGIS Pro 3.7.0 (3.7.1.1904); 3 add-in DLLs match the package",
+            "evidence": []
+        },
+        {
+            "name": "host-probe",
+            "status": "passed",
+            "mutatesProject": false,
+            "requiresAutonomousMode": false,
+            "startedAtUtc": "2026-09-26T21:13:36.1000000Z",
+            "durationSeconds": 1.402,
+            "detail": "pid 59932, 37 operations, autonomousMode=True, project D:\\scratch\\mcp-acceptance\\Acceptance.aprx",
+            "evidence": ["host-probe/state.json"]
+        },
+        {
+            "name": "smoke",
+            "status": "passed",
+            "mutatesProject": false,
+            "requiresAutonomousMode": false,
+            "startedAtUtc": "2026-09-26T21:13:37.6000000Z",
+            "durationSeconds": 6.25,
+            "detail": "protocol 2025-11-25, 16 tools, pendingCancelReview=True, imageBlock=False",
+            "evidence": ["smoke/result.json"]
+        },
+        {
+            "name": "feature-gp-arcpy",
+            "status": "passed",
+            "mutatesProject": true,
+            "requiresAutonomousMode": true,
+            "startedAtUtc": "2026-09-26T21:13:44.0000000Z",
+            "durationSeconds": 212.8,
+            "detail": "ArcPy 3.7; feature CRUD, metadata, 10 buffer runs; autonomous mode",
+            "evidence": ["feature-gp-arcpy/evidence"]
+        }
+    ],
+    "autonomousMode": true,
+    "allPassed": true,
+    "package": {
+        "path": "artifacts/ArcGISProMCP.AddIn.esriAddinX",
+        "sha256": "5f0c2d5e1d0b8f7a6c3e4b2a1908f7e6d5c4b3a291807f6e5d4c3b2a19087f6e"
+    },
+    "evidence": ["host-probe/state.json", "smoke/result.json", "audit.jsonl"]
+}

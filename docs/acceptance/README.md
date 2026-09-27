@@ -1,0 +1,64 @@
+# Acceptance evidence
+
+This folder holds committed live acceptance evidence. Each entry records one run of the exact package built from one commit, installed and loaded in ArcGIS Pro on the maintainer's workstation.
+
+**Only the maintainer, running ArcGIS Pro with the exact installed package, produces entries here.** Contributors and CI do not, and an entry is never written by hand. Portable tests, `-PlanOnly` output and working evidence under `artifacts/` are not acceptance evidence.
+
+## Folder contract
+
+One folder per run, named `<yyyy-MM-dd>-<sha7>` (local date of the run, first seven characters of the commit SHA):
+
+| File | Contents |
+|---|---|
+| `manifest.json` | Machine-readable record: `schemaVersion`, `date`, `sha`, `dirty`, `describe`, `tag` (when HEAD is tagged), `version`, `dotnet`, `operator`, `pro` (install dir, registry and `ArcGISPro.exe` versions, running PIDs, host PID, operation count, add-in id), `package` (path and SHA-256 of the `.esriAddinX`), `dlls.built` / `dlls.loaded` (SHA-256 of the add-in DLLs in the package and in Pro's `AssemblyCache`), `sections[]` (each step's status, whether it mutates the project or requires autonomous mode, timing, detail, evidence paths), `autonomousMode`, `allPassed`, `evidence[]` |
+| `summary.md` | Human-readable record, split into implemented, portable-tested, live-tested, visually inspected, and blocked or not run |
+| `SHA256SUMS` | `<sha256>  <relative path>` for every other file in the folder, sorted, LF line endings |
+| `host-probe/state.json` | `system.get_state` snapshot taken before the live sections |
+| `smoke/result.json` | `tools/test-mcp.ps1` result (protocol, tool count, approval probe, image block) |
+| `feature-gp-arcpy/*.json` | Request/result pairs and `summary.json` from `tools/run-live-feature-gp-arcpy.ps1`, when that section ran |
+| `stress/summary.json` | `tools/run-urban-stress.ps1` summary, when that section ran |
+| `audit.jsonl` | Audit records appended during the run (`%LOCALAPPDATA%\ArcGISProMCP\audit\operations.jsonl`) |
+| `images/*.png` | At most five PNGs of at most 500 KB each: final layout captures from the stress run and operator screenshots (`-Screenshot`) |
+
+JSON files larger than 1 MB are left out and listed in `manifest.json` `evidenceSkipped`.
+
+`tests/ArcGISProMCP.Core.Tests/AcceptanceManifestTests.cs` checks every folder: the manifest must match the schema, the tree must have been clean, every selected step must have passed (including `verify`, `pro-install` and `host-probe`), every built DLL hash must equal the loaded one, `autonomousMode` must be true if an autonomous-mode section passed, the folder name must match `date` and `sha`, and `SHA256SUMS` must list every file with the correct hash. `.gitattributes` here stores the folders byte-for-byte so the checksums survive checkout on any platform.
+
+## Producing an entry
+
+Prerequisites: Windows PowerShell 5.1 or PowerShell 7 to run the script, PowerShell 7 (`pwsh`) on `PATH` for the harnesses it invokes, the .NET SDK from `global.json`, and ArcGIS Pro with the package built from a clean checkout of the commit being recorded.
+
+1. Check the plan and the non-Pro facts. This builds nothing, contacts no ArcGIS Pro and writes nothing:
+
+   ```powershell
+   ./tools/run-acceptance.ps1 -PlanOnly
+   ```
+
+2. Build and package: `./tools/verify-release.ps1` (the script runs it again, but the package has to exist before you install it). Close ArcGIS Pro, install `artifacts/ArcGISProMCP.AddIn.esriAddinX`, and open a **disposable copy** of a project stored under a scratch folder such as `D:\scratch\mcp-acceptance`.
+
+3. Run the read-only smoke pass. It builds, tests and packages the commit again, confirms that the DLLs Pro loaded match the package, snapshots the state and runs `test-mcp.ps1 -ApprovalProbe`. The approval probe shows one pending review card in the dockpane and cancels it. Nothing is approved or changed:
+
+   ```powershell
+   ./tools/run-acceptance.ps1 -PipeName ArcGISProMCP.v1.<pid>
+   ```
+
+   `-PipeName` can be left out when exactly one live host is discovered.
+
+4. For the full record, restart Pro with `ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true` (required by `feature-gp-arcpy`, which runs confirmation-gated operations without tokens), reopen the disposable project, then:
+
+   ```powershell
+   ./tools/run-acceptance.ps1 -Sections smoke,feature-gp-arcpy,stress `
+       -AllowProjectMutation -AllowAutonomous -DisposableRoot D:\scratch\mcp-acceptance `
+       -RunsPerCase 3 -VisuallyInspected 'Three urban layouts: no blank frames, surrounds present' `
+       -Commit
+   ```
+
+   The mutating sections refuse to run unless the open project is under `-DisposableRoot`. `feature-gp-arcpy` also refuses unless the host reports the `autonomous-control` capability. Turn autonomous mode off again afterwards.
+
+5. Review `docs/acceptance/<date>-<sha7>/`. The files contain local paths, the Windows user in `%LOCALAPPDATA%` paths and audit records. Then run the Core tests and commit the folder yourself. The script never stages or commits.
+
+`-Commit` is refused for `-PlanOnly`, for `-SkipVerify`, for a dirty working tree, when the target folder already exists, and when any selected step did not pass. Working evidence, including failed runs, stays under `artifacts/acceptance/<timestamp>/`, which is git-ignored.
+
+## What an entry does not prove
+
+An entry covers one commit, one ArcGIS Pro version, one machine and the sections listed in its manifest. Sections run in autonomous mode say so; they do not show that the local review flow works. Automated PNG checks are not visual inspection; only items passed with `-VisuallyInspected` count as inspected. The package is unsigned. The limits in [deployment.md](../deployment.md#known-limits) still apply.
