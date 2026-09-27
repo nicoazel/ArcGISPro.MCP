@@ -1,0 +1,10 @@
+{
+  "note": "Measured 2026-09-26 at 2290311 (Phase 4 search tuning), not aspirational. The eval tests fail when recall@5 drops more than 0.05 below these values. gp-search suites were measured against ArcGIS Pro 3.7.1.1904 system toolboxes (2210 tools). The *-holdout suites were written before tuning and never tuned against. Raise a value only in a commit that shows the new scorecard.",
+  "suites": {
+    "registry-search": { "recall@1": 0.6667, "recall@5": 1, "mrr": 0.8028, "tasks": 30 },
+    "registry-search-holdout": { "recall@1": 0.8125, "recall@5": 0.9375, "mrr": 0.8646, "tasks": 16 },
+    "gp-search": { "recall@1": 0.6667, "recall@5": 0.9333, "mrr": 0.7764, "tasks": 30 },
+    "gp-search-holdout": { "recall@1": 0.6875, "recall@5": 0.875, "mrr": 0.7708, "tasks": 16 },
+    "gp-search-fixture": { "recall@1": 1, "recall@5": 1, "mrr": 1, "tasks": 5 }
+  }
+}

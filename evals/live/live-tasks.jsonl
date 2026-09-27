@@ -1,0 +1,5 @@
+// Live tasks: a prompt for the model and the operations a correct run must invoke successfully.
+// Needs a project with a feature layer named Parcels; run against a disposable copy.
+{"id":"live-01","prompt":"List the maps in the current ArcGIS Pro project and tell me which one is active.","expected_ops":["map.list"]}
+{"id":"live-02","prompt":"Make the Parcels layer 50 percent transparent in the active map.","expected_ops":["layer.set-appearance"]}
+{"id":"live-03","prompt":"Save the current project.","expected_ops":["project.save"]}

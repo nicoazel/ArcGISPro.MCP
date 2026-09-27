@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/evals/">
+    <Project Path="evals/ArcGISProMCP.Evals/ArcGISProMCP.Evals.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/ArcGISProMCP.Core/ArcGISProMCP.Core.csproj" />
     <Project Path="src/ArcGISProMCP.Bridge/ArcGISProMCP.Bridge.csproj" />
@@ -8,6 +11,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/ArcGISProMCP.Core.Tests/ArcGISProMCP.Core.Tests.csproj" />
     <Project Path="tests/ArcGISProMCP.Bridge.Tests/ArcGISProMCP.Bridge.Tests.csproj" />
+    <Project Path="tests/ArcGISProMCP.Evals.Tests/ArcGISProMCP.Evals.Tests.csproj" />
     <Project Path="tests/ArcGISProMCP.Server.Tests/ArcGISProMCP.Server.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

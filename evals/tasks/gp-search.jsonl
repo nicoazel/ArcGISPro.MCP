@@ -1,0 +1,30 @@
+{"id":"gp-01","group":"overlay","task":"buffer the roads by 100 feet","expected":["analysis.Buffer","analysis.PairwiseBuffer"]}
+{"id":"gp-02","group":"overlay","task":"clip parcels to the city boundary","expected":["analysis.Clip","analysis.PairwiseClip"]}
+{"id":"gp-03","group":"overlay","task":"keep only the areas where two polygon layers overlap","expected":["analysis.Intersect","analysis.PairwiseIntersect"]}
+{"id":"gp-04","group":"overlay","task":"combine several feature classes into a single one","expected":["management.Merge","management.Append"]}
+{"id":"gp-05","group":"overlay","task":"dissolve counties into states by state name","expected":["management.Dissolve","analysis.PairwiseDissolve"]}
+{"id":"gp-06","group":"joins","task":"spatial join points to the polygons that contain them","expected":["analysis.SpatialJoin"]}
+{"id":"gp-07","group":"joins","task":"join a lookup table to a layer on a common key field","expected":["management.AddJoin","management.JoinField"]}
+{"id":"gp-08","group":"proximity","task":"distance from each well to the nearest river","expected":["analysis.Near","analysis.GenerateNearTable"]}
+{"id":"gp-09","group":"proximity","task":"create Thiessen polygons around the sample points","expected":["analysis.CreateThiessenPolygons"]}
+{"id":"gp-10","group":"selection","task":"select features that intersect another layer","expected":["management.SelectLayerByLocation"]}
+{"id":"gp-11","group":"selection","task":"select rows with a SQL where clause","expected":["management.SelectLayerByAttribute"]}
+{"id":"gp-12","group":"table","task":"how many rows are in this table","expected":["management.GetCount"]}
+{"id":"gp-13","group":"table","task":"add a new text field to the attribute table","expected":["management.AddField"]}
+{"id":"gp-14","group":"table","task":"calculate field values with a Python expression","expected":["management.CalculateField"]}
+{"id":"gp-15","group":"table","task":"compute the area of each polygon in acres","expected":["management.CalculateGeometryAttributes"]}
+{"id":"gp-16","group":"table","task":"summary statistics of population grouped by county","expected":["analysis.Statistics"]}
+{"id":"gp-17","group":"data-management","task":"reproject a feature class to a different coordinate system","expected":["management.Project"]}
+{"id":"gp-18","group":"data-management","task":"permanently delete a feature class","expected":["management.Delete"]}
+{"id":"gp-19","group":"data-management","task":"copy features into a new feature class","expected":["management.CopyFeatures","conversion.ExportFeatures"]}
+{"id":"gp-20","group":"data-management","task":"create a new file geodatabase","expected":["management.CreateFileGDB"]}
+{"id":"gp-21","group":"data-management","task":"fix invalid or broken geometries","expected":["management.RepairGeometry"]}
+{"id":"gp-22","group":"data-management","task":"explode multipart polygons into single parts","expected":["management.MultipartToSinglepart"]}
+{"id":"gp-23","group":"data-management","task":"make a fishnet grid of square cells over the study area","expected":["management.CreateFishnet","management.GenerateTessellation"]}
+{"id":"gp-24","group":"conversion","task":"export an attribute table to an Excel spreadsheet","expected":["conversion.TableToExcel","conversion.ExportTable"]}
+{"id":"gp-25","group":"conversion","task":"convert polygons to a raster","expected":["conversion.PolygonToRaster","conversion.FeatureToRaster"]}
+{"id":"gp-26","group":"raster","task":"slope in degrees from an elevation model","expected":["sa.Slope","3d.Slope","sa.SurfaceParameters","3d.SurfaceParameters"]}
+{"id":"gp-27","group":"raster","task":"hillshade from a DEM","expected":["sa.Hillshade","3d.HillShade"]}
+{"id":"gp-28","group":"raster","task":"cut a raster to the shape of a polygon mask","expected":["sa.ExtractByMask","management.Clip"]}
+{"id":"gp-29","group":"statistics","task":"heat map density surface of crime incidents","expected":["sa.KernelDensity","sa.PointDensity"]}
+{"id":"gp-30","group":"statistics","task":"find statistically significant hot spots and cold spots","expected":["stats.HotSpots","stats.OptimizedHotSpotAnalysis"]}

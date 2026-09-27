@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The synthetic toolbox is owned by Core.Tests; E2's always-on subset searches the same files. -->
+    <None Include="../ArcGISProMCP.Core.Tests/Fixtures/toolboxes/**/*" LinkBase="Fixtures/toolboxes" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/ArcGISProMCP.Core/ArcGISProMCP.Core.csproj" />
+    <ProjectReference Include="../../evals/ArcGISProMCP.Evals/ArcGISProMCP.Evals.csproj" />
+  </ItemGroup>
+</Project>
