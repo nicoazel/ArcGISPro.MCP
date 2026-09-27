@@ -49,6 +49,8 @@ public sealed class OperationSchemaMigrationTests
         ["project.open"] = (ProjectOperationSchemas.OpenInput, "ProjectOperationSchemas.OpenInput"),
         ["symbology.set-simple"] = (SymbologyOperationSchemas.SetSimpleInput, "SymbologyOperationSchemas.SetSimpleInput"),
         ["label.configure"] = (SymbologyOperationSchemas.LabelConfigureInput, "SymbologyOperationSchemas.LabelConfigureInput"),
+        ["table.query"] = (TableOperationSchemas.QueryInput, "TableOperationSchemas.QueryInput"),
+        ["table.statistics"] = (TableOperationSchemas.StatisticsInput, "TableOperationSchemas.StatisticsInput"),
     };
 
     [Fact]
