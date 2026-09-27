@@ -133,7 +133,7 @@ public sealed class KernelTools
         CancellationToken cancellationToken = default)
     {
         var resource = await bridge.CallAsync("resource.read", new { uri }, cancellationToken).ConfigureAwait(false);
-        var mimeType = resource.GetProperty("MimeType").GetString() ?? "application/octet-stream";
+        var mimeType = resource.GetProperty("mimeType").GetString() ?? "application/octet-stream";
         if (mimeType.StartsWith("image/", StringComparison.Ordinal))
         {
             var bytes = Convert.FromBase64String(resource.GetProperty("data").GetString()!);
