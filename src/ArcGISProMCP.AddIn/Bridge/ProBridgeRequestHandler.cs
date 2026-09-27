@@ -17,12 +17,24 @@ internal sealed class ProBridgeRequestHandler(
     OperationContext baseContext,
     IWorkflowLibrary workflows,
     ProResourceStore resources,
-    BridgeAccessState access) : IBridgeRequestHandler, IDisposable
+    BridgeAccessState access,
+    TimeProvider? timeProvider = null) : IBridgeRequestHandler, IDisposable
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true
-    };
+    private static readonly JsonSerializerOptions JsonOptions = BridgeJson.Options;
+    private const int MaximumApprovalWaitSeconds = 120;
+
+    /// <summary>
+    /// At most this many <c>approval.status</c> calls wait at once. Each waiting call holds one of the
+    /// pipe server's connection slots (eight, including the listener) for up to two minutes, so
+    /// unbounded waiters could starve every other bridge request.
+    /// </summary>
+    internal const int MaximumConcurrentApprovalWaits = 2;
+
+    internal const string ApprovalWaitUnavailableNotice =
+        "The host is already holding the maximum number of approval_status waits, so this call returned the current status immediately. Poll approval_status again after a short delay (with or without waitSeconds).";
+
+    private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
+    private readonly SemaphoreSlim _approvalWaiters = new(MaximumConcurrentApprovalWaits, MaximumConcurrentApprovalWaits);
     private readonly ConcurrentDictionary<string, IdempotencyEntry> _idempotency = new(StringComparer.Ordinal);
     private readonly Dictionary<string, WorkflowIdempotencyEntry> _workflowIdempotency = new(StringComparer.Ordinal);
     private readonly object _idempotencyGate = new();
@@ -46,7 +58,7 @@ internal sealed class ProBridgeRequestHandler(
                 "registry.validate" => await ValidateAsync(parameters, cancellationToken).ConfigureAwait(false),
                 "registry.invoke" => await InvokeAsync(parameters, request.RequestId, cancellationToken).ConfigureAwait(false),
                 "approval.request" => await RequestApprovalAsync(parameters, cancellationToken).ConfigureAwait(false),
-                "approval.status" => ApprovalStatus(parameters),
+                "approval.status" => await ApprovalStatusAsync(parameters, cancellationToken).ConfigureAwait(false),
                 "approval.cancel" => CancelApproval(parameters),
                 "workflow.list" => await ListWorkflowsAsync(cancellationToken).ConfigureAwait(false),
                 "workflow.get" => await GetWorkflowAsync(parameters, cancellationToken).ConfigureAwait(false),
@@ -80,15 +92,13 @@ internal sealed class ProBridgeRequestHandler(
     private async Task<JsonElement> GetStateAsync(CancellationToken cancellationToken)
     {
         var workspace = await baseContext.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        return JsonSerializer.SerializeToElement(new
-        {
-            bridgeProtocol = BridgeProtocol.Version,
-            processId = Environment.ProcessId,
+        return JsonSerializer.SerializeToElement(new SystemStateResult(
+            BridgeProtocol.Version,
+            Environment.ProcessId,
             workspace,
-            operationCount = registry.Descriptors.Count,
-            runningOperationCount = RunningOperationCount,
-            connected = access.Enabled
-        }, JsonOptions);
+            registry.Descriptors.Count,
+            RunningOperationCount,
+            access.Enabled), JsonOptions);
     }
 
     private JsonElement Search(JsonElement parameters)
@@ -99,12 +109,8 @@ internal sealed class ProBridgeRequestHandler(
             OptionalStringSet(parameters, "capabilities"),
             OptionalRisk(parameters, "maxRisk"),
             Integer(parameters, "limit", 12));
-        var hits = registry.Search(query).Select(hit => new
-        {
-            operation = Compact(hit.Descriptor),
-            hit.Score,
-            hit.MatchedTerms
-        });
+        RegistrySearchHit[] hits = [.. registry.Search(query).Select(hit =>
+            new RegistrySearchHit(OperationSummary.From(hit.Descriptor), hit.Score, [.. hit.MatchedTerms]))];
         return JsonSerializer.SerializeToElement(hits, JsonOptions);
     }
 
@@ -114,17 +120,17 @@ internal sealed class ProBridgeRequestHandler(
         var limit = Math.Clamp(Integer(parameters, "limit", 30), 1, 100);
         if (domain is null)
         {
-            var domains = registry.Descriptors
+            RegistryDomainCount[] domains = [.. registry.Descriptors
                 .GroupBy(descriptor => descriptor.Id.Split('.')[0], StringComparer.OrdinalIgnoreCase)
-                .Select(group => new { domain = group.Key, count = group.Count() })
-                .OrderBy(group => group.domain, StringComparer.Ordinal)
-                .ToArray();
-            return JsonSerializer.SerializeToElement(new { total = registry.Descriptors.Count, domains }, JsonOptions);
+                .Select(group => new RegistryDomainCount(group.Key, group.Count()))
+                .OrderBy(group => group.Domain, StringComparer.Ordinal)];
+            return JsonSerializer.SerializeToElement(
+                new RegistryBrowseResult(registry.Descriptors.Count, domains, null, null), JsonOptions);
         }
 
-        var entries = registry.Search(new OperationQuery(Domain: domain, Limit: limit))
-            .Select(hit => Compact(hit.Descriptor));
-        return JsonSerializer.SerializeToElement(new { domain, operations = entries }, JsonOptions);
+        OperationSummary[] entries = [.. registry.Search(new OperationQuery(Domain: domain, Limit: limit))
+            .Select(hit => OperationSummary.From(hit.Descriptor))];
+        return JsonSerializer.SerializeToElement(new RegistryBrowseResult(null, null, domain, entries), JsonOptions);
     }
 
     private JsonElement Describe(JsonElement parameters)
@@ -132,7 +138,7 @@ internal sealed class ProBridgeRequestHandler(
         var operationId = RequiredString(parameters, "operationId");
         if (!registry.TryGet(operationId, out var operation))
             throw new BridgeException("operation_not_found", $"Unknown operation '{operationId}'.");
-        return JsonSerializer.SerializeToElement(operation.Descriptor, JsonOptions);
+        return JsonSerializer.SerializeToElement(OperationDescription.From(operation.Descriptor), JsonOptions);
     }
 
     private async Task<JsonElement> ValidateAsync(JsonElement parameters, CancellationToken cancellationToken)
@@ -142,22 +148,20 @@ internal sealed class ProBridgeRequestHandler(
             throw new BridgeException("operation_not_found", $"Unknown operation '{operationId}'.");
         var arguments = RequiredObject(parameters, "arguments");
         var workspace = await baseContext.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        var issues = new List<object>();
+        var issues = new List<ValidationIssue>();
         var expected = OptionalString(parameters, "expectedRevision");
         if (operation.Descriptor.Risk != OperationRisk.ReadOnly && string.IsNullOrWhiteSpace(expected))
-            issues.Add(new { code = "workspace_revision_required", message = "A current workspace revision is required for write operations." });
+            issues.Add(new("workspace_revision_required", "A current workspace revision is required for write operations."));
         else if (operation.Descriptor.Risk != OperationRisk.ReadOnly && expected != workspace.Revision)
-            issues.Add(new { code = "workspace_revision_mismatch", message = $"Expected '{expected}', current '{workspace.Revision}'." });
+            issues.Add(new("workspace_revision_mismatch", $"Expected '{expected}', current '{workspace.Revision}'."));
         foreach (var issue in OperationArgumentValidator.Validate(arguments, operation.Descriptor.InputSchema))
-            issues.Add(new { code = "invalid_arguments", message = $"{issue.Path}: {issue.Message}" });
-        return JsonSerializer.SerializeToElement(new
-        {
-            valid = issues.Count == 0,
-            operation = Compact(operation.Descriptor),
+            issues.Add(new("invalid_arguments", $"{issue.Path}: {issue.Message}"));
+        return JsonSerializer.SerializeToElement(new RegistryValidationResult(
+            issues.Count == 0,
+            OperationSummary.From(operation.Descriptor),
             workspace.Revision,
             issues,
-            requiresConfirmation = operation.Descriptor.RequiresConfirmation
-        }, JsonOptions);
+            operation.Descriptor.RequiresConfirmation), JsonOptions);
     }
 
     private async Task<JsonElement> InvokeAsync(JsonElement parameters, string correlationId, CancellationToken cancellationToken)
@@ -166,12 +170,18 @@ internal sealed class ProBridgeRequestHandler(
         var arguments = RequiredObject(parameters, "arguments");
         var expectedRevision = OptionalString(parameters, "expectedRevision");
         var idempotencyKey = OptionalString(parameters, "idempotencyKey");
+        var dryRun = Boolean(parameters, "dryRun", false);
+        // A dry run executes nothing, so there is nothing to deduplicate; caching it under a key
+        // would also let a later real invocation with that key replay the dry-run result.
+        if (dryRun && idempotencyKey is not null)
+            throw new BridgeException("dry_run_idempotency_conflict", "dryRun cannot be combined with idempotencyKey; a dry run executes nothing and is never cached.");
         var request = new OperationRequest(
             operationId,
             arguments,
             expectedRevision,
             OptionalString(parameters, "confirmationToken"),
-            idempotencyKey);
+            idempotencyKey,
+            dryRun);
         OperationResult result;
         if (idempotencyKey is null)
         {
@@ -229,45 +239,110 @@ internal sealed class ProBridgeRequestHandler(
         return SerializeApproval(Approvals.Request(operation.Descriptor, arguments, workspace));
     }
 
-    private JsonElement ApprovalStatus(JsonElement parameters) => SerializeApproval(
-        Approvals.GetStatus(RequiredString(parameters, "requestId"))
-        ?? throw new BridgeException("approval_not_found", "Approval is unknown or no longer retained in this host session."));
+    /// <summary>
+    /// Returns the request's status. With <c>waitSeconds</c> (clamped to 0-120) a pending request is
+    /// held until its state changes or the wait elapses, and the current status is returned either
+    /// way; waiting never decides anything. A waiting call occupies one pipe connection slot for its
+    /// whole duration, so at most <see cref="MaximumConcurrentApprovalWaits"/> calls wait at once;
+    /// further calls return the current status immediately with a notice asking the client to poll.
+    /// </summary>
+    private async Task<JsonElement> ApprovalStatusAsync(JsonElement parameters, CancellationToken cancellationToken)
+    {
+        var approvals = Approvals;
+        var requestId = RequiredString(parameters, "requestId");
+        var waitSeconds = Math.Clamp(Integer(parameters, "waitSeconds", 0), 0, MaximumApprovalWaitSeconds);
+        var approval = GetApproval(approvals, requestId);
+        if (waitSeconds == 0 || approval.State != ApprovalRequestState.Pending)
+            return SerializeApproval(approval);
+        if (!await _approvalWaiters.WaitAsync(0, CancellationToken.None).ConfigureAwait(false))
+            return SerializeApproval(approval, ApprovalWaitUnavailableNotice);
+        try
+        {
+            return await WaitForApprovalChangeAsync(approvals, requestId, waitSeconds, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _approvalWaiters.Release();
+        }
+    }
+
+    private async Task<JsonElement> WaitForApprovalChangeAsync(
+        IApprovalService approvals, string requestId, int waitSeconds, CancellationToken cancellationToken)
+    {
+        var changed = NewSignal();
+        void OnChanged(object? sender, EventArgs args) => Volatile.Read(ref changed).TrySetResult();
+        approvals.Changed += OnChanged;
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(waitSeconds), _time);
+            using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, baseContext.ApplicationStopping, timeout.Token);
+            while (true)
+            {
+                // Arm a fresh signal before reading the state, so a change that lands between the
+                // read and the await is never lost.
+                var signal = NewSignal();
+                Volatile.Write(ref changed, signal);
+                var approval = GetApproval(approvals, requestId);
+                if (approval.State != ApprovalRequestState.Pending)
+                    return SerializeApproval(approval);
+                try
+                {
+                    await signal.Task.WaitAsync(wait.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (timeout.IsCancellationRequested &&
+                                                         !cancellationToken.IsCancellationRequested &&
+                                                         !baseContext.ApplicationStopping.IsCancellationRequested)
+                {
+                    // The wait elapsed: report whatever the state is now (usually still pending).
+                    return SerializeApproval(GetApproval(approvals, requestId));
+                }
+            }
+        }
+        finally
+        {
+            approvals.Changed -= OnChanged;
+        }
+
+        static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private static ApprovalRequestSnapshot GetApproval(IApprovalService approvals, string requestId) =>
+        approvals.GetStatus(requestId)
+        ?? throw new BridgeException("approval_not_found", "Approval is unknown or no longer retained in this host session.");
 
     private JsonElement CancelApproval(JsonElement parameters)
     {
         var requestId = RequiredString(parameters, "requestId");
-        return JsonSerializer.SerializeToElement(new { requestId, cancelled = Approvals.TryCancel(requestId) }, JsonOptions);
+        return JsonSerializer.SerializeToElement(new ApprovalCancelResult(requestId, Approvals.TryCancel(requestId)), JsonOptions);
     }
 
-    private static JsonElement SerializeApproval(ApprovalRequestSnapshot approval) => JsonSerializer.SerializeToElement(new
-    {
-        requestId = approval.Id,
+    private static JsonElement SerializeApproval(ApprovalRequestSnapshot approval, string? waitNotice = null) => JsonSerializer.SerializeToElement(new ApprovalStatusResult(
+        approval.Id,
         approval.OperationId,
         approval.OperationVersion,
         approval.WorkspaceRevision,
-        status = approval.State.ToString().ToLowerInvariant(),
+        approval.State.ToString().ToLowerInvariant(),
         approval.RequestedAt,
         approval.ExpiresAt,
-        confirmationToken = approval.ConfirmationToken,
-        instructions = approval.State == ApprovalRequestState.Pending
-            ? "A person must approve or deny this exact request in the ArcGIS Pro MCP panel. Poll approval_status; there is no remote approval operation."
-            : null
-    }, JsonOptions);
+        approval.ConfirmationToken,
+        approval.State == ApprovalRequestState.Pending
+            ? "A person must approve or deny this exact request in the ArcGIS Pro MCP panel. Call approval_status again, optionally with waitSeconds (up to 120) to wait for the decision; there is no remote approval operation."
+            : null,
+        waitNotice), JsonOptions);
 
     private async Task<JsonElement> ListWorkflowsAsync(CancellationToken cancellationToken)
     {
         var definitions = await workflows.ListAsync(cancellationToken).ConfigureAwait(false);
         var rankings = await workflows.RankAsync(cancellationToken).ConfigureAwait(false);
         var rankingByKey = rankings.ToDictionary(rank => (rank.WorkflowId, rank.Version));
-        var items = definitions.Select(workflow => new
-        {
+        WorkflowSummary[] items = [.. definitions.Select(workflow => new WorkflowSummary(
             workflow.Id,
             workflow.Version,
             workflow.Title,
             workflow.Summary,
-            workflow.Tags,
-            ranking = rankingByKey.GetValueOrDefault((workflow.Id, workflow.Version))
-        });
+            [.. workflow.Tags],
+            rankingByKey.GetValueOrDefault((workflow.Id, workflow.Version)),
+            workflow.Parameters))];
         return JsonSerializer.SerializeToElement(items, JsonOptions);
     }
 
@@ -293,7 +368,7 @@ internal sealed class ProBridgeRequestHandler(
         {
             throw new BridgeException("invalid_workflow", exception.Message);
         }
-        return JsonSerializer.SerializeToElement(new { saved = true, workflow.Id, workflow.Version }, JsonOptions);
+        return JsonSerializer.SerializeToElement(new WorkflowSaveResult(true, workflow.Id, workflow.Version), JsonOptions);
     }
 
     private async Task<JsonElement> RunWorkflowAsync(JsonElement parameters, string correlationId, CancellationToken cancellationToken)
@@ -364,7 +439,7 @@ internal sealed class ProBridgeRequestHandler(
         var succeededCount = 0;
         var failedCount = 0;
         string? historyWarning = null;
-        var results = new List<object>();
+        var results = new List<WorkflowStepResult>();
         for (var stepIndex = 0; stepIndex < workflow.Steps.Length; stepIndex++)
         {
             var step = workflow.Steps[stepIndex];
@@ -372,7 +447,7 @@ internal sealed class ProBridgeRequestHandler(
                 throw new BridgeException("workflow_order_invalid", $"Step '{step.Id}' appears before one of its dependencies.");
             if (step.DependsOn.Any(failedSteps.Contains))
             {
-                results.Add(new { step = step.Id, operation = step.Operation, success = false, errorCode = "dependency_failed", message = "Skipped because a required step failed." });
+                results.Add(WorkflowStepResult.Skipped(step.Id, step.Operation, "dependency_failed", "Skipped because a required step failed."));
                 completed.Add(step.Id);
                 failedSteps.Add(step.Id);
                 failedCount++;
@@ -396,26 +471,24 @@ internal sealed class ProBridgeRequestHandler(
                 // step executes, so nothing ran. Never silently adopt the newer revision: that would
                 // authorize the remaining writes against state nobody reviewed. Stop regardless of
                 // ContinueOnError and let the caller refresh state and decide how to proceed.
-                results.Add(new { step = step.Id, operation = step.Operation, result.Success, result.ErrorCode, result.Message, result.WorkspaceRevision, result.Data, result.Resources, result.Notices });
+                results.Add(WorkflowStepResult.From(step.Id, step.Operation, result));
                 failedCount++;
                 await RecordRunAsync("failed", startedAt, succeededCount, failedCount).ConfigureAwait(false);
-                return JsonSerializer.SerializeToElement(new
-                {
-                    success = false,
-                    errorCode = "workspace_changed",
-                    message = $"The workspace changed before step '{step.Id}' (index {stepIndex}) executed. Completed steps are not rolled back. Refresh state with system_get_state and review before continuing.",
+                return JsonSerializer.SerializeToElement(new WorkflowRunResult(
+                    false,
+                    "workspace_changed",
+                    $"The workspace changed before step '{step.Id}' (index {stepIndex}) executed. Completed steps are not rolled back. Refresh state with system_get_state and review before continuing.",
                     workflow.Id,
                     workflow.Version,
-                    stoppedAtStep = step.Id,
-                    stepIndex,
-                    expectedRevision = revision,
-                    currentRevision = result.WorkspaceRevision,
+                    StoppedAtStep: step.Id,
+                    StepIndex: stepIndex,
+                    ExpectedRevision: revision,
+                    CurrentRevision: result.WorkspaceRevision,
                     results,
-                    revision = result.WorkspaceRevision,
-                    historyWarning
-                }, JsonOptions);
+                    Revision: result.WorkspaceRevision,
+                    historyWarning), JsonOptions);
             }
-            results.Add(new { step = step.Id, operation = step.Operation, result.Success, result.ErrorCode, result.Message, result.WorkspaceRevision, result.Data, result.Resources, result.Notices });
+            results.Add(WorkflowStepResult.From(step.Id, step.Operation, result));
             // Only a successful write advances the expected revision, to the revision it produced.
             // A read-only step or a failed (continueOnError) step reports whatever the workspace
             // currently is; adopting that would launder an unreviewed mid-run change into
@@ -428,12 +501,15 @@ internal sealed class ProBridgeRequestHandler(
             if (!result.Success && !step.ContinueOnError)
             {
                 await RecordRunAsync("failed", startedAt, succeededCount, failedCount).ConfigureAwait(false);
-                return JsonSerializer.SerializeToElement(new { success = false, workflow.Id, workflow.Version, results, revision, historyWarning }, JsonOptions);
+                return JsonSerializer.SerializeToElement(RunResult(false), JsonOptions);
             }
             completed.Add(step.Id);
         }
         await RecordRunAsync(failedCount == 0 ? "succeeded" : "failed", startedAt, succeededCount, failedCount).ConfigureAwait(false);
-        return JsonSerializer.SerializeToElement(new { success = failedCount == 0, workflow.Id, workflow.Version, results, revision, historyWarning }, JsonOptions);
+        return JsonSerializer.SerializeToElement(RunResult(failedCount == 0), JsonOptions);
+
+        WorkflowRunResult RunResult(bool success) => new(
+            success, null, null, workflow.Id, workflow.Version, null, null, null, null, results, revision, historyWarning);
 
         async Task RecordRunAsync(string outcome, DateTimeOffset start, int succeeded, int failed)
         {
@@ -476,21 +552,6 @@ internal sealed class ProBridgeRequestHandler(
             _executionGate.Release();
         }
     }
-
-    private static object Compact(OperationDescriptor descriptor) => new
-    {
-        descriptor.Id,
-        descriptor.Version,
-        descriptor.Title,
-        descriptor.Summary,
-        descriptor.Risk,
-        descriptor.ExecutionTarget,
-        descriptor.Tags,
-        descriptor.RequiredCapabilities,
-        descriptor.RequiresConfirmation,
-        descriptor.ExecutesUserCode,
-        descriptor.TypicalDuration
-    };
 
     private static JsonElement RequiredObject(JsonElement parameters, string name) =>
         parameters.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Object
@@ -541,6 +602,11 @@ internal sealed class ProBridgeRequestHandler(
         parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out var value) && value.TryGetInt32(out var parsed)
             ? parsed : defaultValue;
 
+    private static bool Boolean(JsonElement parameters, string name, bool defaultValue) =>
+        parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out var value) &&
+        value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? value.GetBoolean() : defaultValue;
+
     private static string Fingerprint(string operationId, JsonElement arguments, string? expectedRevision)
     {
         var material = $"{operationId}\n{expectedRevision}\n{arguments.GetRawText()}";
@@ -557,5 +623,9 @@ internal sealed class ProBridgeRequestHandler(
     private sealed record WorkflowIdempotencyEntry(string Fingerprint, Lazy<Task<JsonElement>> Result);
 
     // Owner must first stop accepting and drain the bridge before disposing its handler.
-    public void Dispose() => _executionGate.Dispose();
+    public void Dispose()
+    {
+        _executionGate.Dispose();
+        _approvalWaiters.Dispose();
+    }
 }

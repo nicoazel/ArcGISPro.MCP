@@ -6,28 +6,44 @@ This page lists everything a client or operator can use. The live registry is au
 
 The stdio gateway (`ArcGISProMCP.Server`) exposes exactly these 16 MCP tools.
 
-| Tool | Read-only | Purpose |
-| --- | :---: | --- |
-| `system_get_state` | ✓ | Revisioned snapshot of the project, maps, layouts, active view, capabilities, and connection. |
-| `registry_search` | ✓ | Searches operations by intent, GIS terms and aliases. Optional filters: `domain`, `capabilities` (a result must require every listed capability) and `maxRisk` (highest risk to include, for example `ReadOnly`). `limit` defaults to 12 and is clamped to 1–100. Articles and prepositions such as "the", "a", "of" and "to" are ignored in the query. |
-| `registry_browse` | ✓ | Lists concise registry entries by domain. Search and browse entries include `executesUserCode`. |
-| `registry_describe` | ✓ | Returns one operation's full descriptor: input schema, required capabilities, examples, risk, confirmation requirement, and related operations. Operations do not declare result schemas yet. |
-| `registry_validate` | ✓ | Checks arguments against the operation's input schema and, for writes, the expected revision against the current one. It does not resolve layers, maps or paths, so a valid result does not guarantee success. Never writes. |
-| `registry_invoke` | | Runs one operation. Writes need the current revision, and confirmation-gated operations also need an approval token. |
-| `approval_request` | | Queues local review of one exact risky call in the ArcGIS Pro panel. It cannot approve itself. |
-| `approval_status` | ✓ | Returns `pending`, `approved`, `denied`, `expired`, `cancelled`, or `consumed`. Only an `approved` status carries the single-use token. |
-| `approval_cancel` | | Cancels a pending or approved request and revokes its token. |
-| `workflow_list` | ✓ | Lists versioned workflows with evidence-based ranking. |
-| `workflow_get` | ✓ | Returns one immutable workflow version: its parameters, steps, dependencies, and observation hints. |
-| `workflow_save` | | Validates a declarative workflow against the registry and its `allowedOperations` policy, then saves it as a new immutable version. |
-| `workflow_run` | | Runs a saved workflow sequentially and returns per-step observations. Stops with `workspace_changed` if the project changes mid-run. |
-| `resource_read` | ✓ | Reads a bounded semantic or image observation by `arcgis://` handle. Non-image payloads are returned as JSON with camelCase fields: `uri`, `mimeType`, `name`, `encoding`, `data`, `createdAt`. |
-| `skill_search` | ✓ | Finds bundled skill summaries by intent. |
-| `skill_get` | ✓ | Returns one skill manifest: preconditions, allowed operations, visual checks, and recovery guidance. |
+Every tool declares all four MCP hints. `openWorldHint` is always false: nothing reaches beyond the local ArcGIS Pro session. Read-only tools are also idempotent and non-destructive.
+
+| Tool | Read-only | Destructive | Idempotent | `result` | Purpose |
+| --- | :---: | :---: | :---: | --- | --- |
+| `system_get_state` | ✓ | | ✓ | state | Revisioned snapshot of the project, maps, layouts, active view, capabilities, and connection. |
+| `registry_search` | ✓ | | ✓ | hit[] | Searches operations by intent, GIS terms and aliases. Optional filters: `domain`, `capabilities` (a result must require every listed capability) and `maxRisk` (highest risk to include, for example `ReadOnly`). `limit` defaults to 12 and is clamped to 1–100. Articles and prepositions such as "the", "a", "of" and "to" are ignored in the query. |
+| `registry_browse` | ✓ | | ✓ | browse | Without `domain`: `total` and per-domain `domains` counts. With `domain`: that domain's `operations`. The unused pair is null. Search and browse entries include `executesUserCode`. |
+| `registry_describe` | ✓ | | ✓ | descriptor | Returns one operation's full descriptor: input schema, required capabilities, examples, risk, confirmation requirement, related operations, and `resultSchema`, the JSON schema of that operation's `registry_invoke` result (`success`, `data`, `errorCode`, `message`, `workspaceRevision`, `notices`, `resources`). `outputSchema` describes `data` of a successful result and is null while the operation declares none; `data` is then unconstrained. When an operation declares `outputSchema`, `resultSchema` requires a typed `data`, so a failed result of that operation (`success: false`, `data: null`) does not validate against it: check `success` first and validate only successful results. 15 stable-shape operations declare one (`project.get`, `map.list`, `layer.list`, `feature.*`, `table.query`, `table.statistics`, `metadata.get`, `layout.list`, `layout.inspect`, `view.capture`); the `gp.*` operations do not, because a `gp.run` dry run and a real run return different shapes and tool results mirror open-ended Esri values. |
+| `registry_validate` | ✓ | | ✓ | validation | Checks arguments against the operation's input schema and, for writes, the expected revision against the current one. It does not resolve layers, maps or paths, so a valid result does not guarantee success. Never writes. |
+| `registry_invoke` | | ✓ | | operation result | Runs one operation. Writes need the current revision, and confirmation-gated operations also need an approval token. An operation result with `success: false` makes the call an error that still carries the result. `dryRun: true` validates without executing (see [dry runs](#dry-runs)). |
+| `approval_request` | | | | approval | Queues local review of one exact risky call in the ArcGIS Pro panel. It cannot approve itself. |
+| `approval_status` | ✓ | | ✓ | approval | Returns `pending`, `approved`, `denied`, `expired`, `cancelled`, or `consumed`. Only an `approved` status carries the single-use token. `waitSeconds` (0–120, clamped) holds a pending request until a person decides or the wait elapses, then returns the status either way; keep it below your client's tool-call timeout. The host holds at most two waits at once; a further waiting call returns immediately with `waitNotice` set, so poll again. |
+| `approval_cancel` | | | ✓ | `{requestId, cancelled}` | Cancels a pending or approved request and revokes its token. |
+| `workflow_list` | ✓ | | ✓ | workflow[] | Lists versioned workflows with evidence-based ranking and their `parameters` (older hosts omit `parameters`). |
+| `workflow_get` | ✓ | | ✓ | workflow | Returns one immutable workflow version: its parameters, steps, dependencies, and observation hints. |
+| `workflow_save` | | | ✓ | `{saved, id, version}` | Validates a declarative workflow against the registry and its `allowedOperations` policy, then saves it as a new immutable version. |
+| `workflow_run` | | ✓ | | run | Runs a saved workflow sequentially and returns per-step observations. Stops with `workspace_changed` if the project changes mid-run. A run with `success: false` makes the call an error that still carries every step. |
+| `resource_read` | ✓ | | ✓ | resource | Reads a bounded semantic or image observation by `arcgis://` handle. The result has camelCase fields `uri`, `mimeType`, `name`, `encoding`, `data` (base64), `createdAt`. Images are returned as an MCP image block and `data` is then null. |
+| `skill_search` | ✓ | | ✓ | skill[] | Finds bundled skill summaries by intent. |
+| `skill_get` | ✓ | | ✓ | skill | Returns one skill manifest: preconditions, allowed operations, visual checks, and recovery guidance. |
+
+### Tool results
+
+Every tool returns the same envelope as `structuredContent`, and the same JSON as its text block for clients without structured-content support. Each tool's `outputSchema` describes the envelope with its typed `result`:
+
+```json
+{ "ok": true, "result": { }, "error": null }
+{ "ok": false, "result": null, "error": { "code": "arcgis_unavailable", "message": "...", "retryable": true, "revision": null } }
+```
+
+- `ok: false` always comes with `isError: true` and an `error` (`code`, `message`, `retryable`, `revision`). `retryable` means the same call may succeed later, for example once ArcGIS Pro is running.
+- `registry_invoke` and `workflow_run` keep `result` on failure: the operation or workflow ran (or was refused) and reported `success: false`. `error.code` repeats its `errorCode` and `error.revision` is the workspace revision it reported.
+- Field names are camelCase and null members are written. `risk` and `executionTarget` are numbers: risk `0` ReadOnly, `1` SafeWrite, `2` Destructive, `3` ExternalSideEffect.
+- Exceptions that are not ArcGIS bridge errors are reported by the MCP SDK as a plain error result without an envelope.
 
 ## Operations
 
-The add-in registers these operations. Risk determines the gate each one passes through:
+The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` operations when [ArcPy is enabled](arcpy.md). Risk determines the gate each one passes through:
 
 - **ReadOnly**: runs freely.
 - **SafeWrite**: requires the current workspace revision.
@@ -95,9 +111,20 @@ The add-in registers these operations. Risk determines the gate each one passes 
 
 | Id | Risk | Does |
 | --- | --- | --- |
-| `gp.run` | **ExternalSideEffect** | Runs a toolbox-qualified GP tool with bounded parameters, explicit environments, and overwrite behavior. |
+| `gp.search` | ReadOnly | Searches installed system toolbox metadata; returns `alias.ToolName` execution names with risk tiers. Never runs a tool. |
+| `gp.describe` | ReadOnly | One tool's parameters (types, required/optional/derived, defaults, coded values, ranges), positional `signature`, environments and risk tier with reasons. |
+| `gp.query` | ReadOnly | Runs one allowlisted read-only system tool (`management.GetCount`, `management.GetRasterProperties`, `management.GetCellValue`) without review; no map outputs, overwrite or history. |
+| `gp.run` | **ExternalSideEffect** | Runs a toolbox-qualified GP tool with bounded positional parameters, explicit environments, and overwrite behavior. Always reviewed; autonomous mode refuses Destructive and UserCode tools. Supports a static dry run. |
 | `arcpy.inspect-script` | ReadOnly | Size and SHA-256 of a script in the configured root, without running it. *Opt-in.* |
 | `arcpy.run-script` | **ExternalSideEffect** | Runs a hash-pinned script in ArcGIS Pro's Python environment. *Opt-in.* |
+
+Geoprocessing parameters are positional in the `signature` order that `gp.describe` returns (definition order with derived outputs removed), not the tool dialog's display order. Use `null` or `"#"` to leave an optional value unset; a JSON array becomes a `;`-separated multivalue. See [geoprocessing risk tiers](security.md#geoprocessing-risk-tiers).
+
+### Dry runs
+
+`registry_invoke` with `dryRun: true` validates the call without executing it. The input schema is still checked, but no revision or confirmation token is needed, and a dry run neither queues a review nor consumes a token. It cannot be combined with `idempotencyKey` (`dry_run_idempotency_conflict`), so a dry run is never cached or replayed. A dry run that ran its validation returns `success: true` and reports its verdict in `data`, for example `valid: false`, so it is not an MCP error; only failures before validation (unknown operation, schema violations, unparseable arguments) set `isError`. Dry runs are audited with kind `dry-run`.
+
+Operations without their own static validation return a generic description (`valid`, `operation`, `risk`, `executionTarget`, `workspaceRevision`) that checks only the input schema. A dry run of `gp.run` never executes the tool. It returns `valid`, the static-validation `issues` (unknown or deprecated tool, too many values, missing required values, coded-value membership, boolean/integer/double parsing and ranges, checked per multivalue element), `riskTier`, `mutatesInput`, `executesUserCode`, `consumesCredits`, `requiresConfirmation`, `wouldBeRefused` (autonomous mode) and the `approvalWarning` the dockpane would show. Passing static validation does not guarantee that the tool's own validation accepts the request.
 
 The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 
@@ -130,6 +157,25 @@ All bundled workflows are version 1.1.0 and none of them save the project; save 
 
 Workflows are immutable JSON DAGs of registered operation ids and cannot contain script steps. See [architecture](architecture.md#extension-rules).
 
+## Resources and prompts
+
+Read-only MCP resources mirror the read-only tools. Only project state is listed by `resources/list`; the rest are URI templates.
+
+| URI | Content |
+| --- | --- |
+| `arcgis://project/state` | Same snapshot as `system_get_state` (`application/json`). |
+| `arcgis://operations/{id}` | Operation descriptor, as `registry_describe`. |
+| `arcgis://workflows/{id}` | Workflow definition, as `workflow_get`. Use `id@version` for an immutable version. |
+| `arcgis://skills/{id}` | Bundled skill manifest, as `skill_get`. Served without ArcGIS Pro. |
+| `arcgis://resource/{id}` | Observation handle, as `resource_read`. Images are returned as blobs, JSON and text observations as text. |
+
+Prompts are generated at list time:
+
+- `skill.<skillId>`, one per bundled skill, with an optional `goal` argument. Always available.
+- `run.<workflowId>`, one per saved workflow, with one argument per workflow parameter. Listed only while an ArcGIS Pro host answers; `run.<workflowId>@<version>` pins a version. Required parameters without a default must be supplied.
+
+Each prompt walks the model through `system_get_state`, `workflow_get`, `workflow_run` with explicit parameters and the current revision, then a review of the returned observations against the skill's visual checks.
+
 ## Error codes
 
 Codes a client should handle. The message carries the details.
@@ -143,9 +189,19 @@ Codes a client should handle. The message carries the details.
 | `operation_not_allowed` | workflow validation issue | A step's operation is not permitted by the workflow's `allowedOperations`. The issue is returned as `operation_not_allowed: <message>` inside an `invalid_workflow` error on both `workflow_save` and `workflow_run`. |
 | `invalid_workflow` | workflow save and run | The definition failed validation; the message lists each issue as `<code>: <message>`. |
 | `operation_not_found` | describe, invoke | Unknown operation id. Invocations with unknown ids are audited. |
+| `idempotency_conflict` | invoke, workflow run | The `idempotencyKey` was already used with a different operation, arguments or revision in this Pro session. |
+| `dry_run_idempotency_conflict` | invoke | `dryRun` was combined with `idempotencyKey`. Nothing ran and the key was not recorded. |
+| `destructive_tool_requires_review` | `gp.run` result | Autonomous mode refused a Destructive or UserCode geoprocessing tool; it needs local review. |
+| `tool_not_found`, `tool_not_query_allowed`, `invalid_tool_name` | `gp.describe`, `gp.query` results | Unknown tool, a tool outside the `gp.query` allowlist, or a malformed `alias.ToolName`. |
+| `geoprocessing_failed`, `geoprocessing_cancelled` | `gp.run`, `gp.query` results | ArcGIS Pro reported a failed or cancelled tool run; its messages are in the result. |
 | `request_cancelled` | any bridge call | The caller cancelled the request before it completed. A write may already have been accepted; check state. |
 | `host_stopping` | any bridge call | ArcGIS Pro is shutting down and cancelled the request, including keyed work shared by several callers. Retryable against a new host; a write may already have been accepted, so check state first. |
 | `outcome_unknown` | gateway | The connection failed after the request was sent. Inspect state before repeating. |
+| `arcgis_unavailable` | gateway | No ArcGIS Pro host accepted the connection. Retryable. |
+| `approval_not_found` | approval status | Unknown or no longer retained approval id. Fails closed. |
+| `bridge_contract_mismatch` | gateway | The add-in returned a result this gateway cannot read. Install matching add-in and gateway versions. |
+| `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped). |
+| `skill_not_found` | skill get | Unknown bundled skill id. |
 
 ## Scripts
 

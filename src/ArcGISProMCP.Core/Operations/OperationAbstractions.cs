@@ -13,6 +13,42 @@ public interface IOperation
         CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// An operation with a real dry run: static validation of the arguments with no side effects.
+/// <see cref="Execution.OperationExecutor"/> calls <see cref="DryRunAsync"/> instead of its generic
+/// description when <see cref="OperationRequest.DryRun"/> is set, and never calls
+/// <see cref="IOperation.ExecuteAsync"/> for a dry run.
+/// </summary>
+public interface IDryRunnableOperation
+{
+    Task<OperationResult> DryRunAsync(
+        JsonElement arguments,
+        OperationContext context,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>Why an operation refused a request before executing it.</summary>
+public sealed record OperationRefusal(string Code, string Message);
+
+/// <summary>
+/// An operation that must not run some requests without local human review. When autonomous
+/// mode would skip review, the executor asks the gate first and fails with the refusal instead
+/// of executing. Interactive mode is unaffected: a person already reviews every request.
+/// </summary>
+public interface IUnattendedExecutionGate
+{
+    ValueTask<OperationRefusal?> CheckUnattendedAsync(JsonElement arguments, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// An operation that describes argument-specific risks for the local approval card
+/// (for example "modifies input data in place"). Null means no warning.
+/// </summary>
+public interface IApprovalWarningSource
+{
+    string? GetApprovalWarning(JsonElement arguments);
+}
+
 public interface IOperationRegistry
 {
     IReadOnlyCollection<OperationDescriptor> Descriptors { get; }
@@ -77,6 +113,9 @@ public static class OperationAuditKinds
 
     /// <summary>A local approval decision; <see cref="OperationAuditEvent.Decision"/> is "approved" or "denied".</summary>
     public const string Approval = "approval";
+
+    /// <summary>A dry run: validation only, nothing was executed.</summary>
+    public const string DryRun = "dry-run";
 }
 
 public sealed record OperationContext(

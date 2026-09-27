@@ -1,0 +1,8 @@
+{
+    "map": {
+        "title": "Erase Rows",
+        "description": "Deletes the selected rows from the input table.",
+        "in_rows.title": "Input Rows",
+        "out_rows.title": "Updated Rows"
+    }
+}

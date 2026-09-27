@@ -54,6 +54,54 @@ public sealed class HostHandlerTests
     }
 
     [Fact]
+    public async Task Dry_run_reaches_the_executor_without_revision_token_or_execution()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var response = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, dryRun = true });
+        Assert.True(response.Success, response.Error?.Message);
+        var result = response.Result!.Value;
+        Assert.True(result.GetProperty("success").GetBoolean());
+        Assert.True(result.GetProperty("data").GetProperty("dryRun").GetBoolean());
+        Assert.Equal(1, fixture.Operation.DryRunCount);
+        Assert.Equal(0, fixture.Operation.CallCount);
+        // A dry run of a risky operation neither queues nor needs a local review.
+        Assert.Empty(fixture.Approvals.GetPending());
+    }
+
+    [Fact]
+    public async Task Dry_run_does_not_consume_an_approved_token()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
+        Assert.True(fixture.Approvals.TryResolve(requestId, ApprovalResolution.ApproveOnce));
+        var token = (await fixture.Call("approval.status", new { requestId })).Result!.Value.GetProperty("confirmationToken").GetString();
+
+        var dry = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", confirmationToken = token, dryRun = true });
+        Assert.True(dry.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(0, fixture.Operation.CallCount);
+
+        var real = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", confirmationToken = token });
+        Assert.True(real.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(1, fixture.Operation.CallCount);
+    }
+
+    [Fact]
+    public async Task Dry_run_with_idempotency_key_is_rejected_before_the_key_is_cached()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var conflict = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", idempotencyKey = "key", dryRun = true });
+        Assert.False(conflict.Success);
+        Assert.Equal("dry_run_idempotency_conflict", conflict.Error!.Code);
+        Assert.Equal(0, fixture.Operation.DryRunCount);
+
+        // The rejected call left no cache entry, so the key is still free for a real invocation.
+        var real = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", idempotencyKey = "key" });
+        Assert.True(real.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(1, fixture.Operation.CallCount);
+    }
+
+    [Fact]
     public async Task Workflow_save_reports_validation_failures_as_invalid_workflow()
     {
         using var fixture = new Fixture(OperationRisk.SafeWrite);
@@ -303,6 +351,216 @@ public sealed class HostHandlerTests
         Assert.Equal("invalid_parameters", response.Error!.Code);
     }
 
+    [Fact]
+    public async Task Approval_status_wait_returns_as_soon_as_a_person_decides()
+    {
+        var time = new ManualTimeProvider();
+        using var fixture = new Fixture(OperationRisk.Destructive, time: time);
+        var requestId = await RequestApprovalAsync(fixture);
+
+        var waiting = fixture.Call("approval.status", new { requestId, waitSeconds = 60 });
+        // The wait timer is created after the change subscription, so the waiter is armed now.
+        await time.WaitForTimersAsync(1).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.False(waiting.IsCompleted);
+        Assert.True(fixture.Approvals.TryResolve(requestId, ApprovalResolution.ApproveOnce));
+        var status = await waiting.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.True(status.Success, status.Error?.Message);
+        Assert.Equal("approved", status.Result!.Value.GetProperty("status").GetString());
+        Assert.False(string.IsNullOrEmpty(status.Result.Value.GetProperty("confirmationToken").GetString()));
+        Assert.Equal(0, time.FiredCount);
+    }
+
+    [Fact]
+    public async Task Approval_status_wait_reports_pending_when_the_wait_elapses()
+    {
+        var time = new ManualTimeProvider();
+        using var fixture = new Fixture(OperationRisk.Destructive, time: time);
+        var requestId = await RequestApprovalAsync(fixture);
+
+        var waiting = fixture.Call("approval.status", new { requestId, waitSeconds = 30 });
+        await time.WaitForTimersAsync(1).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.False(waiting.IsCompleted);
+        Assert.Equal(TimeSpan.FromSeconds(30), Assert.Single(time.DueTimes));
+        time.FireAll();
+        var status = await waiting.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.True(status.Success, status.Error?.Message);
+        Assert.Equal("pending", status.Result!.Value.GetProperty("status").GetString());
+        Assert.Equal(JsonValueKind.Null, status.Result.Value.GetProperty("confirmationToken").ValueKind);
+        Assert.Equal(JsonValueKind.Null, status.Result.Value.GetProperty("waitNotice").ValueKind);
+    }
+
+    [Fact]
+    public async Task Approval_status_waits_are_bounded_so_they_cannot_starve_bridge_slots()
+    {
+        var time = new ManualTimeProvider();
+        using var fixture = new Fixture(OperationRisk.Destructive, time: time);
+        var requestId = await RequestApprovalAsync(fixture);
+        var limit = ProBridgeRequestHandler.MaximumConcurrentApprovalWaits;
+        Assert.Equal(2, limit);
+
+        var waiters = Enumerable.Range(0, limit)
+            .Select(_ => fixture.Call("approval.status", new { requestId, waitSeconds = 120 }))
+            .ToArray();
+        await time.WaitForTimersAsync(limit).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.All(waiters, waiter => Assert.False(waiter.IsCompleted));
+
+        // The third waiter does not take a slot: it gets the current status and a hint to poll.
+        var third = await fixture.Call("approval.status", new { requestId, waitSeconds = 120 })
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.True(third.Success, third.Error?.Message);
+        Assert.Equal("pending", third.Result!.Value.GetProperty("status").GetString());
+        Assert.Equal(ProBridgeRequestHandler.ApprovalWaitUnavailableNotice, third.Result.Value.GetProperty("waitNotice").GetString());
+        Assert.Equal(limit, time.DueTimes.Count);
+
+        // Cancelling while the waiters are held completes promptly and releases them.
+        var cancel = await fixture.Call("approval.cancel", new { requestId })
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.True(cancel.Result!.Value.GetProperty("cancelled").GetBoolean());
+        var released = await Task.WhenAll(waiters).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.All(released, status => Assert.Equal("cancelled", status.Result!.Value.GetProperty("status").GetString()));
+
+        // Released slots are reusable.
+        var next = await RequestApprovalAsync(fixture);
+        var reused = fixture.Call("approval.status", new { requestId = next, waitSeconds = 120 });
+        await time.WaitForTimersAsync(limit + 1).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.True(fixture.Approvals.TryCancel(next));
+        var reusedStatus = await reused.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Equal(JsonValueKind.Null, reusedStatus.Result!.Value.GetProperty("waitNotice").ValueKind);
+    }
+
+    private static async Task<string> RequestApprovalAsync(Fixture fixture)
+    {
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        Assert.True(pending.Success, pending.Error?.Message);
+        return pending.Result!.Value.GetProperty("requestId").GetString()!;
+    }
+
+    [Fact]
+    public async Task Approval_status_wait_does_not_hold_decided_or_unknown_requests()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
+        Assert.True(fixture.Approvals.TryCancel(requestId));
+
+        var cancelled = await fixture.Call("approval.status", new { requestId, waitSeconds = 120 }).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var unknown = await fixture.Call("approval.status", new { requestId = "missing", waitSeconds = 120 }).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.Equal("cancelled", cancelled.Result!.Value.GetProperty("status").GetString());
+        Assert.Equal("approval_not_found", unknown.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Approval_status_wait_stops_when_the_caller_cancels()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
+        using var caller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        caller.CancelAfter(TimeSpan.FromMilliseconds(200));
+
+        var status = await fixture.CallWithToken("approval.status", new { requestId, waitSeconds = 120 }, caller.Token)
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.Equal("request_cancelled", status.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Describe_returns_a_result_schema_that_accepts_real_invoke_results()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+
+        var describe = await fixture.Call("registry.describe", new { operationId = "test.write" });
+        var invoke = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var failed = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "stale" });
+
+        var description = describe.Result!.Value.Deserialize<OperationDescription>(BridgeJson.Options)!;
+        Assert.Equal("test.write", description.Id);
+        Assert.Null(description.OutputSchema);
+        Assert.Equal(JsonValueKind.Object, description.ResultSchema.ValueKind);
+        Assert.Empty(OperationArgumentValidator.Validate(invoke.Result!.Value, description.ResultSchema));
+        Assert.False(failed.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Empty(OperationArgumentValidator.Validate(failed.Result.Value, description.ResultSchema));
+    }
+
+    [Fact]
+    public async Task Describe_wraps_a_declared_top_level_array_output_schema_in_the_result_envelope()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+
+        var describe = await fixture.Call("registry.describe", new { operationId = ListingOperation.Id });
+        var invoke = await fixture.Call("registry.invoke", new { operationId = ListingOperation.Id, arguments = new { } });
+
+        var description = describe.Result!.Value.Deserialize<OperationDescription>(BridgeJson.Options)!;
+        Assert.True(JsonElement.DeepEquals(ListingOperation.OutputSchema, description.OutputSchema!.Value));
+        var properties = description.ResultSchema.GetProperty("properties");
+        // The declared schema (a top-level array, like map.list and layout.list) is the envelope's data member.
+        Assert.True(JsonElement.DeepEquals(ListingOperation.OutputSchema, properties.GetProperty("data")));
+        Assert.Contains(description.ResultSchema.GetProperty("required").EnumerateArray(), item => item.GetString() == "data");
+        Assert.Equal("array", properties.GetProperty("data").GetProperty("type").GetString());
+        Assert.Empty(OperationArgumentValidator.Validate(invoke.Result!.Value, description.ResultSchema));
+
+        var wrongData = JsonSerializer.SerializeToElement(
+            OperationResult.Ok(JsonSerializer.SerializeToElement(new { name = "not an array" }), "r1"), WebJson);
+        Assert.NotEmpty(OperationArgumentValidator.Validate(wrongData, description.ResultSchema));
+    }
+
+    [Fact]
+    public async Task Failed_results_of_a_typed_operation_do_not_validate_against_its_result_schema()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        fixture.Listing.Fail = true;
+
+        var describe = await fixture.Call("registry.describe", new { operationId = ListingOperation.Id });
+        var failed = await fixture.Call("registry.invoke", new { operationId = ListingOperation.Id, arguments = new { } });
+
+        var description = describe.Result!.Value.Deserialize<OperationDescription>(BridgeJson.Options)!;
+        Assert.NotNull(description.OutputSchema);
+        Assert.False(failed.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, failed.Result.Value.GetProperty("data").ValueKind);
+        // Documented in docs/reference.md: check success before validating against resultSchema.
+        Assert.NotEmpty(OperationArgumentValidator.Validate(failed.Result.Value, description.ResultSchema));
+    }
+
+    [Fact]
+    public async Task Bridge_results_round_trip_through_the_shared_contracts()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var workflow = new WorkflowDefinition("contract-flow", "1.0.0", "Contract", "Test", [], [],
+            [new WorkflowParameter("label", "string", false, JsonSerializer.SerializeToElement("x"), "A label.")],
+            [new("one", "test.write", JsonSerializer.SerializeToElement(new { }), [])]);
+        await fixture.Workflows.SaveAsync(workflow, TestContext.Current.CancellationToken);
+
+        var state = Read<SystemStateResult>(await fixture.Call("system.get_state", new { }));
+        var hits = Read<RegistrySearchHit[]>(await fixture.Call("registry.search", new { query = "test" }));
+        var root = Read<RegistryBrowseResult>(await fixture.Call("registry.browse", new { }));
+        var domain = Read<RegistryBrowseResult>(await fixture.Call("registry.browse", new { domain = "sample" }));
+        var validation = Read<RegistryValidationResult>(await fixture.Call("registry.validate", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" }));
+        var workflows = Read<WorkflowSummary[]>(await fixture.Call("workflow.list", new { }));
+        var run = Read<WorkflowRunResult>(await fixture.Call("workflow.run", new { workflowId = workflow.Id, parameters = new { }, expectedRevision = "r1" }));
+
+        Assert.Equal("r1", state.Workspace.Revision);
+        Assert.Contains(hits, hit => hit.Operation.Id == "test.write" && hit.Operation.Risk == OperationRisk.SafeWrite);
+        Assert.NotNull(root.Total);
+        Assert.Null(root.Operations);
+        Assert.Equal("sample", domain.Domain);
+        Assert.NotEmpty(domain.Operations!);
+        Assert.True(validation.Valid);
+        var listed = Assert.Single(workflows, item => item.Id == workflow.Id);
+        Assert.Equal("label", Assert.Single(listed.Parameters!).Name);
+        Assert.True(run.Success);
+        Assert.Null(run.ErrorCode);
+        Assert.Equal("one", Assert.Single(run.Results).Step);
+    }
+
+    private static T Read<T>(BridgeResponse response)
+    {
+        Assert.True(response.Success, response.Error?.Message);
+        return response.Result!.Value.Deserialize<T>(BridgeJson.Options)!;
+    }
+
     private static string[] OperationIds(BridgeResponse response)
     {
         Assert.True(response.Success, response.Error?.Message);
@@ -311,11 +569,81 @@ public sealed class HostHandlerTests
             .ToArray();
     }
 
+    /// <summary>A time provider whose timers only fire when the test says so.</summary>
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private readonly object _gate = new();
+        private readonly List<ManualTimer> _timers = [];
+        private readonly List<(int Count, TaskCompletionSource Signal)> _waiters = [];
+        private int _fired;
+
+        public int FiredCount => Volatile.Read(ref _fired);
+
+        public IReadOnlyList<TimeSpan> DueTimes
+        {
+            get { lock (_gate) return [.. _timers.Select(timer => timer.DueTime)]; }
+        }
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            var timer = new ManualTimer(this, callback, state, dueTime);
+            lock (_gate)
+            {
+                _timers.Add(timer);
+                foreach (var waiter in _waiters.Where(waiter => _timers.Count >= waiter.Count).ToArray())
+                {
+                    waiter.Signal.TrySetResult();
+                    _waiters.Remove(waiter);
+                }
+            }
+            return timer;
+        }
+
+        /// <summary>Completes once at least <paramref name="count"/> timers have been created.</summary>
+        public Task WaitForTimersAsync(int count)
+        {
+            lock (_gate)
+            {
+                if (_timers.Count >= count) return Task.CompletedTask;
+                var signal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                _waiters.Add((count, signal));
+                return signal.Task;
+            }
+        }
+
+        public void FireAll()
+        {
+            ManualTimer[] timers;
+            lock (_gate) timers = [.. _timers];
+            foreach (var timer in timers) timer.Fire();
+        }
+
+        private sealed class ManualTimer(ManualTimeProvider owner, TimerCallback callback, object? state, TimeSpan dueTime) : ITimer
+        {
+            private int _done;
+            public TimeSpan DueTime { get; } = dueTime;
+            public void Fire()
+            {
+                if (Interlocked.Exchange(ref _done, 1) != 0) return;
+                Interlocked.Increment(ref owner._fired);
+                callback(state);
+            }
+            public bool Change(TimeSpan dueTime, TimeSpan period) => Volatile.Read(ref _done) == 0;
+            public void Dispose() => Interlocked.Exchange(ref _done, 1);
+            public ValueTask DisposeAsync()
+            {
+                Dispose();
+                return ValueTask.CompletedTask;
+            }
+        }
+    }
+
     private sealed class Fixture : IDisposable
     {
         public ApprovalService Approvals { get; } = new();
         public TestOperation Operation { get; }
         public TestOperation ReadOperation { get; } = new(OperationRisk.ReadOnly, "test.read", ["maps"]);
+        public ListingOperation Listing { get; } = new();
         // Ids and titles avoid the word "test" so they stay out of the registry.search assertions.
         public TestOperation ScriptOperation { get; } = new(OperationRisk.ExternalSideEffect, "sample.script",
             title: "Sample script runner", summary: "Runs a script.", requiresConfirmation: true, executesUserCode: true);
@@ -329,20 +657,22 @@ public sealed class HostHandlerTests
         private readonly ProBridgeRequestHandler _handler;
         // Test files are isolated and intentionally retained for post-failure diagnosis.
         private readonly string _root = Path.Combine(Path.GetTempPath(), "ArcGISProMCP.Tests", Guid.NewGuid().ToString("N"));
-        public Fixture(OperationRisk risk, IWorkspaceStateProvider? workspace = null)
+        public Fixture(OperationRisk risk, IWorkspaceStateProvider? workspace = null, TimeProvider? time = null)
         {
             Operation = new(risk);
             var registry = new OperationRegistry();
             registry.Register(Operation);
             registry.Register(ReadOperation);
             registry.Register(ScriptOperation);
+            registry.Register(Listing);
             foreach (var gated in GatedOperations.Values) registry.Register(gated);
             Workflows = new FileWorkflowLibrary(WorkflowDirectory, registry);
             var context = new OperationContext(new Dispatcher(), workspace ?? new Workspace(), Approvals, new Audit(), "test", CancellationToken.None);
-            _handler = new ProBridgeRequestHandler(registry, context, Workflows, new ProResourceStore(Path.Combine(_root, "resources")), new BridgeAccessState());
+            _handler = new ProBridgeRequestHandler(registry, context, Workflows, new ProResourceStore(Path.Combine(_root, "resources")), new BridgeAccessState(), time);
         }
-        public Task<BridgeResponse> Call(string method, object parameters) => _handler.HandleAsync(
-            new(BridgeProtocol.Version, Guid.NewGuid().ToString("N"), method, JsonSerializer.SerializeToElement(parameters), DateTimeOffset.UtcNow), TestContext.Current.CancellationToken);
+        public Task<BridgeResponse> Call(string method, object parameters) => CallWithToken(method, parameters, TestContext.Current.CancellationToken);
+        public Task<BridgeResponse> CallWithToken(string method, object parameters, CancellationToken cancellationToken) => _handler.HandleAsync(
+            new(BridgeProtocol.Version, Guid.NewGuid().ToString("N"), method, JsonSerializer.SerializeToElement(parameters), DateTimeOffset.UtcNow), cancellationToken);
         public void Dispose() { _handler.Dispose(); Approvals.Dispose(); Workflows.Dispose(); }
     }
 
@@ -353,9 +683,10 @@ public sealed class HostHandlerTests
         string title = "Test operation",
         string summary = "Test",
         bool? requiresConfirmation = null,
-        bool executesUserCode = false) : IOperation
+        bool executesUserCode = false) : IOperation, IDryRunnableOperation
     {
         public int CallCount { get; private set; }
+        public int DryRunCount { get; private set; }
         public bool Fail { get; set; }
         public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(id, title, summary, JsonSchemas.EmptyObject, risk: risk, capabilities: capabilities,
             requiresConfirmation: requiresConfirmation ?? risk == OperationRisk.Destructive, executesUserCode: executesUserCode);
@@ -366,6 +697,28 @@ public sealed class HostHandlerTests
             var revision = (await context.Workspace.GetSnapshotAsync(cancellationToken)).Revision;
             return Fail ? OperationResult.Fail("test_failure", "Deliberate failure", revision) : OperationResult.Ok(JsonSerializer.SerializeToElement(new { }), revision);
         }
+        public async Task<OperationResult> DryRunAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+        {
+            DryRunCount++;
+            var revision = (await context.Workspace.GetSnapshotAsync(cancellationToken)).Revision;
+            return OperationResult.Ok(JsonSerializer.SerializeToElement(new { valid = true, dryRun = true }), revision);
+        }
+    }
+
+    /// <summary>Declares a top-level array output schema, like map.list and layout.list.</summary>
+    private sealed class ListingOperation : IOperation
+    {
+        public const string Id = "listing.maps";
+        public static JsonElement OutputSchema { get; } = JsonSchemas.Array(JsonSchemas.Object(
+            [("name", JsonSchemas.String()), ("layerCount", JsonSchemas.Integer(minimum: 0))],
+            ["name", "layerCount"]));
+        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(Id, "Listing maps", "Lists maps.", JsonSchemas.EmptyObject,
+            outputSchema: OutputSchema);
+        public bool Fail { get; set; }
+        public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken) =>
+            Task.FromResult(Fail
+                ? OperationResult.Fail("listing_failed", "Deliberate failure", "r1")
+                : OperationResult.Ok(JsonSerializer.SerializeToElement(new[] { new { name = "Zoning", layerCount = 3 } }), "r1"));
     }
 
     private sealed class Workspace : IWorkspaceStateProvider

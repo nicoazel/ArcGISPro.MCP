@@ -1,0 +1,7 @@
+{
+    "map": {
+        "title": "Python Summarize",
+        "description": "Summarizes a table with a Python class.",
+        "in_table.title": "Input Table"
+    }
+}

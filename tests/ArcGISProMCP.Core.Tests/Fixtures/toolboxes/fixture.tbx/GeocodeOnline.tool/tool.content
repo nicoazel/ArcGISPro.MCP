@@ -1,0 +1,24 @@
+{
+    "type": "FunctionTool",
+    "displayname": "$rc:title",
+    "description": "$rc:description",
+    "product": "100",
+    "attributes": [
+        "credits"
+    ],
+    "params": {
+        "in_table": {
+            "displayname": "$rc:in_table.title",
+            "datatype": {
+                "type": "GPTableView"
+            }
+        },
+        "out_features": {
+            "direction": "out",
+            "displayname": "$rc:out_features.title",
+            "datatype": {
+                "type": "DEFeatureClass"
+            }
+        }
+    }
+}

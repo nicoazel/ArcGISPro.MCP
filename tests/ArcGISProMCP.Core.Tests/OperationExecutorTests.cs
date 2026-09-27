@@ -68,6 +68,58 @@ public sealed class OperationExecutorTests
     }
 
     [Fact]
+    public async Task Dry_run_is_audited_as_a_dry_run()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.SafeWrite);
+
+        await fixture.ExecuteAsync(expectedRevision: null, dryRun: true);
+
+        Assert.Equal(OperationAuditKinds.DryRun, Assert.Single(fixture.Audit.Events).Kind);
+    }
+
+    [Fact]
+    public async Task Dry_run_uses_the_operation_static_validation_and_never_executes()
+    {
+        var operation = new DryRunnableOperation();
+        var audit = new CapturingAuditLog();
+        var registry = new OperationRegistry();
+        registry.Register(operation);
+        var executor = new OperationExecutor(registry, new OperationContext(
+            new InlineDispatcher(), new StaticWorkspace(), new RejectConfirmation(), audit, "dry-run", CancellationToken.None));
+
+        // No revision and no confirmation token: a dry run needs neither, even for a confirmation-gated operation.
+        var result = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), DryRun: true),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal("static", result.Data?.GetProperty("checked").GetString());
+        Assert.Equal(1, operation.DryRunCalls);
+        Assert.Equal(0, operation.ExecuteCalls);
+        var auditEvent = Assert.Single(audit.Events);
+        Assert.Equal(OperationAuditKinds.DryRun, auditEvent.Kind);
+        Assert.False(auditEvent.AutonomousBypass);
+    }
+
+    [Fact]
+    public async Task Dry_run_with_invalid_arguments_does_not_reach_the_operation()
+    {
+        var operation = new DryRunnableOperation();
+        var registry = new OperationRegistry();
+        registry.Register(operation);
+        var executor = new OperationExecutor(registry, new OperationContext(
+            new InlineDispatcher(), new StaticWorkspace(), new RejectConfirmation(), new CapturingAuditLog(), "dry-run", CancellationToken.None));
+
+        var result = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { unexpected = 1 }), DryRun: true),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("invalid_arguments", result.ErrorCode);
+        Assert.Equal(0, operation.DryRunCalls);
+        Assert.Equal(0, operation.ExecuteCalls);
+    }
+
+    [Fact]
     public async Task Unknown_operation_id_is_audited_as_operation_not_found()
     {
         var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
@@ -183,6 +235,29 @@ public sealed class OperationExecutorTests
         {
             CallCount++;
             return Task.FromResult(OperationResult.Ok(JsonSerializer.SerializeToElement(new { executed = true }), ExecutorFixture.Revision));
+        }
+    }
+
+    private sealed class DryRunnableOperation : IOperation, IDryRunnableOperation
+    {
+        public int ExecuteCalls { get; private set; }
+
+        public int DryRunCalls { get; private set; }
+
+        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(
+            "test.dry-runnable", "Dry-runnable", "Exercises the static dry-run path.", JsonSchemas.EmptyObject,
+            risk: OperationRisk.ExternalSideEffect, requiresConfirmation: true);
+
+        public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+        {
+            ExecuteCalls++;
+            throw new InvalidOperationException("A dry run must never execute.");
+        }
+
+        public Task<OperationResult> DryRunAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+        {
+            DryRunCalls++;
+            return Task.FromResult(OperationResult.Ok(JsonSerializer.SerializeToElement(new { @checked = "static" }), ExecutorFixture.Revision));
         }
     }
 

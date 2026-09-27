@@ -1,0 +1,8 @@
+{
+    "map": {
+        "title": "Count Records",
+        "description": "Counts records.",
+        "in_rows.title": "Input Rows",
+        "row_count.title": "Row Count"
+    }
+}

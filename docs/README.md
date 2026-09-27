@@ -8,7 +8,7 @@ ArcGIS Pro MCP Studio lets a Model Context Protocol client drive a running ArcGI
 flowchart LR
     client["MCP client"] -->|stdio| server["ArcGISProMCP.Server<br/>16 gateway tools"]
     server -->|"same-user named pipe<br/>length-prefixed JSON"| addin["ArcGISProMCP.AddIn<br/>inside ArcGIS Pro"]
-    addin --> registry["Operation registry<br/>38 operations"]
+    addin --> registry["Operation registry<br/>41 operations"]
     registry --> sdk["ArcGIS Pro SDK<br/>MCT / UI thread"]
     addin -.->|"risky operations"| panel["MCP Studio panel<br/>local review"]
     registry -.->|"opt-in only"| arcpy["ArcPy worker"]
@@ -33,7 +33,7 @@ flowchart LR
 - **[Architecture](architecture.md)**: process boundaries, the six-step operation lifecycle, threading rules, and how to add a new operation.
 
 ### Operate safely
-- **[Security and operational limits](security.md)**: the trust boundary, revision checks, approval tokens, workflow operation allowlists, audit records, autonomous mode, idempotency, pipe limits, and `outcome_unknown` semantics.
+- **[Security and operational limits](security.md)**: the trust boundary, revision checks, approval tokens, workflow operation allowlists, geoprocessing risk tiers, audit records, autonomous mode, idempotency, pipe limits, and `outcome_unknown` semantics.
 - **[ArcPy configuration](arcpy.md)**: turning on hash-pinned ArcPy scripts, with their script and working roots, limits, and trust boundary.
 
 ### Verify and release
@@ -46,9 +46,9 @@ The gateway exposes only 16 tools. The full catalog of GIS operations stays serv
 
 1. `system_get_state`: read the project snapshot and keep its **workspace revision**.
 2. `registry_search` / `registry_browse`: find candidate operations by intent.
-3. `registry_describe`: load the schema for the few operations the task needs.
-4. `registry_validate`: check arguments against the schema and the current workspace revision without changing anything. It does not resolve layers or paths.
-5. `registry_invoke`: run the operation with the revision. Confirmation-gated operations (every destructive or external-side-effect operation, plus `project.open`, `project.save` and `feature.update`) first need `approval_request`, a person approving in the panel, and `approval_status` to return a single-use token.
+3. `registry_describe`: load the input schema and `resultSchema` for the few operations the task needs.
+4. `registry_validate`: check arguments against the schema and the current workspace revision without changing anything. It does not resolve layers or paths. `registry_invoke` with `dryRun: true` goes further for operations with static validation, such as `gp.run`, without executing, needing a revision or consuming an approval.
+5. `registry_invoke`: run the operation with the revision. Confirmation-gated operations (every destructive or external-side-effect operation, plus `project.open`, `project.save` and `feature.update`) first need `approval_request`, a person approving in the panel, and `approval_status` (which can wait for the decision with `waitSeconds`) to return a single-use token. Every tool returns `{ ok, result, error }` as structured content; failures set `isError`.
 6. `resource_read`: fetch returned images and larger observations by `arcgis://` handle.
 
-Reusable multi-step recipes go through `workflow_list` → `workflow_get` → `workflow_run`, and `skill_search` / `skill_get` supply the guidance for them. In default mode a workflow cannot run confirmation-gated steps, because there is no per-step approval yet. A workflow stops with `workspace_changed` if the project changes while it runs. See the [reference](reference.md) for every tool and operation.
+Reusable multi-step recipes go through `workflow_list` → `workflow_get` → `workflow_run`, and `skill_search` / `skill_get` supply the guidance for them. In default mode a workflow cannot run confirmation-gated steps, because there is no per-step approval yet. A workflow stops with `workspace_changed` if the project changes while it runs. The same state, descriptors, workflows, skills and observations are also exposed as read-only `arcgis://` MCP resources, and each skill and saved workflow is offered as an MCP prompt. See the [reference](reference.md) for every tool, operation, resource and prompt.

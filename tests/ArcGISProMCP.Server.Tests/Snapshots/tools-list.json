@@ -1,0 +1,2662 @@
+[
+  {
+    "name": "approval_cancel",
+    "title": "Cancel local review",
+    "annotations": {
+      "title": "Cancel local review",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "description": "Opaque approval request id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "requestId": {
+              "type": "string"
+            },
+            "cancelled": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "requestId",
+            "cancelled"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "approval_request",
+    "title": "Request local review",
+    "annotations": {
+      "title": "Request local review",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "description": "Stable operation id requiring approval.",
+          "type": "string"
+        },
+        "arguments": {
+          "description": "Exact arguments to be reviewed."
+        },
+        "expectedRevision": {
+          "description": "Current workspace revision from system_get_state.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operationId",
+        "arguments",
+        "expectedRevision"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "requestId": {
+              "type": "string"
+            },
+            "operationId": {
+              "type": "string"
+            },
+            "operationVersion": {
+              "type": "string"
+            },
+            "workspaceRevision": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "requestedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "confirmationToken": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "instructions": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "waitNotice": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "requestId",
+            "operationId",
+            "operationVersion",
+            "workspaceRevision",
+            "status",
+            "requestedAt",
+            "expiresAt",
+            "confirmationToken",
+            "instructions"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "approval_status",
+    "title": "Check local review",
+    "annotations": {
+      "title": "Check local review",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "description": "Opaque id returned by approval_request.",
+          "type": "string"
+        },
+        "waitSeconds": {
+          "description": "Seconds to wait for a pending request to be decided, 0 to 120 (values outside are clamped). 0 returns immediately. Keep it below your client's tool-call timeout.",
+          "type": "integer",
+          "default": 0
+        }
+      },
+      "required": [
+        "requestId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "requestId": {
+              "type": "string"
+            },
+            "operationId": {
+              "type": "string"
+            },
+            "operationVersion": {
+              "type": "string"
+            },
+            "workspaceRevision": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string"
+            },
+            "requestedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "expiresAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "confirmationToken": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "instructions": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "waitNotice": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "requestId",
+            "operationId",
+            "operationVersion",
+            "workspaceRevision",
+            "status",
+            "requestedAt",
+            "expiresAt",
+            "confirmationToken",
+            "instructions"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "registry_browse",
+    "title": "Browse ArcGIS operations",
+    "annotations": {
+      "title": "Browse ArcGIS operations",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "description": "Optional registry domain; omit for domain counts and top-level navigation.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "limit": {
+          "description": "Maximum entries from 1 to 100.",
+          "type": "integer",
+          "default": 30
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "total": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "domains": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "object",
+                "properties": {
+                  "domain": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "domain",
+                  "count"
+                ]
+              }
+            },
+            "domain": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "operations": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "risk": {
+                    "description": "Numeric OperationRisk: 0 ReadOnly, 1 SafeWrite, 2 Destructive, 3 ExternalSideEffect.",
+                    "type": "integer"
+                  },
+                  "executionTarget": {
+                    "description": "Numeric ExecutionTarget: 0 ArcGISMainCimThread, 1 ArcGISUiThread, 2 Background, 3 ExternalWorker.",
+                    "type": "integer"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "requiredCapabilities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "requiresConfirmation": {
+                    "type": "boolean"
+                  },
+                  "executesUserCode": {
+                    "type": "boolean"
+                  },
+                  "typicalDuration": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "version",
+                  "title",
+                  "summary",
+                  "risk",
+                  "executionTarget",
+                  "tags",
+                  "requiredCapabilities",
+                  "requiresConfirmation",
+                  "executesUserCode",
+                  "typicalDuration"
+                ]
+              }
+            }
+          },
+          "required": [
+            "total",
+            "domains",
+            "domain",
+            "operations"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "registry_describe",
+    "title": "Describe an ArcGIS operation",
+    "annotations": {
+      "title": "Describe an ArcGIS operation",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "description": "Stable operation id returned by registry_search or registry_browse.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operationId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "inputSchema": true,
+            "outputSchema": true,
+            "risk": {
+              "description": "Numeric OperationRisk: 0 ReadOnly, 1 SafeWrite, 2 Destructive, 3 ExternalSideEffect.",
+              "type": "integer"
+            },
+            "executionTarget": {
+              "description": "Numeric ExecutionTarget: 0 ArcGISMainCimThread, 1 ArcGISUiThread, 2 Background, 3 ExternalWorker.",
+              "type": "integer"
+            },
+            "requiredCapabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "aliases": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "examples": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "relatedOperations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "requiresConfirmation": {
+              "type": "boolean"
+            },
+            "undoable": {
+              "type": "boolean"
+            },
+            "typicalDuration": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "executesUserCode": {
+              "type": "boolean"
+            },
+            "resultSchema": true
+          },
+          "required": [
+            "id",
+            "version",
+            "title",
+            "summary",
+            "inputSchema",
+            "outputSchema",
+            "risk",
+            "executionTarget",
+            "requiredCapabilities",
+            "tags",
+            "aliases",
+            "examples",
+            "relatedOperations",
+            "requiresConfirmation",
+            "undoable",
+            "typicalDuration",
+            "executesUserCode",
+            "resultSchema"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "registry_invoke",
+    "title": "Invoke an ArcGIS operation",
+    "annotations": {
+      "title": "Invoke an ArcGIS operation",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "description": "Stable operation id.",
+          "type": "string"
+        },
+        "arguments": {
+          "description": "Arguments matching the operation schema."
+        },
+        "expectedRevision": {
+          "description": "Workspace revision from system_get_state; required for reliable writes.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "confirmationToken": {
+          "description": "Short-lived confirmation token supplied by the ArcGIS Pro panel for risky operations; omitted only when the host explicitly advertises autonomous-control.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "idempotencyKey": {
+          "description": "Optional key that prevents duplicate mutations when a call is retried.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "dryRun": {
+          "description": "Validate statically without executing; no revision or confirmation token needed.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "operationId",
+        "arguments"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "data": true,
+            "errorCode": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "workspaceRevision": {
+              "type": "string"
+            },
+            "notices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "default": "info"
+                  }
+                },
+                "required": [
+                  "code",
+                  "message"
+                ]
+              }
+            },
+            "resources": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "uri": {
+                    "type": "string"
+                  },
+                  "mimeType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "default": null
+                  }
+                },
+                "required": [
+                  "uri",
+                  "mimeType"
+                ]
+              }
+            }
+          },
+          "required": [
+            "success",
+            "data",
+            "errorCode",
+            "message",
+            "workspaceRevision",
+            "notices",
+            "resources"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "registry_search",
+    "title": "Search ArcGIS operations",
+    "annotations": {
+      "title": "Search ArcGIS operations",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "Natural-language intent such as 'make parcels transparent' or 'compose three map frames'.",
+          "type": "string"
+        },
+        "domain": {
+          "description": "Optional domain: project, map, layer, feature, table, metadata, basemap, style, symbology, label, layout, gp, arcpy, view, workspace, workflow.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "limit": {
+          "description": "Maximum results from 1 to 100; values outside the range are clamped.",
+          "type": "integer",
+          "default": 12
+        },
+        "capabilities": {
+          "description": "Optional capabilities every result must require, e.g. ['maps'], ['layouts'], ['geoprocessing'], ['arcpy'], ['metadata'], ['visual-observations'].",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "maxRisk": {
+          "description": "Optional highest risk to include: ReadOnly, SafeWrite, Destructive or ExternalSideEffect. Use ReadOnly to find only operations that never change the project.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "query"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "operation": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "risk": {
+                    "description": "Numeric OperationRisk: 0 ReadOnly, 1 SafeWrite, 2 Destructive, 3 ExternalSideEffect.",
+                    "type": "integer"
+                  },
+                  "executionTarget": {
+                    "description": "Numeric ExecutionTarget: 0 ArcGISMainCimThread, 1 ArcGISUiThread, 2 Background, 3 ExternalWorker.",
+                    "type": "integer"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "requiredCapabilities": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "requiresConfirmation": {
+                    "type": "boolean"
+                  },
+                  "executesUserCode": {
+                    "type": "boolean"
+                  },
+                  "typicalDuration": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "version",
+                  "title",
+                  "summary",
+                  "risk",
+                  "executionTarget",
+                  "tags",
+                  "requiredCapabilities",
+                  "requiresConfirmation",
+                  "executesUserCode",
+                  "typicalDuration"
+                ]
+              },
+              "score": {
+                "type": "number"
+              },
+              "matchedTerms": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "operation",
+              "score",
+              "matchedTerms"
+            ]
+          }
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "registry_validate",
+    "title": "Validate an ArcGIS operation",
+    "annotations": {
+      "title": "Validate an ArcGIS operation",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "description": "Stable operation id.",
+          "type": "string"
+        },
+        "arguments": {
+          "description": "Arguments matching the described operation schema."
+        },
+        "expectedRevision": {
+          "description": "Optional workspace revision for optimistic concurrency.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "operationId",
+        "arguments"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "valid": {
+              "type": "boolean"
+            },
+            "operation": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "risk": {
+                  "description": "Numeric OperationRisk: 0 ReadOnly, 1 SafeWrite, 2 Destructive, 3 ExternalSideEffect.",
+                  "type": "integer"
+                },
+                "executionTarget": {
+                  "description": "Numeric ExecutionTarget: 0 ArcGISMainCimThread, 1 ArcGISUiThread, 2 Background, 3 ExternalWorker.",
+                  "type": "integer"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "requiredCapabilities": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "requiresConfirmation": {
+                  "type": "boolean"
+                },
+                "executesUserCode": {
+                  "type": "boolean"
+                },
+                "typicalDuration": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "title",
+                "summary",
+                "risk",
+                "executionTarget",
+                "tags",
+                "requiredCapabilities",
+                "requiresConfirmation",
+                "executesUserCode",
+                "typicalDuration"
+              ]
+            },
+            "revision": {
+              "type": "string"
+            },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "message"
+                ]
+              }
+            },
+            "requiresConfirmation": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "valid",
+            "operation",
+            "revision",
+            "issues",
+            "requiresConfirmation"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "resource_read",
+    "title": "Read ArcGIS observation",
+    "annotations": {
+      "title": "Read ArcGIS observation",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "description": "An arcgis:// resource URI returned by an operation.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string"
+            },
+            "mimeType": {
+              "type": "string"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "encoding": {
+              "type": "string"
+            },
+            "data": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": [
+            "uri",
+            "mimeType",
+            "name",
+            "encoding",
+            "data",
+            "createdAt"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "skill_get",
+    "title": "Read ArcGIS skill guidance",
+    "annotations": {
+      "title": "Read ArcGIS skill guidance",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "skillId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "skillId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "requiredCapabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "allowedOperations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "preconditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "visualChecks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "recoveryGuidance": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "workflowId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "title",
+            "summary",
+            "tags",
+            "requiredCapabilities",
+            "allowedOperations",
+            "preconditions",
+            "visualChecks",
+            "recoveryGuidance",
+            "workflowId"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "skill_search",
+    "title": "Find ArcGIS skills",
+    "annotations": {
+      "title": "Find ArcGIS skills",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "workflowId": {
+                "type": "string"
+              },
+              "score": {
+                "description": "Number of query terms found in the title, summary or tags.",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "title",
+              "summary",
+              "tags",
+              "workflowId",
+              "score"
+            ]
+          }
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "system_get_state",
+    "title": "Get ArcGIS Pro state",
+    "annotations": {
+      "title": "Get ArcGIS Pro state",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "bridgeProtocol": {
+              "type": "integer"
+            },
+            "processId": {
+              "type": "integer"
+            },
+            "workspace": {
+              "type": "object",
+              "properties": {
+                "revision": {
+                  "type": "string"
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "project": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "uri": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "isDirty": {
+                      "type": "boolean"
+                    },
+                    "isOpen": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "uri",
+                    "isDirty",
+                    "isOpen"
+                  ]
+                },
+                "maps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "mapType": {
+                        "type": "string"
+                      },
+                      "layerCount": {
+                        "type": "integer"
+                      },
+                      "isActive": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "mapType",
+                      "layerCount",
+                      "isActive"
+                    ]
+                  }
+                },
+                "layouts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "mapFrameCount": {
+                        "type": "integer"
+                      },
+                      "isOpen": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "mapFrameCount",
+                      "isOpen"
+                    ]
+                  }
+                },
+                "activeMapId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "activeViewId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "capabilities": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "available": {
+                        "type": "boolean"
+                      },
+                      "detail": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "default": null
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "available"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "revision",
+                "capturedAt",
+                "project",
+                "maps",
+                "layouts",
+                "activeMapId",
+                "activeViewId",
+                "capabilities"
+              ]
+            },
+            "operationCount": {
+              "type": "integer"
+            },
+            "runningOperationCount": {
+              "type": "integer"
+            },
+            "connected": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "bridgeProtocol",
+            "processId",
+            "workspace",
+            "operationCount",
+            "runningOperationCount",
+            "connected"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "workflow_get",
+    "title": "Get an ArcGIS workflow",
+    "annotations": {
+      "title": "Get an ArcGIS workflow",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workflowId": {
+          "description": "Workflow id.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Optional immutable version; omit for latest.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "workflowId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "requiredCapabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "parameters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "required": {
+                    "type": "boolean"
+                  },
+                  "defaultValue": true,
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "type",
+                  "required",
+                  "defaultValue",
+                  "description"
+                ]
+              }
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "arguments": true,
+                  "dependsOn": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "continueOnError": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "expectedObservation": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "default": null
+                  }
+                },
+                "required": [
+                  "id",
+                  "operation",
+                  "arguments",
+                  "dependsOn"
+                ]
+              }
+            },
+            "contentHash": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null
+            },
+            "allowedOperations": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "default": null
+            }
+          },
+          "required": [
+            "id",
+            "version",
+            "title",
+            "summary",
+            "tags",
+            "requiredCapabilities",
+            "parameters",
+            "steps"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "workflow_list",
+    "title": "List ArcGIS skills and workflows",
+    "annotations": {
+      "title": "List ArcGIS skills and workflows",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "ranking": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "workflowId": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "successfulRuns": {
+                    "type": "integer"
+                  },
+                  "failedRuns": {
+                    "type": "integer"
+                  },
+                  "userCorrections": {
+                    "type": "integer"
+                  },
+                  "score": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "workflowId",
+                  "version",
+                  "successfulRuns",
+                  "failedRuns",
+                  "userCorrections",
+                  "score"
+                ]
+              },
+              "parameters": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "defaultValue": true,
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "type",
+                    "required",
+                    "defaultValue",
+                    "description"
+                  ]
+                },
+                "default": null
+              }
+            },
+            "required": [
+              "id",
+              "version",
+              "title",
+              "summary",
+              "tags",
+              "ranking"
+            ]
+          }
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "workflow_run",
+    "title": "Run an ArcGIS workflow",
+    "annotations": {
+      "title": "Run an ArcGIS workflow",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workflowId": {
+          "description": "Workflow id.",
+          "type": "string"
+        },
+        "parameters": {
+          "description": "Workflow parameter values."
+        },
+        "expectedRevision": {
+          "description": "Workspace revision from system_get_state.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "version": {
+          "description": "Immutable workflow version; required with idempotencyKey.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "idempotencyKey": {
+          "description": "Process-lifetime retry key. Retry only the exact version, parameters and initial revision; never replay completed steps blindly.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "workflowId",
+        "parameters"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "success": {
+              "type": "boolean"
+            },
+            "errorCode": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "id": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "stoppedAtStep": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "stepIndex": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "expectedRevision": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "currentRevision": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "step": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "success": {
+                    "type": "boolean"
+                  },
+                  "errorCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "message": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "workspaceRevision": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "data": true,
+                  "resources": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "uri": {
+                          "type": "string"
+                        },
+                        "mimeType": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "default": null
+                        }
+                      },
+                      "required": [
+                        "uri",
+                        "mimeType"
+                      ]
+                    }
+                  },
+                  "notices": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "severity": {
+                          "type": "string",
+                          "default": "info"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "step",
+                  "operation",
+                  "success",
+                  "errorCode",
+                  "message",
+                  "workspaceRevision",
+                  "data",
+                  "resources",
+                  "notices"
+                ]
+              }
+            },
+            "revision": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "historyWarning": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "success",
+            "errorCode",
+            "message",
+            "id",
+            "version",
+            "stoppedAtStep",
+            "stepIndex",
+            "expectedRevision",
+            "currentRevision",
+            "results",
+            "revision",
+            "historyWarning"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  },
+  {
+    "name": "workflow_save",
+    "title": "Save an ArcGIS workflow",
+    "annotations": {
+      "title": "Save an ArcGIS workflow",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workflow": {
+          "description": "Workflow definition JSON matching the workflow schema."
+        }
+      },
+      "required": [
+        "workflow"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "description": "True when the call succeeded. False means error is set and the MCP result has isError: true.",
+          "type": "boolean"
+        },
+        "result": {
+          "description": "The typed result; null when the call failed before producing one.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "saved": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "saved",
+            "id",
+            "version"
+          ]
+        },
+        "error": {
+          "description": "Why the call failed; null on success.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "code": {
+              "description": "Stable machine-readable error code, for example workspace_revision_mismatch or arcgis_unavailable.",
+              "type": "string"
+            },
+            "message": {
+              "description": "Human-readable explanation.",
+              "type": "string"
+            },
+            "retryable": {
+              "description": "True when repeating the same call later may succeed (for example ArcGIS Pro was not reachable).",
+              "type": "boolean"
+            },
+            "revision": {
+              "description": "Workspace revision observed when the failure happened, when known.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "code",
+            "message",
+            "retryable",
+            "revision"
+          ]
+        }
+      },
+      "required": [
+        "ok",
+        "result",
+        "error"
+      ]
+    }
+  }
+]

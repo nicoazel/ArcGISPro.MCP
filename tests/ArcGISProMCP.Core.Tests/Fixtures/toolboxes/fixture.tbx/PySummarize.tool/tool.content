@@ -1,0 +1,15 @@
+{
+    "type": "PythonScriptTool",
+    "python_class": "..\\toolbox.module.py\\PySummarize",
+    "displayname": "$rc:title",
+    "description": "$rc:description",
+    "product": "100",
+    "params": {
+        "in_table": {
+            "displayname": "$rc:in_table.title",
+            "datatype": {
+                "type": "GPTableView"
+            }
+        }
+    }
+}

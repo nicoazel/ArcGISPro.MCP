@@ -1,0 +1,21 @@
+{
+    "type": "ScriptTool",
+    "displayname": "$rc:title",
+    "description": "$rc:description",
+    "product": "100",
+    "params": {
+        "in_table": {
+            "displayname": "$rc:in_table.title",
+            "datatype": {
+                "type": "GPTableView"
+            }
+        },
+        "out_report": {
+            "direction": "out",
+            "displayname": "$rc:out_report.title",
+            "datatype": {
+                "type": "DETextFile"
+            }
+        }
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "map": {
+        "title": "Get Count",
+        "description": "Returns the number of rows.",
+        "in_rows.title": "Input Rows",
+        "row_count.title": "Row Count"
+    }
+}

@@ -382,9 +382,11 @@ internal sealed class ProPanelStateSource(
     private static string? UserCodeWarning(ApprovalRequestSnapshot approval)
     {
         var registry = ArcGISProMcpModule.Instance?.Registry;
-        return registry is not null && registry.TryGet(approval.OperationId, out var operation)
-            ? UserCodeExecutionDetector.GetWarning(operation.Descriptor, approval.Arguments)
-            : null;
+        if (registry is null || !registry.TryGet(approval.OperationId, out var operation)) return null;
+        // Operations such as gp.run add argument-specific risks (in-place data changes, credits) to the user-code warning.
+        return operation is IApprovalWarningSource source
+            ? source.GetApprovalWarning(approval.Arguments)
+            : UserCodeExecutionDetector.GetWarning(operation.Descriptor, approval.Arguments);
     }
 
     private void EnsureApprovalSubscription()

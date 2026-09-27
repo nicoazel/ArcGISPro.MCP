@@ -1,0 +1,8 @@
+{
+    "map": {
+        "title": "Script Summary",
+        "description": "Summarizes a table with a script.",
+        "in_table.title": "Input Table",
+        "out_report.title": "Output Report"
+    }
+}
