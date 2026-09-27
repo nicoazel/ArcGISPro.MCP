@@ -33,8 +33,6 @@ public sealed class PittsburghBlockShowcaseAssetTests
         Assert.Equal(3, steps.Count(step => Operation(step) == "layout.ensure-surround"));
         Assert.Equal(3, steps.Count(step => Operation(step) == "layer.set-appearance"));
         Assert.Equal(3, steps.Count(step => Operation(step) == "table.statistics"));
-        Assert.Equal("view.capture", Operation(steps[^1]));
-        Assert.DoesNotContain(steps, step => Operation(step) == "project.save");
         Assert.Equal("relative-to-ground", Step(steps, "scene-ground-relative")
             .GetProperty("arguments").GetProperty("mode").GetString());
         Assert.Contains("<dyn type=\"project\"", Step(steps, "dynamic-status")

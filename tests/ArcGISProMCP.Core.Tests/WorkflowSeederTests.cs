@@ -79,6 +79,44 @@ public sealed class WorkflowSeederTests
     }
 
     [Fact]
+    public async Task SeedAsync_reports_conflict_for_same_id_and_version_under_a_different_file_name()
+    {
+        using var scope = new LibraryScope();
+        var bundled = await ReadBundledAsync(WorkflowSeeder.BundledResourceNames[0]);
+        var userEdited = bundled with { Title = bundled.Title + " (user edit)", ContentHash = null };
+        var userFile = Path.Combine(scope.Root, "my-custom-name.workflow.json");
+        await File.WriteAllTextAsync(userFile, JsonSerializer.Serialize(userEdited, WebOptions), TestContext.Current.CancellationToken);
+        var userBytes = await File.ReadAllBytesAsync(userFile, TestContext.Current.CancellationToken);
+
+        var report = await WorkflowSeeder.SeedAsync(scope.Library, TestContext.Current.CancellationToken);
+
+        var conflict = Assert.Single(report.Skipped);
+        Assert.Equal(WorkflowSeedOutcome.Conflict, conflict.Outcome);
+        Assert.Equal(bundled.Id, conflict.WorkflowId);
+        Assert.Equal(bundled.Version, conflict.Version);
+        Assert.Equal(WorkflowSeeder.BundledResourceNames.Count - 1, report.SeededCount);
+        Assert.Equal(userBytes, await File.ReadAllBytesAsync(userFile, TestContext.Current.CancellationToken));
+        var installed = (await scope.Library.ListAsync(TestContext.Current.CancellationToken))
+            .Where(workflow => workflow.Id == bundled.Id && workflow.Version == bundled.Version);
+        Assert.Equal(userEdited.Title, Assert.Single(installed).Title);
+    }
+
+    [Fact]
+    public async Task SeedAsync_treats_identical_content_under_a_different_file_name_as_present()
+    {
+        using var scope = new LibraryScope();
+        var bundled = await ReadBundledAsync(WorkflowSeeder.BundledResourceNames[0]);
+        var userFile = Path.Combine(scope.Root, "my-copy.workflow.json");
+        await File.WriteAllTextAsync(userFile, JsonSerializer.Serialize(bundled with { ContentHash = null }, WebOptions), TestContext.Current.CancellationToken);
+
+        var report = await WorkflowSeeder.SeedAsync(scope.Library, TestContext.Current.CancellationToken);
+
+        Assert.Equal(WorkflowSeedOutcome.AlreadyPresent, report.Items[0].Outcome);
+        Assert.Empty(report.Skipped);
+        Assert.Equal(WorkflowSeeder.BundledResourceNames.Count, Directory.EnumerateFiles(scope.Root, "*.workflow.json").Count());
+    }
+
+    [Fact]
     public async Task SeedAsync_reports_failures_instead_of_throwing_when_operations_are_unknown()
     {
         var root = Path.Combine(Path.GetTempPath(), "arcgis-mcp-tests", Guid.NewGuid().ToString("N"));

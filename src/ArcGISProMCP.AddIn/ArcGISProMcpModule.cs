@@ -105,7 +105,8 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
     }
 
     // Runs after operation registration because workflow validation rejects unknown operation ids.
-    // The library and seeder use ConfigureAwait(false), so a synchronous wait cannot deadlock.
+    // Every await in the library and seeder, including async disposal, uses ConfigureAwait(false),
+    // so a synchronous wait cannot deadlock.
     [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "Workflow seeding must never block ArcGIS Pro startup.")]
     private static void SeedBundledWorkflows(IWorkflowLibrary workflows)
     {

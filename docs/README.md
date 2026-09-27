@@ -38,7 +38,7 @@ flowchart LR
 
 ### Verify and release
 - **[Manual acceptance](manual-acceptance.md)**: the live checklist for feature data, metadata, geoprocessing, ArcPy, and stability on a disposable project.
-- **[Roadmap](ROADMAP.md)**: planned work, in priority order. Released changes are in the [changelog](../CHANGELOG.md).
+- **[Roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md)**: planned work, in priority order. Released changes are in the [changelog](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md).
 
 ## How a model uses the gateway
 
