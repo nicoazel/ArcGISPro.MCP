@@ -1,0 +1,8 @@
+{
+    "map": {
+        "title": "Old Buffer",
+        "description": "Creates buffer polygons (legacy).",
+        "in_features.title": "Input Features",
+        "out_feature_class.title": "Output Feature Class"
+    }
+}

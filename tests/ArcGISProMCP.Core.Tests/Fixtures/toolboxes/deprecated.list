@@ -1,0 +1,6 @@
+# Content-type : text/yaml; charset=ASCII
+#
+# Synthetic test fixture. key format [<toolbox name>/]<toolname>
+#
+- fixture/oldbuffer
+- other tools/notthere

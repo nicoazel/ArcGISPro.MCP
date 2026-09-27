@@ -1,0 +1,21 @@
+{
+    "type": "FunctionTool",
+    "displayname": "$rc:title",
+    "description": "$rc:description",
+    "product": "100",
+    "attributes": [
+        "no_data_change",
+        "param_nocount:in_data"
+    ],
+    "params": {
+        "in_data": {
+            "displayname": "$rc:in_data.title",
+            "datatype": {
+                "type": "GPMultiValue",
+                "datatype": {
+                    "type": "DEType"
+                }
+            }
+        }
+    }
+}

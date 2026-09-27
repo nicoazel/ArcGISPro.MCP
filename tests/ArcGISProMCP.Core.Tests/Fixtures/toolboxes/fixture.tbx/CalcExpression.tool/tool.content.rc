@@ -1,0 +1,11 @@
+{
+    "map": {
+        "title": "Calculate Expression",
+        "description": "Calculates an expression.",
+        "in_table.title": "Input Table",
+        "expression.title": "Expression",
+        "expression_type.title": "Expression Type",
+        "expression_type.domain.PYTHON3": "Python 3",
+        "expression_type.domain.ARCADE": "Arcade"
+    }
+}

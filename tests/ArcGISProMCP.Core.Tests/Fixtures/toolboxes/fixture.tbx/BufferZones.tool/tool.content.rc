@@ -1,0 +1,24 @@
+{
+    "map": {
+        "category.advanced": "Advanced Options",
+        "classes.title": "Classes",
+        "description": "Creates zone polygons around input features to a specified distance.",
+        "dissolve.title": "Dissolve Output",
+        "dissolve_fields.title": "Dissolve Field(s)",
+        "distance.descr": "<xdoc> <p>The distance around the input features.</p> <div> <ul> <li><p><span title=\"FULL\"><strong>Full</strong></span>&#8212;<span>Both sides &amp; ends.</span></p> </li> </ul> </div> <p>Units default to the input&apos;s spatial reference when a &lt; b.</p> </xdoc>",
+        "distance.title": "Distance [value or field]",
+        "in_features.descr": "The input features that will be zoned.",
+        "in_features.title": "Input Features",
+        "out_feature_class.descr": "The output zone features.",
+        "out_feature_class.title": "Output Feature Class",
+        "report_file.title": "Report File",
+        "segments.title": "Segments",
+        "side.descr": "Specifies the side of the input features that will be zoned.",
+        "side.domain.FULL": "Full",
+        "SIDE.domain.left": "Left",
+        "side.domain.RIGHT": "Right",
+        "side.title": "Side Type",
+        "title": "Buffer Zones",
+        "zone_count.title": "Zone Count"
+    }
+}
