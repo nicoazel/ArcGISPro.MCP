@@ -21,9 +21,9 @@ internal sealed class ProjectGetOperation() : ProOperationBase(OperationDescript
 
 internal sealed class ProjectOpenOperation() : ProOperationBase(OperationDescriptor.Create(
     "project.open", "Open project",
-    "Opens an existing ArcGIS Pro .aprx project. Unsaved changes are handled by ArcGIS Pro's normal project lifecycle.",
+    "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Unsaved changes are handled by ArcGIS Pro's normal project lifecycle.",
     JsonSchemas.ObjectSchema("\"path\": {\"type\": \"string\", \"minLength\": 1}", "path"),
-    risk: OperationRisk.SafeWrite, executionTarget: ExecutionTarget.ArcGISUiThread,
+    risk: OperationRisk.SafeWrite, requiresConfirmation: true, executionTarget: ExecutionTarget.ArcGISUiThread,
     tags: ["project", "workspace", "open"], aliases: ["open aprx", "switch project"],
     related: ["project.get", "map.list"]))
 {
@@ -46,9 +46,9 @@ internal sealed class ProjectOpenOperation() : ProOperationBase(OperationDescrip
 
 internal sealed class ProjectSaveOperation() : ProOperationBase(OperationDescriptor.Create(
     "project.save", "Save project",
-    "Saves the current ArcGIS Pro project.",
+    "Saves the current ArcGIS Pro project to disk. Requires local approval because it persists every pending change in the .aprx.",
     JsonSchemas.EmptyObject,
-    risk: OperationRisk.SafeWrite, executionTarget: ExecutionTarget.ArcGISUiThread,
+    risk: OperationRisk.SafeWrite, requiresConfirmation: true, executionTarget: ExecutionTarget.ArcGISUiThread,
     tags: ["project", "workspace", "save"], aliases: ["save aprx", "persist project"],
     related: ["project.get"]))
 {

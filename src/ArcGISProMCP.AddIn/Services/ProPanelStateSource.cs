@@ -226,21 +226,60 @@ internal sealed class ProPanelStateSource(
     private async Task RunOperationAsync(string id, object arguments, CancellationToken cancellationToken)
     {
         var workspace = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        var result = await ExecuteAsync(id, JsonSerializer.SerializeToElement(arguments), workspace.Revision, cancellationToken).ConfigureAwait(false);
+        var argumentElement = JsonSerializer.SerializeToElement(arguments);
+        var approval = SelfApprovePanelRequest(id, argumentElement, workspace);
+        OperationResult result;
+        try
+        {
+            result = await ExecuteAsync(id, argumentElement, workspace.Revision, cancellationToken, approval?.ConfirmationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            // Never leave an unconsumed panel token behind (for example after a revision race).
+            if (approval is not null) _approvals?.TryCancel(approval.Id);
+        }
         if (!result.Success) throw new InvalidOperationException(result.Message ?? result.ErrorCode ?? $"Operation '{id}' failed.");
         AddActivity(ActivityLevel.Success, id, result.Message ?? "Completed");
         await RefreshAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// A dockpane button click is itself the human approval. Route it through the same approval
+    /// queue as MCP requests so the executor validates a real single-use token bound to these exact
+    /// arguments and revision, and so the decision is audited like any other approval.
+    /// </summary>
+    private ApprovalRequestSnapshot? SelfApprovePanelRequest(
+        string id,
+        JsonElement arguments,
+        Core.Workspaces.WorkspaceSnapshot workspace)
+    {
+        var registry = ArcGISProMcpModule.Instance?.Registry;
+        if (registry is null || !registry.TryGet(id, out var operation)) return null;
+        var descriptor = operation.Descriptor;
+        if (!descriptor.RequiresConfirmation &&
+            descriptor.Risk is not (OperationRisk.Destructive or OperationRisk.ExternalSideEffect))
+            return null;
+
+        var approvals = _approvals ?? throw new InvalidOperationException("The local approval service is unavailable.");
+        var request = approvals.Request(descriptor, arguments, workspace);
+        if (!approvals.TryResolve(request.Id, ApprovalResolution.ApproveOnce))
+            throw new InvalidOperationException($"Could not approve the panel request for '{id}'.");
+        return approvals.GetStatus(request.Id) is { ConfirmationToken: not null } approved
+            ? approved
+            : throw new InvalidOperationException($"The panel approval for '{id}' expired before it could be used.");
     }
 
     private async Task<OperationResult> ExecuteAsync(
         string id,
         JsonElement arguments,
         string revision,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? confirmationToken = null)
     {
         var result = await CallBridgeAsync(
             "registry.invoke",
-            new { operationId = id, arguments, expectedRevision = revision },
+            new { operationId = id, arguments, expectedRevision = revision, confirmationToken },
             cancellationToken).ConfigureAwait(false);
         return result.Deserialize<OperationResult>(JsonOptions)
             ?? throw new InvalidOperationException($"Operation '{id}' returned an invalid result.");
