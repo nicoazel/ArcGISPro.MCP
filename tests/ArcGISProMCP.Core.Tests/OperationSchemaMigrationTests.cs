@@ -46,6 +46,7 @@ public sealed class OperationSchemaMigrationTests
         ["map.clear-selection"] = (MapSelectionOperationSchemas.ClearSelectionInput, "MapSelectionOperationSchemas.ClearSelectionInput"),
         ["metadata.get"] = (MetadataOperationSchemas.GetInput, "MetadataOperationSchemas.GetInput"),
         ["metadata.update"] = (MetadataOperationSchemas.UpdateInput, "MetadataOperationSchemas.UpdateInput"),
+        ["project.open"] = (ProjectOperationSchemas.OpenInput, "ProjectOperationSchemas.OpenInput"),
     };
 
     [Fact]
