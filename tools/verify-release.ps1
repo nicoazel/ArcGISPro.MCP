@@ -7,7 +7,9 @@ Push-Location $repoRoot
 try {
     dotnet build ArcGISPro.MCP.slnx -c Release
     if ($LASTEXITCODE -ne 0) { throw 'Release build failed.' }
-    foreach ($testProject in @('tests/ArcGISProMCP.Core.Tests', 'tests/ArcGISProMCP.Bridge.Tests', 'tests/ArcGISProMCP.Server.Tests')) {
+    $testProjects = @(Get-ChildItem tests -Directory -Filter '*.Tests' | Sort-Object Name | ForEach-Object { 'tests/' + $_.Name })
+    if ($testProjects.Count -eq 0) { throw 'No test projects found under tests/.' }
+    foreach ($testProject in $testProjects) {
         dotnet test $testProject -c Release --no-build
         if ($LASTEXITCODE -ne 0) { throw "Tests failed: $testProject" }
     }

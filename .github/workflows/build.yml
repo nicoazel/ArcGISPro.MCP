@@ -35,7 +35,7 @@ jobs:
         run: |
           $results = Join-Path $env:GITHUB_WORKSPACE 'artifacts/test-results'
           $failed = @()
-          foreach ($project in @('ArcGISProMCP.Core.Tests', 'ArcGISProMCP.Bridge.Tests', 'ArcGISProMCP.Server.Tests')) {
+          foreach ($project in (Get-ChildItem tests -Directory -Filter '*.Tests' | Sort-Object Name | ForEach-Object Name)) {
             dotnet test "tests/$project" -c Release --no-build --logger "trx;LogFileName=$project.trx" --results-directory $results
             if ($LASTEXITCODE -ne 0) { $failed += $project }
           }
