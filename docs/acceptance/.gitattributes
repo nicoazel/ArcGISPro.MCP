@@ -1,0 +1,2 @@
+# Evidence folders are checksummed (SHA256SUMS); store their files byte-for-byte.
+*/** -text

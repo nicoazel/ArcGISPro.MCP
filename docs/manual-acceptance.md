@@ -2,6 +2,12 @@
 
 Use the exact packaged add-in and gateway against a disposable ArcGIS Pro project and file geodatabase. Record the package hash, installed assembly path/hash, ArcGIS Pro version, process id, project copy, request/result JSON, audit records, output datasets, and before/after screenshots. Portable tests are prerequisites, not live acceptance.
 
+## Recording evidence
+
+`tools/run-acceptance.ps1` automates the recordable parts of this checklist. It captures the commit, ArcGIS Pro version, package hash and the hashes of the add-in DLLs that Pro actually loaded. It runs the existing harnesses and writes `manifest.json`, `summary.md` and `SHA256SUMS`. With `-Commit` it copies them to `docs/acceptance/<yyyy-MM-dd>-<sha7>/`. It covers Baseline steps 1–3 (`smoke`), the scripted feature, metadata, geoprocessing and ArcPy runs (`feature-gp-arcpy`, **autonomous mode only**) and the urban workflow stress run (`stress`). It is read-only unless you pass `-AllowProjectMutation` with a `-DisposableRoot`. Start with `./tools/run-acceptance.ps1 -PlanOnly`. The folder contract and the full procedure are in [acceptance/README.md](acceptance/README.md). The fixture data used by `stress` is described in [tests/data/README.md](../tests/data/README.md).
+
+The script does not cover the steps that need a person: approving, denying or letting reviews expire in the dockpane, multi-instance routing, undo/redo, reload checks and visual inspection. Run those from the lists below and record what you inspected with `-VisuallyInspected`.
+
 ## Baseline
 
 1. Run `./tools/verify-release.ps1` and `./tools/package-release.ps1` from the repository root.
