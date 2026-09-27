@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace ArcGISProMCP.Core.Operations;
 
-public static class JsonSchemas
+public static partial class JsonSchemas
 {
     public static JsonElement EmptyObject { get; } = Parse("""
         { "type": "object", "additionalProperties": false }
