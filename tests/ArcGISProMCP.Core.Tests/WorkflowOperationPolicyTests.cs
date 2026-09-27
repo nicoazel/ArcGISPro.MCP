@@ -145,12 +145,44 @@ public sealed class WorkflowOperationPolicyTests : IDisposable
     }
 
     [Fact]
-    public void Skill_loader_rejects_manifests_without_an_operation_allowlist()
+    public async Task Skill_loader_rejects_manifests_without_an_operation_allowlist()
     {
-        var source = File.ReadAllText(Path.Combine(RepoPath("src"), "ArcGISProMCP.Server", "Tools", "SkillTools.cs"));
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var skills = Path.Combine(_root, "skills");
+        Directory.CreateDirectory(skills);
+        await File.WriteAllTextAsync(Path.Combine(skills, "listed.skill.json"), SkillJson("listed", "[\"map.list\"]"), cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(skills, "empty.skill.json"), SkillJson("empty", "[]"), cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(skills, "missing.skill.json"), SkillJson("missing", null), cancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(skills, "ignored.json"), SkillJson("ignored", "[\"map.list\"]"), cancellationToken);
 
-        Assert.Contains("skill.AllowedOperations is null || skill.AllowedOperations.IsEmpty", source, StringComparison.Ordinal);
+        var loaded = await SkillCatalog.LoadAsync(skills, cancellationToken);
+
+        var skill = Assert.Single(loaded);
+        Assert.Equal("listed", skill.Id);
+        Assert.Equal("map.list", Assert.Single(skill.AllowedOperations));
     }
+
+    [Fact]
+    public async Task Skill_loader_returns_nothing_for_a_missing_directory()
+    {
+        Assert.Empty(await SkillCatalog.LoadAsync(Path.Combine(_root, "no-skills"), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task Every_bundled_skill_loads()
+    {
+        var files = Directory.GetFiles(RepoPath("skills"), "*.skill.json");
+
+        var loaded = await SkillCatalog.LoadAsync(RepoPath("skills"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(files.Length, loaded.Count);
+    }
+
+    private static string SkillJson(string id, string? allowedOperations) =>
+        "{\"id\":\"" + id + "\",\"version\":\"1.0.0\",\"title\":\"Skill " + id + "\",\"summary\":\"Test skill.\"," +
+        "\"tags\":[],\"requiredCapabilities\":[]," +
+        (allowedOperations is null ? string.Empty : "\"allowedOperations\":" + allowedOperations + ",") +
+        "\"preconditions\":[],\"visualChecks\":[],\"recoveryGuidance\":[],\"workflowId\":\"flow\"}";
 
     private static WorkflowDefinition Workflow(string[] operations, string id = "policy.test", string[]? allowed = null) => new(
         id,
