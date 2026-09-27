@@ -1,3 +1,4 @@
+using ArcGISProMCP.Server.Prompts;
 using ArcGISProMCP.Server.Resources;
 using ArcGISProMCP.Server.Tools;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,8 @@ public static class McpServerSetup
         return builder
             .WithTools<KernelTools>()
             .WithTools<SkillTools>()
-            .WithResources<ArcGisResources>();
+            .WithResources<ArcGisResources>()
+            .WithListPromptsHandler(ArcGisPrompts.ListAsync)
+            .WithGetPromptHandler(ArcGisPrompts.GetAsync);
     }
 }

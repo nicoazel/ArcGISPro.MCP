@@ -10,6 +10,9 @@ All notable changes to this project are documented here. The format is based on 
 - `CONTRIBUTING.md` with prerequisites, build, test and packaging commands, and pull request conventions.
 - This changelog and a public [roadmap](docs/ROADMAP.md).
 - Bundled workflows are embedded in `ArcGISProMCP.Core` and seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` on first load, so `workflow_list` is populated on a fresh install. Existing files are never overwritten.
+- MCP resources: `arcgis://project/state` plus templates for operations, workflows (`id@version`), skills and observation handles.
+- MCP prompts: one per bundled skill (`skill.<id>`) and, while ArcGIS Pro is running, one per saved workflow (`run.<id>`) with arguments from the workflow parameters.
+- `tests/ArcGISProMCP.Server.Tests`: in-process MCP client/server harness with a scriptable fake bridge and `tools/list`, `resources/list` and `prompts/list` snapshots (`UPDATE_SNAPSHOTS=1` regenerates them).
 
 ### Changed
 

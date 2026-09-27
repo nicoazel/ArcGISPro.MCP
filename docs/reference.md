@@ -125,6 +125,25 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 
 Workflows are immutable JSON DAGs of registered operation ids and cannot contain script steps. See [architecture](architecture.md#extension-rules).
 
+## Resources and prompts
+
+Read-only MCP resources mirror the read-only tools. Only project state is listed by `resources/list`; the rest are URI templates.
+
+| URI | Content |
+| --- | --- |
+| `arcgis://project/state` | Same snapshot as `system_get_state` (`application/json`). |
+| `arcgis://operations/{id}` | Operation descriptor, as `registry_describe`. |
+| `arcgis://workflows/{id}` | Workflow definition, as `workflow_get`. Use `id@version` for an immutable version. |
+| `arcgis://skills/{id}` | Bundled skill manifest, as `skill_get`. Served without ArcGIS Pro. |
+| `arcgis://resource/{id}` | Observation handle, as `resource_read`. Images are returned as blobs, JSON and text observations as text. |
+
+Prompts are generated at list time:
+
+- `skill.<skillId>`, one per bundled skill, with an optional `goal` argument. Always available.
+- `run.<workflowId>`, one per saved workflow, with one argument per workflow parameter. Listed only while an ArcGIS Pro host answers; `run.<workflowId>@<version>` pins a version. Required parameters without a default must be supplied.
+
+Each prompt walks the model through `system_get_state`, `workflow_get`, `workflow_run` with explicit parameters and the current revision, then a review of the returned observations against the skill's visual checks.
+
 ## Scripts
 
 | Script | Use |
