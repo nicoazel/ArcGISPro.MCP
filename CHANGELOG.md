@@ -67,6 +67,7 @@ All notable changes to this project are documented here. The format is based on 
 - User-code operations are opt-in per workflow, and approvals that execute Python are visibly labelled.
 - `gp.run` requests for Calculate Field, Calculate Fields and Calculate Value are labelled as running user code even without an explicit expression type, because ArcGIS Pro defaults it to Python 3. Python toolboxes called by an imported alias remain a documented false negative.
 - Approval decisions, autonomous bypasses and unknown operation ids are recorded in the audit log.
+- User `.atbx` toolboxes are read as untrusted archives: each metadata entry is bounded to 16 MiB of decompressed bytes whatever size it declares, an archive may hold at most 10,000 entries and 64 MiB of metadata, and script (`.py`) entries are only checked for presence, never read. An archive over a limit is reported as unreadable.
 - Approvals stay in the ArcGIS Pro dockpane: MCP elicitation is intentionally not used, so the client UI cannot become the approval authority. `approval_status` `waitSeconds` only waits for the dockpane decision.
 - A dockpane button click (for example **Open project**) can no longer approve an identical request that an MCP client queued for review. The panel's self-approval always creates its own approval entry (`IApprovalService.Request(..., reuseExisting: false)`), and the transient entry no longer flashes in the approval cards.
 
