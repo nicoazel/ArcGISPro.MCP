@@ -8,6 +8,13 @@ public static partial class JsonSchemas
         { "type": "object", "additionalProperties": false }
         """);
 
+    /// <summary>
+    /// Legacy string-based object schema. Add-in operations now declare schemas with the typed
+    /// builder (<see cref="Object"/> and friends, see AddIn/Operations/Schemas); the remaining
+    /// production caller is gp.run in GeoprocessingOperations.cs, owned by the geoprocessing
+    /// work unit. Remove this method (and its JsonSchemasTests coverage) once gp.run migrates.
+    /// It is deliberately not [Obsolete] because warnings are errors.
+    /// </summary>
     public static JsonElement ObjectSchema(string propertiesJson, params string[] required)
     {
         var requiredJson = required.Length == 0
