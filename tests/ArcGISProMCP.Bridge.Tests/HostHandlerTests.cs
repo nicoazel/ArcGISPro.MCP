@@ -303,6 +303,125 @@ public sealed class HostHandlerTests
         Assert.Equal("invalid_parameters", response.Error!.Code);
     }
 
+    [Fact]
+    public async Task Approval_status_wait_returns_as_soon_as_a_person_decides()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
+        var started = System.Diagnostics.Stopwatch.StartNew();
+
+        var waiting = fixture.Call("approval.status", new { requestId, waitSeconds = 60 });
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        Assert.False(waiting.IsCompleted);
+        Assert.True(fixture.Approvals.TryResolve(requestId, ApprovalResolution.ApproveOnce));
+        var status = await waiting;
+
+        Assert.True(status.Success, status.Error?.Message);
+        Assert.Equal("approved", status.Result!.Value.GetProperty("status").GetString());
+        Assert.False(string.IsNullOrEmpty(status.Result.Value.GetProperty("confirmationToken").GetString()));
+        Assert.True(started.Elapsed < TimeSpan.FromSeconds(30));
+    }
+
+    [Fact]
+    public async Task Approval_status_wait_reports_pending_when_the_wait_elapses()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
+        var started = System.Diagnostics.Stopwatch.StartNew();
+
+        var status = await fixture.Call("approval.status", new { requestId, waitSeconds = 1 });
+
+        Assert.True(status.Success, status.Error?.Message);
+        Assert.Equal("pending", status.Result!.Value.GetProperty("status").GetString());
+        Assert.Equal(JsonValueKind.Null, status.Result.Value.GetProperty("confirmationToken").ValueKind);
+        Assert.True(started.Elapsed >= TimeSpan.FromMilliseconds(900));
+    }
+
+    [Fact]
+    public async Task Approval_status_wait_does_not_hold_decided_or_unknown_requests()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
+        Assert.True(fixture.Approvals.TryCancel(requestId));
+
+        var cancelled = await fixture.Call("approval.status", new { requestId, waitSeconds = 120 }).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var unknown = await fixture.Call("approval.status", new { requestId = "missing", waitSeconds = 120 }).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.Equal("cancelled", cancelled.Result!.Value.GetProperty("status").GetString());
+        Assert.Equal("approval_not_found", unknown.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Approval_status_wait_stops_when_the_caller_cancels()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
+        using var caller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        caller.CancelAfter(TimeSpan.FromMilliseconds(200));
+
+        var status = await fixture.CallWithToken("approval.status", new { requestId, waitSeconds = 120 }, caller.Token)
+            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
+        Assert.Equal("request_cancelled", status.Error!.Code);
+    }
+
+    [Fact]
+    public async Task Describe_returns_a_result_schema_that_accepts_real_invoke_results()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+
+        var describe = await fixture.Call("registry.describe", new { operationId = "test.write" });
+        var invoke = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var failed = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "stale" });
+
+        var description = describe.Result!.Value.Deserialize<OperationDescription>(BridgeJson.Options)!;
+        Assert.Equal("test.write", description.Id);
+        Assert.Null(description.OutputSchema);
+        Assert.Equal(JsonValueKind.Object, description.ResultSchema.ValueKind);
+        Assert.Empty(OperationArgumentValidator.Validate(invoke.Result!.Value, description.ResultSchema));
+        Assert.False(failed.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Empty(OperationArgumentValidator.Validate(failed.Result.Value, description.ResultSchema));
+    }
+
+    [Fact]
+    public async Task Bridge_results_round_trip_through_the_shared_contracts()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var workflow = new WorkflowDefinition("contract-flow", "1.0.0", "Contract", "Test", [], [], [],
+            [new("one", "test.write", JsonSerializer.SerializeToElement(new { }), [])]);
+        await fixture.Workflows.SaveAsync(workflow, TestContext.Current.CancellationToken);
+
+        var state = Read<SystemStateResult>(await fixture.Call("system.get_state", new { }));
+        var hits = Read<RegistrySearchHit[]>(await fixture.Call("registry.search", new { query = "test" }));
+        var root = Read<RegistryBrowseResult>(await fixture.Call("registry.browse", new { }));
+        var domain = Read<RegistryBrowseResult>(await fixture.Call("registry.browse", new { domain = "sample" }));
+        var validation = Read<RegistryValidationResult>(await fixture.Call("registry.validate", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" }));
+        var workflows = Read<WorkflowSummary[]>(await fixture.Call("workflow.list", new { }));
+        var run = Read<WorkflowRunResult>(await fixture.Call("workflow.run", new { workflowId = workflow.Id, parameters = new { }, expectedRevision = "r1" }));
+
+        Assert.Equal("r1", state.Workspace.Revision);
+        Assert.Contains(hits, hit => hit.Operation.Id == "test.write" && hit.Operation.Risk == OperationRisk.SafeWrite);
+        Assert.NotNull(root.Total);
+        Assert.Null(root.Operations);
+        Assert.Equal("sample", domain.Domain);
+        Assert.NotEmpty(domain.Operations!);
+        Assert.True(validation.Valid);
+        Assert.Contains(workflows, item => item.Id == workflow.Id);
+        Assert.True(run.Success);
+        Assert.Null(run.ErrorCode);
+        Assert.Equal("one", Assert.Single(run.Results).Step);
+    }
+
+    private static T Read<T>(BridgeResponse response)
+    {
+        Assert.True(response.Success, response.Error?.Message);
+        return response.Result!.Value.Deserialize<T>(BridgeJson.Options)!;
+    }
+
     private static string[] OperationIds(BridgeResponse response)
     {
         Assert.True(response.Success, response.Error?.Message);
@@ -341,8 +460,9 @@ public sealed class HostHandlerTests
             var context = new OperationContext(new Dispatcher(), workspace ?? new Workspace(), Approvals, new Audit(), "test", CancellationToken.None);
             _handler = new ProBridgeRequestHandler(registry, context, Workflows, new ProResourceStore(Path.Combine(_root, "resources")), new BridgeAccessState());
         }
-        public Task<BridgeResponse> Call(string method, object parameters) => _handler.HandleAsync(
-            new(BridgeProtocol.Version, Guid.NewGuid().ToString("N"), method, JsonSerializer.SerializeToElement(parameters), DateTimeOffset.UtcNow), TestContext.Current.CancellationToken);
+        public Task<BridgeResponse> Call(string method, object parameters) => CallWithToken(method, parameters, TestContext.Current.CancellationToken);
+        public Task<BridgeResponse> CallWithToken(string method, object parameters, CancellationToken cancellationToken) => _handler.HandleAsync(
+            new(BridgeProtocol.Version, Guid.NewGuid().ToString("N"), method, JsonSerializer.SerializeToElement(parameters), DateTimeOffset.UtcNow), cancellationToken);
         public void Dispose() { _handler.Dispose(); Approvals.Dispose(); Workflows.Dispose(); }
     }
 
