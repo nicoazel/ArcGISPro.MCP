@@ -102,10 +102,7 @@ public sealed class FileWorkflowLibrary : IWorkflowLibrary, IDisposable
             throw new InvalidOperationException(string.Join(" ", validation.Issues.Select(issue => issue.Message)));
         }
 
-        var canonical = workflow with { ContentHash = null };
-        var json = JsonSerializer.Serialize(canonical, JsonOptions);
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json)));
-        var persisted = workflow with { ContentHash = hash };
+        var persisted = workflow with { ContentHash = ComputeContentHash(workflow) };
         var fileName = $"{SafeSegment(workflow.Id)}@{SafeSegment(workflow.Version)}.workflow.json";
         var destination = ResolveInsideRoot(fileName);
 
@@ -184,6 +181,17 @@ public sealed class FileWorkflowLibrary : IWorkflowLibrary, IDisposable
 
         await using var stream = File.OpenRead(fullPath);
         return await JsonSerializer.DeserializeAsync<WorkflowDefinition>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Computes the content hash that <see cref="SaveAsync"/> persists: SHA-256 of the canonical
+    /// JSON with <see cref="WorkflowDefinition.ContentHash"/> cleared.
+    /// </summary>
+    internal static string ComputeContentHash(WorkflowDefinition workflow)
+    {
+        ArgumentNullException.ThrowIfNull(workflow);
+        var json = JsonSerializer.Serialize(workflow with { ContentHash = null }, JsonOptions);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json)));
     }
 
     private static async Task WriteAtomicAsync(string destination, string content, CancellationToken cancellationToken)

@@ -63,16 +63,34 @@ public static class WorkflowSeeder
     {
         ArgumentNullException.ThrowIfNull(library);
         var items = ImmutableArray.CreateBuilder<WorkflowSeedItem>(BundledResourceNames.Count);
+
+        // One snapshot of the installed library; each bundled workflow is then matched in memory.
+        IReadOnlyList<WorkflowDefinition> installed;
+        try
+        {
+            installed = await library.ListAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            foreach (var resourceName in BundledResourceNames)
+                items.Add(new(resourceName, null, null, WorkflowSeedOutcome.Failed, exception.Message));
+            return new WorkflowSeedReport(items.ToImmutable());
+        }
+
         foreach (var resourceName in BundledResourceNames)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            items.Add(await SeedOneAsync(library, resourceName, cancellationToken).ConfigureAwait(false));
+            items.Add(await SeedOneAsync(library, installed, resourceName, cancellationToken).ConfigureAwait(false));
         }
 
         return new WorkflowSeedReport(items.ToImmutable());
     }
 
-    private static async Task<WorkflowSeedItem> SeedOneAsync(IWorkflowLibrary library, string resourceName, CancellationToken cancellationToken)
+    private static async Task<WorkflowSeedItem> SeedOneAsync(
+        IWorkflowLibrary library,
+        IReadOnlyList<WorkflowDefinition> installed,
+        string resourceName,
+        CancellationToken cancellationToken)
     {
         WorkflowDefinition? workflow;
         try
@@ -93,22 +111,34 @@ public static class WorkflowSeeder
         workflow = workflow with { ContentHash = null };
         try
         {
-            var existing = await library.GetAsync(workflow.Id, workflow.Version, cancellationToken).ConfigureAwait(false);
+            // Decide from the snapshot before saving: an installed workflow with the same id and
+            // version may live under a different file name, which SaveAsync would not detect.
+            var matches = installed
+                .Where(candidate =>
+                    string.Equals(candidate.Id, workflow.Id, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(candidate.Version, workflow.Version, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            if (matches.Length > 0)
+            {
+                var bundledHash = FileWorkflowLibrary.ComputeContentHash(workflow);
+                return matches.Any(candidate => string.Equals(
+                        FileWorkflowLibrary.ComputeContentHash(candidate), bundledHash, StringComparison.Ordinal))
+                    ? new(resourceName, workflow.Id, workflow.Version, WorkflowSeedOutcome.AlreadyPresent)
+                    : new(resourceName, workflow.Id, workflow.Version, WorkflowSeedOutcome.Conflict,
+                        $"Workflow '{workflow.Id}' version '{workflow.Version}' is already installed with different content; it was left untouched.");
+            }
+
             try
             {
-                // SaveAsync is a no-op for identical content and throws for a different
-                // installed version, so user files are never overwritten.
+                // SaveAsync throws rather than overwrite, so user files are never replaced.
                 await library.SaveAsync(workflow, cancellationToken).ConfigureAwait(false);
             }
             catch (InvalidOperationException exception)
             {
-                return new(resourceName, workflow.Id, workflow.Version,
-                    existing is null ? WorkflowSeedOutcome.Failed : WorkflowSeedOutcome.Conflict,
-                    exception.Message);
+                return new(resourceName, workflow.Id, workflow.Version, WorkflowSeedOutcome.Failed, exception.Message);
             }
 
-            return new(resourceName, workflow.Id, workflow.Version,
-                existing is null ? WorkflowSeedOutcome.Seeded : WorkflowSeedOutcome.AlreadyPresent);
+            return new(resourceName, workflow.Id, workflow.Version, WorkflowSeedOutcome.Seeded);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
