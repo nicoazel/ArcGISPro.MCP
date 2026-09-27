@@ -1,0 +1,453 @@
+[
+  {
+    "name": "approval_cancel",
+    "title": "Cancel local review",
+    "annotations": {
+      "title": "Cancel local review",
+      "destructiveHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "description": "Opaque approval request id.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "approval_request",
+    "title": "Request local review",
+    "annotations": {
+      "title": "Request local review",
+      "destructiveHint": false
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "description": "Stable operation id requiring approval.",
+          "type": "string"
+        },
+        "arguments": {
+          "description": "Exact arguments to be reviewed."
+        },
+        "expectedRevision": {
+          "description": "Current workspace revision from system_get_state.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operationId",
+        "arguments",
+        "expectedRevision"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "approval_status",
+    "title": "Check local review",
+    "annotations": {
+      "title": "Check local review",
+      "destructiveHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "requestId": {
+          "description": "Opaque id returned by approval_request.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requestId"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "registry_browse",
+    "title": "Browse ArcGIS operations",
+    "annotations": {
+      "title": "Browse ArcGIS operations",
+      "destructiveHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "description": "Optional registry domain; omit for domain counts and top-level navigation.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "limit": {
+          "description": "Maximum entries from 1 to 100.",
+          "type": "integer",
+          "default": 30
+        }
+      }
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "registry_describe",
+    "title": "Describe an ArcGIS operation",
+    "annotations": {
+      "title": "Describe an ArcGIS operation",
+      "destructiveHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "description": "Stable operation id returned by registry_search or registry_browse.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "operationId"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "registry_invoke",
+    "title": "Invoke an ArcGIS operation",
+    "annotations": {
+      "title": "Invoke an ArcGIS operation"
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "description": "Stable operation id.",
+          "type": "string"
+        },
+        "arguments": {
+          "description": "Arguments matching the operation schema."
+        },
+        "expectedRevision": {
+          "description": "Workspace revision from system_get_state; required for reliable writes.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "confirmationToken": {
+          "description": "Short-lived confirmation token supplied by the ArcGIS Pro panel for risky operations; omitted only when the host explicitly advertises autonomous-control.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "idempotencyKey": {
+          "description": "Optional key that prevents duplicate mutations when a call is retried.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "operationId",
+        "arguments"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "registry_search",
+    "title": "Search ArcGIS operations",
+    "annotations": {
+      "title": "Search ArcGIS operations",
+      "destructiveHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "Natural-language intent such as 'make parcels transparent' or 'compose three map frames'.",
+          "type": "string"
+        },
+        "domain": {
+          "description": "Optional domain: project, map, layer, feature, table, metadata, basemap, style, symbology, label, layout, gp, arcpy, view, workspace, workflow.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "limit": {
+          "description": "Maximum results from 1 to 50.",
+          "type": "integer",
+          "default": 12
+        },
+        "capabilities": {
+          "description": "Optional capabilities every result must require, e.g. ['maps'], ['layouts'], ['geoprocessing'], ['arcpy'], ['metadata'], ['visual-observations'].",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "default": null
+        },
+        "maxRisk": {
+          "description": "Optional highest risk to include: ReadOnly, SafeWrite, Destructive or ExternalSideEffect. Use ReadOnly to find only operations that never change the project.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "query"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "registry_validate",
+    "title": "Validate an ArcGIS operation",
+    "annotations": {
+      "title": "Validate an ArcGIS operation",
+      "destructiveHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "description": "Stable operation id.",
+          "type": "string"
+        },
+        "arguments": {
+          "description": "Arguments matching the described operation schema."
+        },
+        "expectedRevision": {
+          "description": "Optional workspace revision for optimistic concurrency.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "operationId",
+        "arguments"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "resource_read",
+    "title": "Read ArcGIS observation",
+    "annotations": {
+      "title": "Read ArcGIS observation",
+      "destructiveHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "description": "An arcgis:// resource URI returned by an operation.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "skill_get",
+    "title": "Read ArcGIS skill guidance",
+    "annotations": {
+      "title": "Read ArcGIS skill guidance",
+      "destructiveHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "skillId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "skillId"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "skill_search",
+    "title": "Find ArcGIS skills",
+    "annotations": {
+      "title": "Find ArcGIS skills",
+      "destructiveHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "system_get_state",
+    "title": "Get ArcGIS Pro state",
+    "annotations": {
+      "title": "Get ArcGIS Pro state",
+      "destructiveHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "workflow_get",
+    "title": "Get an ArcGIS workflow",
+    "annotations": {
+      "title": "Get an ArcGIS workflow",
+      "destructiveHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workflowId": {
+          "description": "Workflow id.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Optional immutable version; omit for latest.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "workflowId"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "workflow_list",
+    "title": "List ArcGIS skills and workflows",
+    "annotations": {
+      "title": "List ArcGIS skills and workflows",
+      "destructiveHint": false,
+      "readOnlyHint": true
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "workflow_run",
+    "title": "Run an ArcGIS workflow",
+    "annotations": {
+      "title": "Run an ArcGIS workflow"
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workflowId": {
+          "description": "Workflow id.",
+          "type": "string"
+        },
+        "parameters": {
+          "description": "Workflow parameter values."
+        },
+        "expectedRevision": {
+          "description": "Workspace revision from system_get_state.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "version": {
+          "description": "Immutable workflow version; required with idempotencyKey.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "idempotencyKey": {
+          "description": "Process-lifetime retry key. Retry only the exact version, parameters and initial revision; never replay completed steps blindly.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "workflowId",
+        "parameters"
+      ]
+    },
+    "outputSchema": null
+  },
+  {
+    "name": "workflow_save",
+    "title": "Save an ArcGIS workflow",
+    "annotations": {
+      "title": "Save an ArcGIS workflow"
+    },
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "workflow": {
+          "description": "Workflow definition JSON matching the workflow schema."
+        }
+      },
+      "required": [
+        "workflow"
+      ]
+    },
+    "outputSchema": null
+  }
+]

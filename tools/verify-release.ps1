@@ -7,7 +7,7 @@ Push-Location $repoRoot
 try {
     dotnet build ArcGISPro.MCP.slnx -c Release
     if ($LASTEXITCODE -ne 0) { throw 'Release build failed.' }
-    foreach ($testProject in @('tests/ArcGISProMCP.Core.Tests', 'tests/ArcGISProMCP.Bridge.Tests')) {
+    foreach ($testProject in @('tests/ArcGISProMCP.Core.Tests', 'tests/ArcGISProMCP.Bridge.Tests', 'tests/ArcGISProMCP.Server.Tests')) {
         dotnet test $testProject -c Release --no-build
         if ($LASTEXITCODE -ne 0) { throw "Tests failed: $testProject" }
     }
