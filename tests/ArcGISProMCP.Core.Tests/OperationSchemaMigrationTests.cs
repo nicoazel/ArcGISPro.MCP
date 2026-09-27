@@ -82,11 +82,20 @@ public sealed class OperationSchemaMigrationTests
     }
 
     [Fact]
-    public void Every_captured_schema_is_either_migrated_or_still_declared_by_string()
+    public void Every_captured_schema_is_migrated()
     {
-        var sources = ReadOperationSources();
-        foreach (var id in LoadFixture().Keys.Where(id => !Migrated.ContainsKey(id)))
-            Assert.Contains("JsonSchemas.ObjectSchema(", Descriptor(sources, id), StringComparison.Ordinal);
+        Assert.Equal(LoadFixture().Keys.Order(StringComparer.Ordinal), Migrated.Keys.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void Only_geoprocessing_operations_still_declare_string_schemas()
+    {
+        // gp.run is owned by the geoprocessing work unit and still uses JsonSchemas.ObjectSchema.
+        foreach (var path in Directory.GetFiles(OperationsDirectory(), "*.cs", SearchOption.AllDirectories))
+        {
+            if (Path.GetFileName(path).StartsWith("Geoprocessing", StringComparison.Ordinal)) continue;
+            Assert.DoesNotContain("ObjectSchema(", File.ReadAllText(path), StringComparison.Ordinal);
+        }
     }
 
     [Fact]
