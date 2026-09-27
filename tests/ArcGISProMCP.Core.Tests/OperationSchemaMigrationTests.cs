@@ -38,6 +38,7 @@ public sealed class OperationSchemaMigrationTests
         ["layout.add-map-frame"] = (LayoutOperationSchemas.AddMapFrameInput, "LayoutOperationSchemas.AddMapFrameInput"),
         ["layout.activate"] = (LayoutOperationSchemas.ActivateInput, "LayoutOperationSchemas.ActivateInput"),
         ["layout.set-text"] = (LayoutPresentationOperationSchemas.SetTextInput, "LayoutPresentationOperationSchemas.SetTextInput"),
+        ["layout.ensure-surround"] = (LayoutSurroundOperationSchemas.EnsureSurroundInput, "LayoutSurroundOperationSchemas.EnsureSurroundInput"),
     };
 
     [Fact]

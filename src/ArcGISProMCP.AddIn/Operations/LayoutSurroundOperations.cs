@@ -10,7 +10,7 @@ namespace ArcGISProMCP.AddIn.Operations;
 internal sealed class LayoutEnsureSurroundOperation() : ProOperationBase(OperationDescriptor.Create(
     "layout.ensure-surround", "Add a map surround",
     "Adds or converges a named legend, north arrow, or scale bar linked to a map frame using ArcGIS default styling.",
-    JsonSchemas.ObjectSchema("\"layout\":{\"type\":\"string\"},\"frame\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"kind\":{\"type\":\"string\",\"enum\":[\"legend\",\"north-arrow\",\"scale-bar\"]},\"x\":{\"type\":\"number\"},\"y\":{\"type\":\"number\"},\"width\":{\"type\":\"number\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"exclusiveMinimum\":0}", "layout", "frame", "name", "kind", "x", "y", "width", "height"),
+    LayoutSurroundOperationSchemas.EnsureSurroundInput,
     risk: OperationRisk.SafeWrite, capabilities: ["layouts"], tags: ["layout", "legend", "north arrow", "scale bar", "cartography"]))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
