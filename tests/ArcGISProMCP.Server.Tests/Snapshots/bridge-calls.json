@@ -1,0 +1,458 @@
+[
+  {
+    "tool": "system_get_state",
+    "case": "minimal",
+    "arguments": {},
+    "calls": [
+      {
+        "method": "system.get_state",
+        "parameters": null
+      }
+    ]
+  },
+  {
+    "tool": "registry_search",
+    "case": "minimal",
+    "arguments": {
+      "query": "make parcels transparent"
+    },
+    "calls": [
+      {
+        "method": "registry.search",
+        "parameters": {
+          "query": "make parcels transparent",
+          "domain": null,
+          "limit": 12,
+          "capabilities": null,
+          "maxRisk": null
+        }
+      }
+    ]
+  },
+  {
+    "tool": "registry_search",
+    "case": "full",
+    "arguments": {
+      "query": "make parcels transparent",
+      "domain": "layer",
+      "limit": 5,
+      "capabilities": [
+        "maps"
+      ],
+      "maxRisk": "SafeWrite"
+    },
+    "calls": [
+      {
+        "method": "registry.search",
+        "parameters": {
+          "query": "make parcels transparent",
+          "domain": "layer",
+          "limit": 5,
+          "capabilities": [
+            "maps"
+          ],
+          "maxRisk": "SafeWrite"
+        }
+      }
+    ]
+  },
+  {
+    "tool": "registry_browse",
+    "case": "minimal",
+    "arguments": {},
+    "calls": [
+      {
+        "method": "registry.browse",
+        "parameters": {
+          "domain": null,
+          "limit": 30
+        }
+      }
+    ]
+  },
+  {
+    "tool": "registry_browse",
+    "case": "full",
+    "arguments": {
+      "domain": "layer",
+      "limit": 10
+    },
+    "calls": [
+      {
+        "method": "registry.browse",
+        "parameters": {
+          "domain": "layer",
+          "limit": 10
+        }
+      }
+    ]
+  },
+  {
+    "tool": "registry_describe",
+    "case": "minimal",
+    "arguments": {
+      "operationId": "layer.set_transparency"
+    },
+    "calls": [
+      {
+        "method": "registry.describe",
+        "parameters": {
+          "operationId": "layer.set_transparency"
+        }
+      }
+    ]
+  },
+  {
+    "tool": "registry_validate",
+    "case": "minimal",
+    "arguments": {
+      "operationId": "layer.set_transparency",
+      "arguments": {
+        "layer": "Parcels",
+        "transparency": 40
+      }
+    },
+    "calls": [
+      {
+        "method": "registry.validate",
+        "parameters": {
+          "operationId": "layer.set_transparency",
+          "arguments": {
+            "layer": "Parcels",
+            "transparency": 40
+          },
+          "expectedRevision": null
+        }
+      }
+    ]
+  },
+  {
+    "tool": "registry_validate",
+    "case": "full",
+    "arguments": {
+      "operationId": "layer.set_transparency",
+      "arguments": {
+        "layer": "Parcels",
+        "transparency": 40
+      },
+      "expectedRevision": "r1"
+    },
+    "calls": [
+      {
+        "method": "registry.validate",
+        "parameters": {
+          "operationId": "layer.set_transparency",
+          "arguments": {
+            "layer": "Parcels",
+            "transparency": 40
+          },
+          "expectedRevision": "r1"
+        }
+      }
+    ]
+  },
+  {
+    "tool": "registry_invoke",
+    "case": "minimal",
+    "arguments": {
+      "operationId": "layer.list",
+      "arguments": {}
+    },
+    "calls": [
+      {
+        "method": "registry.invoke",
+        "parameters": {
+          "operationId": "layer.list",
+          "arguments": {},
+          "expectedRevision": null,
+          "confirmationToken": null,
+          "idempotencyKey": null,
+          "dryRun": false
+        }
+      }
+    ]
+  },
+  {
+    "tool": "registry_invoke",
+    "case": "full",
+    "arguments": {
+      "operationId": "layer.remove",
+      "arguments": {
+        "layer": "Parcels"
+      },
+      "expectedRevision": "r1",
+      "confirmationToken": "token-1",
+      "idempotencyKey": "key-1",
+      "dryRun": false
+    },
+    "calls": [
+      {
+        "method": "registry.invoke",
+        "parameters": {
+          "operationId": "layer.remove",
+          "arguments": {
+            "layer": "Parcels"
+          },
+          "expectedRevision": "r1",
+          "confirmationToken": "token-1",
+          "idempotencyKey": "key-1",
+          "dryRun": false
+        }
+      }
+    ]
+  },
+  {
+    "tool": "registry_invoke",
+    "case": "dry-run",
+    "arguments": {
+      "operationId": "gp.run",
+      "arguments": {
+        "tool": "analysis.Buffer"
+      },
+      "dryRun": true
+    },
+    "calls": [
+      {
+        "method": "registry.invoke",
+        "parameters": {
+          "operationId": "gp.run",
+          "arguments": {
+            "tool": "analysis.Buffer"
+          },
+          "expectedRevision": null,
+          "confirmationToken": null,
+          "idempotencyKey": null,
+          "dryRun": true
+        }
+      }
+    ]
+  },
+  {
+    "tool": "workflow_list",
+    "case": "minimal",
+    "arguments": {},
+    "calls": [
+      {
+        "method": "workflow.list",
+        "parameters": null
+      }
+    ]
+  },
+  {
+    "tool": "approval_request",
+    "case": "minimal",
+    "arguments": {
+      "operationId": "layer.remove",
+      "arguments": {
+        "layer": "Parcels"
+      },
+      "expectedRevision": "r1"
+    },
+    "calls": [
+      {
+        "method": "approval.request",
+        "parameters": {
+          "operationId": "layer.remove",
+          "arguments": {
+            "layer": "Parcels"
+          },
+          "expectedRevision": "r1"
+        }
+      }
+    ]
+  },
+  {
+    "tool": "approval_status",
+    "case": "minimal",
+    "arguments": {
+      "requestId": "req-1"
+    },
+    "calls": [
+      {
+        "method": "approval.status",
+        "parameters": {
+          "requestId": "req-1",
+          "waitSeconds": 0
+        }
+      }
+    ]
+  },
+  {
+    "tool": "approval_status",
+    "case": "full",
+    "arguments": {
+      "requestId": "req-1",
+      "waitSeconds": 30
+    },
+    "calls": [
+      {
+        "method": "approval.status",
+        "parameters": {
+          "requestId": "req-1",
+          "waitSeconds": 30
+        }
+      }
+    ]
+  },
+  {
+    "tool": "approval_cancel",
+    "case": "minimal",
+    "arguments": {
+      "requestId": "req-1"
+    },
+    "calls": [
+      {
+        "method": "approval.cancel",
+        "parameters": {
+          "requestId": "req-1"
+        }
+      }
+    ]
+  },
+  {
+    "tool": "workflow_get",
+    "case": "minimal",
+    "arguments": {
+      "workflowId": "flow"
+    },
+    "calls": [
+      {
+        "method": "workflow.get",
+        "parameters": {
+          "workflowId": "flow",
+          "version": null
+        }
+      }
+    ]
+  },
+  {
+    "tool": "workflow_get",
+    "case": "full",
+    "arguments": {
+      "workflowId": "flow",
+      "version": "1.0.0"
+    },
+    "calls": [
+      {
+        "method": "workflow.get",
+        "parameters": {
+          "workflowId": "flow",
+          "version": "1.0.0"
+        }
+      }
+    ]
+  },
+  {
+    "tool": "workflow_save",
+    "case": "minimal",
+    "arguments": {
+      "workflow": {
+        "id": "flow",
+        "version": "1.0.0",
+        "title": "Flow",
+        "steps": []
+      }
+    },
+    "calls": [
+      {
+        "method": "workflow.save",
+        "parameters": {
+          "workflow": {
+            "id": "flow",
+            "version": "1.0.0",
+            "title": "Flow",
+            "steps": []
+          }
+        }
+      }
+    ]
+  },
+  {
+    "tool": "workflow_run",
+    "case": "minimal",
+    "arguments": {
+      "workflowId": "flow",
+      "parameters": {
+        "title": "T"
+      }
+    },
+    "calls": [
+      {
+        "method": "workflow.run",
+        "parameters": {
+          "workflowId": "flow",
+          "parameters": {
+            "title": "T"
+          },
+          "expectedRevision": null,
+          "version": null,
+          "idempotencyKey": null
+        }
+      }
+    ]
+  },
+  {
+    "tool": "workflow_run",
+    "case": "full",
+    "arguments": {
+      "workflowId": "flow",
+      "parameters": {
+        "title": "T"
+      },
+      "expectedRevision": "r1",
+      "version": "1.0.0",
+      "idempotencyKey": "key-1"
+    },
+    "calls": [
+      {
+        "method": "workflow.run",
+        "parameters": {
+          "workflowId": "flow",
+          "parameters": {
+            "title": "T"
+          },
+          "expectedRevision": "r1",
+          "version": "1.0.0",
+          "idempotencyKey": "key-1"
+        }
+      }
+    ]
+  },
+  {
+    "tool": "resource_read",
+    "case": "minimal",
+    "arguments": {
+      "uri": "arcgis://resource/abc"
+    },
+    "calls": [
+      {
+        "method": "resource.read",
+        "parameters": {
+          "uri": "arcgis://resource/abc"
+        }
+      }
+    ]
+  },
+  {
+    "tool": "skill_search",
+    "case": "minimal",
+    "arguments": {},
+    "calls": []
+  },
+  {
+    "tool": "skill_search",
+    "case": "full",
+    "arguments": {
+      "query": "cartography"
+    },
+    "calls": []
+  },
+  {
+    "tool": "skill_get",
+    "case": "minimal",
+    "arguments": {
+      "skillId": "arcgis.cartography.master-plan"
+    },
+    "calls": []
+  }
+]

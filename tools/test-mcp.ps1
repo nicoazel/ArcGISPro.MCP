@@ -1,3 +1,8 @@
+# Live smoke test: starts the built gateway over stdio and talks to a running ArcGIS Pro host
+# (with -Offline, only to the gateway).
+# The MCP contract itself (initialize, tools/list, bridge parameters, envelopes and error paths)
+# is pinned by the in-process snapshot tests in tests/ArcGISProMCP.Server.Tests, which are
+# authoritative; when this script and a snapshot disagree, the snapshot wins.
 [CmdletBinding()]
 param([string]$Configuration='Debug', [string]$ImageUri, [switch]$ApprovalProbe, [string]$ServerPath, [switch]$Offline)
 $ErrorActionPreference='Stop'
