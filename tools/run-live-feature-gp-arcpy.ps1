@@ -1,3 +1,13 @@
+<#
+.SYNOPSIS
+    Live feature, geoprocessing and ArcPy acceptance run against an open ArcGIS Pro session.
+.DESCRIPTION
+    This harness is unattended: it invokes confirmation-gated operations (arcpy.run-script,
+    feature.update, feature.delete, metadata.update, gp.run, project.save) without approval
+    tokens. It therefore requires the host's opt-in autonomous-control setting and asserts
+    that every such call returns the autonomous_control notice. It refuses to run otherwise.
+    Use only against a disposable project; autonomous mode is not a supported default.
+#>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string]$PipeName,
@@ -172,6 +182,7 @@ $updated = Invoke-Operation 'feature-update' 'feature.update' @{
     map = 'MCP Acceptance'; layer = 'Design Sites'; target = @{ globalId = $createdGlobalId }; attributes = @{ Units = 140; FAR = 5.25 }
 }
 Assert-Success $updated 'Feature update'
+Assert-AutonomousNotice $updated 'Feature update'
 
 $selected = Invoke-Operation 'feature-select' 'feature.select' @{
     map = 'MCP Acceptance'; layer = 'Design Sites'; where = "Name = 'Agent Test Site'"; mode = 'new'; limit = 10
@@ -266,6 +277,7 @@ if ($finalQuery.data.returned -ne 1 -or $finalQuery.data.rows[0].Name -ne 'Basel
 
 $save = Invoke-Operation 'project-save' 'project.save' @{}
 Assert-Success $save 'Project save'
+Assert-AutonomousNotice $save 'Project save'
 
 $summary = [ordered]@{
     success = $true
