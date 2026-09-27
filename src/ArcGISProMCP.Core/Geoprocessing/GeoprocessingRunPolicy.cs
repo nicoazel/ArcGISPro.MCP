@@ -58,8 +58,10 @@ public static partial class GeoprocessingRunPolicy
     private static readonly string[] ToolboxExtensions = [".pyt", ".atbx", ".tbx"];
 
     /// <summary>
-    /// Risk of a <c>gp.run</c> tool name: the catalog assessment for an indexed tool, the unindexed
-    /// user-code assessment for a toolbox path, or null when the tool is unknown to the catalog.
+    /// Risk of a <c>gp.run</c> tool name: the catalog assessment for an indexed tool, the curated
+    /// Destructive assessment for a known destructive system tool the catalog did not index (either
+    /// <c>alias.Name</c> or <c>Name_alias</c>), the unindexed user-code assessment for a toolbox path,
+    /// or null when the tool is unknown to the catalog.
     /// </summary>
     public static GpRiskAssessment? Assess(ToolboxCatalog catalog, string? tool)
     {
@@ -67,21 +69,26 @@ public static partial class GeoprocessingRunPolicy
         var name = tool?.Trim();
         if (string.IsNullOrEmpty(name)) return null;
         if (catalog.Describe(name) is { } description) return description.Risk;
+        if (IsCuratedDestructive(name)) return GeoprocessingRiskPolicy.ForCuratedDestructive();
         if (!ToolboxExtensions.Any(extension => name.Contains(extension, StringComparison.OrdinalIgnoreCase))) return null;
         return GeoprocessingRiskPolicy.ForUnindexedToolbox(
             name.Contains(".pyt", StringComparison.OrdinalIgnoreCase) ? GpToolboxKind.PythonToolbox : GpToolboxKind.LegacyBinary);
     }
 
     /// <summary>
-    /// The refusal autonomous mode applies before running a tool: Destructive and UserCode tiers, and
-    /// any request the conservative user-code detector flags (for example a Python expression on a
-    /// tool the catalog does not know). Null means the request may run unattended.
+    /// The refusal autonomous mode applies before running a tool: Destructive and UserCode tiers, any
+    /// request the conservative user-code detector flags (for example a Python expression on a tool
+    /// the catalog does not know), and any tool that could not be classified at all (fail closed).
+    /// Null means the request may run unattended.
     /// </summary>
     public static OperationRefusal? UnattendedRefusal(string tool, GpRiskAssessment? risk, bool userCodeDetected)
     {
         var reasons = risk is null ? string.Empty : $" ({string.Join(" ", risk.Reasons)})";
         return risk?.Tier switch
         {
+            null when !userCodeDetected => new OperationRefusal(DestructiveToolRequiresReviewCode,
+                $"'{tool}' could not be classified: it is not in the toolbox catalog, so its risk tier is unknown and review is required. " +
+                "Autonomous mode only runs tools it can classify; use gp.search to find the execution name, or run it with local review in the ArcGIS Pro dockpane."),
             GpRiskTier.Destructive => new OperationRefusal(DestructiveToolRequiresReviewCode,
                 $"'{tool}' is a Destructive geoprocessing tool: it modifies/deletes input data in place{reasons}. " +
                 "Autonomous mode does not run Destructive or UserCode tools; run it with local review in the ArcGIS Pro dockpane."),
@@ -93,6 +100,18 @@ public static partial class GeoprocessingRunPolicy
                 "Autonomous mode does not run Destructive or UserCode tools; run it with local review in the ArcGIS Pro dockpane."),
             _ => null
         };
+    }
+
+    /// <summary>
+    /// True when <paramref name="name"/> (<c>alias.Name</c> or <c>Name_alias</c>, any case) is on the
+    /// curated destructive list, so a catalog miss (missing or partial install) cannot hide it.
+    /// </summary>
+    private static bool IsCuratedDestructive(string name)
+    {
+        if (GeoprocessingRiskPolicy.CuratedDestructiveTools.Contains(name)) return true;
+        var underscore = name.LastIndexOf('_');
+        return underscore > 0 && underscore < name.Length - 1 &&
+            GeoprocessingRiskPolicy.CuratedDestructiveTools.Contains($"{name[(underscore + 1)..]}.{name[..underscore]}");
     }
 
     /// <summary>Approval-card text for data-changing and credit-consuming tools, or null.</summary>

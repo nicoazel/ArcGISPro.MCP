@@ -31,7 +31,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Changed
 
-- **Breaking:** in autonomous mode `gp.run` refuses Destructive and UserCode tools, and requests flagged as running user code, with `destructive_tool_requires_review`.
+- **Breaking:** in autonomous mode `gp.run` refuses Destructive and UserCode tools, tools the toolbox catalog cannot classify (fail closed), and requests flagged as running user code, with `destructive_tool_requires_review`. Curated destructive tools (`management.Delete`, `Delete_management`, ...) are classified Destructive even when the catalog has not indexed them.
 - **Breaking:** tool text content is now the `{ ok, result, error }` envelope rather than the bare bridge result; read `result` (or `structuredContent.result`). Failed bridge calls are `isError` results instead of protocol errors, and `skill_get` for an unknown id returns `skill_not_found`. `registry_browse` and `workflow_run` results now always carry all their members (unused ones are null). Enum fields such as `risk` remain numbers.
 - **Breaking:** `project.open`, `project.save` and `feature.update` now require a local-review approval token (or autonomous mode). Dockpane buttons that trigger them approve through the same audited approval queue.
 - **Breaking:** a workflow whose workspace revision changes mid-run now stops with `workspace_changed` (reporting `stoppedAtStep`, `stepIndex`, `expectedRevision`, `currentRevision`) instead of retrying the step against the new revision. `continueOnError` does not override this, and completed steps are not rolled back.

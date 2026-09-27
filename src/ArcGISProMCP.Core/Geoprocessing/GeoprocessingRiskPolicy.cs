@@ -118,6 +118,19 @@ public static class GeoprocessingRiskPolicy
         return new GpRiskAssessment(tier, mutatesInput, toolIsUserCode || acceptsPython, acceptsPython, consumesCredits, reasons);
     }
 
+    /// <summary>
+    /// Classification for a <see cref="CuratedDestructiveTools"/> entry the catalog did not index
+    /// (missing or partial install): Destructive without metadata.
+    /// </summary>
+    public static GpRiskAssessment ForCuratedDestructive() =>
+        new(
+            GpRiskTier.Destructive,
+            MutatesInput: true,
+            ExecutesUserCode: false,
+            AcceptsPythonExpression: false,
+            ConsumesCredits: false,
+            ["Curated destructive tool: deletes, renames or empties data (not indexed; classified by name)."]);
+
     /// <summary>Classification for toolboxes whose tools cannot be indexed (.pyt, legacy binary .tbx).</summary>
     public static GpRiskAssessment ForUnindexedToolbox(GpToolboxKind kind) =>
         new(

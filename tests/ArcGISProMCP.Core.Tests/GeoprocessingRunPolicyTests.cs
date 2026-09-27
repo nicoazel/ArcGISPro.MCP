@@ -27,10 +27,57 @@ public sealed class GeoprocessingRunPolicyTests
     [InlineData("fixture.BufferZones")]
     [InlineData("fixture.GeocodeOnline")]
     [InlineData("management.GetCount")]
-    [InlineData("unknown.Tool")]
-    public void Autonomous_mode_allows_standard_credit_query_and_unknown_tools(string tool)
+    public void Autonomous_mode_allows_standard_credit_and_query_tools(string tool)
     {
         Assert.Null(GeoprocessingRunPolicy.UnattendedRefusal(tool, GeoprocessingRunPolicy.Assess(Catalog, tool), userCodeDetected: false));
+    }
+
+    [Fact]
+    public void Autonomous_mode_fails_closed_on_tools_it_cannot_classify()
+    {
+        var refusal = GeoprocessingRunPolicy.UnattendedRefusal("unknown.Tool", GeoprocessingRunPolicy.Assess(Catalog, "unknown.Tool"), userCodeDetected: false);
+
+        Assert.NotNull(refusal);
+        Assert.Equal(GeoprocessingRunPolicy.DestructiveToolRequiresReviewCode, refusal.Code);
+        Assert.Contains("could not be classified", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("review is required", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Unknown_tools_are_refused_in_autonomous_mode_but_allowed_interactively_with_approval()
+    {
+        var interactive = GeoprocessingRunPolicy.DryRun(Catalog, "unknown.Tool", ["x"],
+            userCodeDetected: false, requiresConfirmation: true, autonomousMode: false);
+        var autonomous = GeoprocessingRunPolicy.DryRun(Catalog, "unknown.Tool", ["x"],
+            userCodeDetected: false, requiresConfirmation: true, autonomousMode: true);
+
+        Assert.Null(interactive.RiskTier);
+        Assert.False(interactive.WouldBeRefused);
+        Assert.True(interactive.RequiresConfirmation);
+        Assert.True(autonomous.WouldBeRefused);
+        Assert.Equal(GeoprocessingRunPolicy.DestructiveToolRequiresReviewCode, autonomous.UnattendedRefusal?.Code);
+    }
+
+    [Theory]
+    [InlineData("management.Delete")]
+    [InlineData("Delete_management")]
+    [InlineData("MANAGEMENT.delete")]
+    [InlineData("DeleteRows_management")]
+    [InlineData("truncatetable_MANAGEMENT")]
+    public void Curated_destructive_tools_are_refused_even_when_the_catalog_has_not_indexed_them(string tool)
+    {
+        var empty = new ToolboxCatalog(GeoprocessingFixtures.CreateTempDirectory());
+        Assert.Null(empty.Describe(tool));
+
+        var risk = GeoprocessingRunPolicy.Assess(empty, tool);
+        var refusal = GeoprocessingRunPolicy.UnattendedRefusal(tool, risk, userCodeDetected: false);
+
+        Assert.Equal(GpRiskTier.Destructive, risk?.Tier);
+        Assert.True(risk!.MutatesInput);
+        Assert.Equal(GeoprocessingRunPolicy.MutatesInputWarning, GeoprocessingRunPolicy.ApprovalWarning(risk));
+        Assert.NotNull(refusal);
+        Assert.Equal(GeoprocessingRunPolicy.DestructiveToolRequiresReviewCode, refusal.Code);
+        Assert.Contains("Destructive", refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]
