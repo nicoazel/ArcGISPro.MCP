@@ -1,0 +1,41 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.nicoazel/arcgis-pro-mcp",
+  "title": "ArcGIS Pro MCP",
+  "description": "Windows-only ArcGIS Pro gateway. Requires the ArcGIS Pro add-in from the GitHub release.",
+  "version": "0.2.0",
+  "websiteUrl": "https://github.com/nicoazel/ArcGISPro.MCP/releases",
+  "repository": {
+    "url": "https://github.com/nicoazel/ArcGISPro.MCP",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "nuget",
+      "registryBaseUrl": "https://api.nuget.org/v3/index.json",
+      "identifier": "ArcGISProMCP.Gateway",
+      "version": "0.2.0",
+      "runtimeHint": "dnx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [],
+      "environmentVariables": [
+        {
+          "name": "ARCGIS_PRO_MCP_HOST_PID",
+          "description": "Gateway-side. Process id of the ArcGIS Pro instance to attach to when several are running.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "number"
+        },
+        {
+          "name": "ARCGIS_PRO_MCP_PIPE",
+          "description": "Gateway-side override of the named pipe. Must equal the value set for ArcGIS Pro (host-side).",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
