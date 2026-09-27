@@ -329,8 +329,8 @@ internal sealed class ProPanelStateSource(
         new(
             status,
             statusText,
-            $"Named pipe: {(Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_PIPE")?.Trim() is { Length: > 0 } configured ? configured : BridgeProtocol.DefaultPipeName)}",
-            sessionText ?? $"PID {Environment.ProcessId}",
+            $"Named pipe: {ArcGISProMcpModule.Instance?.PipeName ?? BridgeProtocol.DefaultPipeName}",
+            sessionText ?? $"PID {Environment.ProcessId}{(AutonomousControlState.Enabled ? " · AUTONOMOUS CONTROL" : string.Empty)}",
             busy);
 
     private void Publish(PanelStateSnapshot snapshot)

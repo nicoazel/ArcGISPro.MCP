@@ -1,5 +1,6 @@
-using System.Text.Json;
 using System.IO;
+using System.Text.Json;
+using ArcGIS.Core.CIM;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Mapping;
 using ArcGISProMCP.AddIn.ArcGIS;
@@ -12,7 +13,7 @@ internal sealed class LayerListOperation() : ProOperationBase(OperationDescripto
     "Lists the flattened layer tree for a map with stable handles and appearance state.",
     JsonSchemas.ObjectSchema("\"map\": {\"type\": \"string\"}"),
     capabilities: ["maps"], tags: ["layer", "map", "browse"], aliases: ["table of contents", "toc"],
-    related: ["layer.add", "layer.set-appearance", "symbology.set-simple"]))
+    related: ["layer.add", "layer.set-appearance", "layer.set-elevation", "symbology.set-simple"]))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
@@ -25,15 +26,42 @@ internal sealed class LayerListOperation() : ProOperationBase(OperationDescripto
                 map = ProHandles.ForMap(map),
                 layers = map.GetLayersAsFlattenedList().Select((layer, index) => new
                 {
-                    id = ProHandles.ForLayer(layer), layer.Name, type = layer.GetType().Name,
-                    layer.IsVisible, layer.Transparency, drawingOrder = index,
-                    isFeatureLayer = layer is FeatureLayer
+                    id = ProHandles.ForLayer(layer),
+                    layer.Name,
+                    type = layer.GetType().Name,
+                    layer.IsVisible,
+                    layer.Transparency,
+                    drawingOrder = index,
+                    isFeatureLayer = layer is FeatureLayer,
+                    elevation = layer is FeatureLayer featureLayer ? DescribeElevation(featureLayer) : null
                 }).ToArray()
             };
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
     }
+
+    private static object DescribeElevation(FeatureLayer layer)
+    {
+        var definition = layer.GetElevationTypeDefinition();
+        return new
+        {
+            mode = ToMode(definition.ElevationType),
+            offset = definition.CartographicOffset,
+            verticalExaggeration = definition.VerticalExaggeration
+        };
+    }
+
+    internal static string ToMode(LayerElevationType type) => type switch
+    {
+        LayerElevationType.OnGround => "on-ground",
+        LayerElevationType.RelativeToGround => "relative-to-ground",
+        LayerElevationType.RelativeToScene => "relative-to-scene",
+        LayerElevationType.AtAbsoluteHeight => "absolute-height",
+        LayerElevationType.OnCustomSurface => "on-custom-surface",
+        LayerElevationType.RelativeToCustomSurface => "relative-to-custom-surface",
+        _ => "none"
+    };
 }
 
 internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor.Create(
@@ -100,6 +128,72 @@ internal sealed class LayerSetAppearanceOperation() : ProOperationBase(Operation
             if (hasVisibility) layer.SetVisibility(visible);
             if (hasTransparency) layer.SetTransparency(transparency);
             return new { id = ProHandles.ForLayer(layer), layer.Name, layer.IsVisible, layer.Transparency };
+        }, cancellationToken).ConfigureAwait(false);
+        var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+        return OperationResult.Ok(Json(data), snapshot.Revision);
+    }
+}
+
+internal sealed class LayerSetElevationOperation() : ProOperationBase(OperationDescriptor.Create(
+    "layer.set-elevation", "Set layer elevation",
+    "Sets how a feature layer is placed vertically in a scene, with optional cartographic offset and vertical exaggeration.",
+    JsonSchemas.ObjectSchema(
+        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"mode\": {\"type\": \"string\", \"enum\": [\"on-ground\", \"relative-to-ground\", \"relative-to-scene\", \"absolute-height\"]}, \"offset\": {\"type\": \"number\", \"minimum\": -1000000, \"maximum\": 1000000}, \"verticalExaggeration\": {\"type\": \"number\", \"minimum\": 0.01, \"maximum\": 100}",
+        "layer", "mode"),
+    risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["layer", "scene", "elevation", "ground", "3d"],
+    aliases: ["put layer on ground", "set height mode", "place features relative to ground"],
+    related: ["layer.list", "layer.set-appearance", "layout.set-frame-extent"], undoable: true))
+{
+    protected override async Task<OperationResult> ExecuteCoreAsync(
+        JsonElement arguments,
+        OperationContext context,
+        CancellationToken cancellationToken)
+    {
+        var layerReference = RequiredString(arguments, "layer");
+        var mapReference = OptionalString(arguments, "map");
+        var mode = RequiredString(arguments, "mode").ToLowerInvariant() switch
+        {
+            "on-ground" => LayerElevationType.OnGround,
+            "relative-to-ground" => LayerElevationType.RelativeToGround,
+            "relative-to-scene" => LayerElevationType.RelativeToScene,
+            "absolute-height" => LayerElevationType.AtAbsoluteHeight,
+            _ => throw new ArgumentException("Unsupported elevation mode.", nameof(arguments))
+        };
+        var hasOffset = arguments.TryGetProperty("offset", out var offsetElement) && offsetElement.ValueKind == JsonValueKind.Number;
+        var hasVerticalExaggeration = arguments.TryGetProperty("verticalExaggeration", out var exaggerationElement) && exaggerationElement.ValueKind == JsonValueKind.Number;
+        var offset = hasOffset ? offsetElement.GetDouble() : 0d;
+        var verticalExaggeration = hasVerticalExaggeration ? exaggerationElement.GetDouble() : 1d;
+        if (!double.IsFinite(offset) || offset is < -1_000_000 or > 1_000_000)
+            throw new ArgumentOutOfRangeException(nameof(arguments), "Offset must be finite and from -1,000,000 to 1,000,000.");
+        if (!double.IsFinite(verticalExaggeration) || verticalExaggeration is < 0.01 or > 100)
+            throw new ArgumentOutOfRangeException(nameof(arguments), "Vertical exaggeration must be finite and from 0.01 to 100.");
+
+        var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
+        {
+            var map = ProHandles.ResolveMap(mapReference);
+            if (map.MapType != MapType.Scene)
+                throw new ArgumentException("Layer elevation placement requires a scene map.", nameof(arguments));
+            var layer = ProHandles.ResolveLayer(map, layerReference) as FeatureLayer
+                ?? throw new ArgumentException("Layer elevation placement requires a feature layer.", nameof(arguments));
+            var definition = layer.GetElevationTypeDefinition();
+            definition.ElevationType = mode;
+            if (hasOffset) definition.CartographicOffset = offset;
+            if (hasVerticalExaggeration) definition.VerticalExaggeration = verticalExaggeration;
+            if (!layer.CanSetElevationTypeDefinition(definition))
+                throw new InvalidOperationException($"Layer '{layer.Name}' cannot use elevation mode '{LayerListOperation.ToMode(mode)}'.");
+            layer.SetElevationTypeDefinition(definition);
+            var actual = layer.GetElevationTypeDefinition();
+            if (actual.ElevationType != mode)
+                throw new InvalidOperationException($"Layer '{layer.Name}' did not accept the requested elevation mode.");
+            return new
+            {
+                id = ProHandles.ForLayer(layer),
+                layer.Name,
+                map = ProHandles.ForMap(map),
+                mode = LayerListOperation.ToMode(actual.ElevationType),
+                offset = actual.CartographicOffset,
+                verticalExaggeration = actual.VerticalExaggeration
+            };
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);

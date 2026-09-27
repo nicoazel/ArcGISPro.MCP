@@ -61,6 +61,18 @@ internal sealed class ProjectSaveOperation() : ProOperationBase(OperationDescrip
             return true;
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+        // ArcGIS can complete SaveAsync before its observable IsDirty transition reaches the
+        // workspace snapshot. Publishing that transient revision makes the very next workflow
+        // step fail optimistic concurrency even though no competing client changed the project.
+        // Wait only for the documented saved state; a genuine later edit will still advance the
+        // revision and be rejected by the next write.
+        for (var attempt = 0; snapshot.Project.IsDirty && attempt < 40; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken).ConfigureAwait(false);
+            snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+        }
+        if (snapshot.Project.IsDirty)
+            throw new InvalidOperationException("ArcGIS Pro did not reach a clean project state after SaveAsync.");
         return OperationResult.Ok(Json(new { saved = true, snapshot.Project.Name }), snapshot.Revision);
     }
 }

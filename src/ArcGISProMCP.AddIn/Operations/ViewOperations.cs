@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ArcGIS.Desktop.Layouts;
 using ArcGIS.Desktop.Mapping;
@@ -36,8 +37,8 @@ internal sealed class ViewCaptureOperation(FileResourceStore resources) : ProOpe
             Json(new
             {
                 resource = resource.Uri,
-                width,
-                height,
+                width = capture.Width,
+                height = capture.Height,
                 sourceKind = capture.SourceKind,
                 sourceName = capture.SourceName,
                 sourceUri = capture.SourceUri,
@@ -63,7 +64,9 @@ internal sealed class ViewCaptureOperation(FileResourceStore resources) : ProOpe
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
             using var stream = new MemoryStream();
             encoder.Save(stream);
-            return Task.FromResult(new CaptureResult(stream.ToArray(), "map", view.Map.Name, view.Map.URI));
+            return Task.FromResult(new CaptureResult(
+                stream.ToArray(), bitmap.PixelWidth, bitmap.PixelHeight,
+                "map", view.Map.Name, view.Map.URI));
         }, cancellationToken);
 
     private static async Task<CaptureResult> CaptureLayoutAsync(
@@ -81,19 +84,22 @@ internal sealed class ViewCaptureOperation(FileResourceStore resources) : ProOpe
                 var layout = string.IsNullOrWhiteSpace(layoutReference)
                     ? LayoutView.Active?.Layout ?? throw new InvalidOperationException("Specify a layout or activate one before capture.")
                     : ProHandles.ResolveLayout(layoutReference);
+                var page = layout.GetPage();
+                var resolution = (int)Math.Ceiling(Math.Max(width / page.Width, height / page.Height));
                 layout.Export(new PNGFormat
                 {
                     OutputFileName = temporaryPath,
                     Width = width,
                     Height = height,
-                    Resolution = 96,
+                    Resolution = Math.Clamp(resolution, 24, 1200),
                     HasWorldFile = false,
                     HasTransparentBackground = false
                 });
                 return new CaptureMetadata(layout.Name, layout.URI);
             }, cancellationToken).ConfigureAwait(false);
             var bytes = await File.ReadAllBytesAsync(temporaryPath, cancellationToken).ConfigureAwait(false);
-            return new CaptureResult(bytes, "layout", metadata.Name, metadata.Uri);
+            bytes = ResizePng(bytes, width, height);
+            return new CaptureResult(bytes, width, height, "layout", metadata.Name, metadata.Uri);
         }
         finally
         {
@@ -104,7 +110,31 @@ internal sealed class ViewCaptureOperation(FileResourceStore resources) : ProOpe
     private static int Integer(JsonElement arguments, string name, int defaultValue) =>
         arguments.TryGetProperty(name, out var element) && element.TryGetInt32(out var value) ? value : defaultValue;
 
-    private sealed record CaptureResult(byte[] Bytes, string SourceKind, string SourceName, string SourceUri);
+    private static byte[] ResizePng(byte[] bytes, int width, int height)
+    {
+        using var input = new MemoryStream(bytes, writable: false);
+        var decoder = new PngBitmapDecoder(input, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+        var source = decoder.Frames[0];
+        if (source.PixelWidth == width && source.PixelHeight == height) return bytes;
+
+        var resized = new TransformedBitmap(
+            source,
+            new ScaleTransform((double)width / source.PixelWidth, (double)height / source.PixelHeight));
+        resized.Freeze();
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(resized));
+        using var output = new MemoryStream();
+        encoder.Save(output);
+        return output.ToArray();
+    }
+
+    private sealed record CaptureResult(
+        byte[] Bytes,
+        int Width,
+        int Height,
+        string SourceKind,
+        string SourceName,
+        string SourceUri);
 
     private sealed record CaptureMetadata(string Name, string Uri);
 }

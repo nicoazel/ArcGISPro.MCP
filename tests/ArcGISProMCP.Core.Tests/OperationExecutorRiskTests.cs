@@ -31,6 +31,29 @@ public sealed class OperationExecutorRiskTests
         Assert.Equal(0, operation.CallCount);
     }
 
+    [Fact]
+    public async Task Explicit_autonomous_policy_runs_risky_operation_without_a_token_and_warns()
+    {
+        var operation = new RiskyOperation();
+        var executor = new OperationExecutor(
+            new SingleOperationRegistry(operation),
+            new OperationContext(
+                new InlineDispatcher(),
+                new StaticWorkspace(),
+                new AutonomousConfirmation(),
+                new CapturingAudit(),
+                "autonomous-test",
+                CancellationToken.None));
+
+        var result = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), Revision),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, operation.CallCount);
+        Assert.Contains(result.Notices, notice => notice.Code == "autonomous_control" && notice.Severity == "warning");
+    }
+
     private const string Revision = "revision-risk";
 
     private sealed class RiskyOperation : IOperation
@@ -84,6 +107,14 @@ public sealed class OperationExecutorRiskTests
     {
         public ValueTask<bool> IsValidAsync(string token, OperationDescriptor descriptor, JsonElement arguments, WorkspaceSnapshot workspace, CancellationToken cancellationToken) =>
             ValueTask.FromResult(false);
+    }
+
+    private sealed class AutonomousConfirmation : IConfirmationValidator, IAutonomousExecutionPolicy
+    {
+        public bool AllowsUnattendedRiskyOperations => true;
+
+        public ValueTask<bool> IsValidAsync(string token, OperationDescriptor descriptor, JsonElement arguments, WorkspaceSnapshot workspace, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Autonomous execution must not validate a confirmation token.");
     }
 
     private sealed class CapturingAudit : IOperationAuditLog

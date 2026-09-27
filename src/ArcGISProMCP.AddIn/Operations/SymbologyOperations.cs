@@ -40,7 +40,7 @@ internal sealed class SymbologySetSimpleOperation() : ProOperationBase(Operation
             {
                 GeometryType.Point or GeometryType.Multipoint => SymbolFactory.Instance.ConstructPointSymbol(fillColor, size),
                 GeometryType.Polyline => SymbolFactory.Instance.ConstructLineSymbol(fillColor, size),
-                GeometryType.Polygon => SymbolFactory.Instance.ConstructPolygonSymbol(
+                GeometryType.Polygon or GeometryType.Multipatch => SymbolFactory.Instance.ConstructPolygonSymbol(
                     fillColor, SimpleFillStyle.Solid,
                     SymbolFactory.Instance.ConstructStroke(strokeColor, outlineWidth, SimpleLineStyle.Solid)),
                 _ => throw new NotSupportedException($"Geometry type '{shapeType}' does not support simple feature symbology.")

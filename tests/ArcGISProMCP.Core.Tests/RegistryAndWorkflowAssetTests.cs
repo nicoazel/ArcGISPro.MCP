@@ -46,31 +46,31 @@ public sealed class RegistryAndWorkflowAssetTests
         using var json = JsonDocument.Parse(ReadAsset("skills", "master-cartography.skill.json"));
         var root = json.RootElement;
         Assert.Equal("arcgis.cartography.master-plan", root.GetProperty("id").GetString());
-        Assert.Equal("1.0.2", root.GetProperty("version").GetString());
+        Assert.Equal("2.0.0", root.GetProperty("version").GetString());
         Assert.NotEmpty(root.GetProperty("requiredCapabilities").EnumerateArray());
         Assert.NotEmpty(root.GetProperty("allowedOperations").EnumerateArray());
         Assert.NotEmpty(root.GetProperty("preconditions").EnumerateArray());
         Assert.NotEmpty(root.GetProperty("visualChecks").EnumerateArray());
         Assert.NotEmpty(root.GetProperty("recoveryGuidance").EnumerateArray());
-        Assert.Equal("workflow.master-cartography-rhino-handoff", root.GetProperty("workflowId").GetString());
+        Assert.Equal("workflow.master-cartography", root.GetProperty("workflowId").GetString());
     }
 
     [Fact]
     public void Master_workflow_has_three_maps_one_layout_and_valid_dependencies()
     {
-        using var json = JsonDocument.Parse(ReadAsset("workflows", "master-cartography-rhino-handoff.workflow.json"));
+        using var json = JsonDocument.Parse(ReadAsset("workflows", "master-cartography.workflow.json"));
         var root = json.RootElement;
         var steps = root.GetProperty("steps").EnumerateArray().ToArray();
         var ids = steps.Select(s => s.GetProperty("id").GetString()!).ToHashSet(StringComparer.Ordinal);
 
-        Assert.Equal("workflow.master-cartography-rhino-handoff", root.GetProperty("id").GetString());
-        Assert.Equal("1.0.1", root.GetProperty("version").GetString());
+        Assert.Equal("workflow.master-cartography", root.GetProperty("id").GetString());
+        Assert.Equal("1.0.0", root.GetProperty("version").GetString());
         Assert.Contains(steps, s => s.GetProperty("arguments").ToString().Contains("Zoning", StringComparison.Ordinal));
         Assert.Contains(steps, s => s.GetProperty("arguments").ToString().Contains("Transit", StringComparison.Ordinal));
         Assert.Contains(steps, s => s.GetProperty("arguments").ToString().Contains("Buildings-SiteDesign", StringComparison.Ordinal));
         Assert.Contains(steps, s => s.GetProperty("operation").GetString() == "layout.activate");
         Assert.Contains(steps, s => s.GetProperty("operation").GetString() == "view.capture");
-        Assert.Contains(steps, s => s.GetProperty("operation").GetString() == "rhino.handoff");
+        Assert.DoesNotContain(steps, s => s.GetProperty("operation").GetString()!.StartsWith("rhino.", StringComparison.Ordinal));
 
         using var skillJson = JsonDocument.Parse(ReadAsset("skills", "master-cartography.skill.json"));
         var allowed = skillJson.RootElement.GetProperty("allowedOperations").EnumerateArray()
@@ -79,12 +79,12 @@ public sealed class RegistryAndWorkflowAssetTests
         Assert.All(steps, step => Assert.Contains(step.GetProperty("operation").GetString()!, allowed));
 
         foreach (var step in steps)
-        foreach (var dependency in step.GetProperty("dependsOn").EnumerateArray())
-        {
-            var dependencyId = dependency.GetString();
-            Assert.NotNull(dependencyId);
-            Assert.Contains(dependencyId!, ids);
-        }
+            foreach (var dependency in step.GetProperty("dependsOn").EnumerateArray())
+            {
+                var dependencyId = dependency.GetString();
+                Assert.NotNull(dependencyId);
+                Assert.Contains(dependencyId!, ids);
+            }
 
         Assert.True(IsAcyclic(steps));
     }
@@ -107,17 +107,33 @@ public sealed class RegistryAndWorkflowAssetTests
     }
 
     [Fact]
-    public void Presentation_workflow_is_parameterized_acyclic_and_captures_three_clean_frames()
+    public void Active_urban_workflows_are_arcgis_only_acyclic_and_capture_three_clean_frames()
     {
-        using var document = JsonDocument.Parse(ReadAsset("workflows", "east-liberty-presentation.workflow.json"));
-        var root = document.RootElement;
-        Assert.Contains(root.GetProperty("parameters").EnumerateArray(), item => item.GetProperty("name").GetString() == "proposalSource");
-        var steps = root.GetProperty("steps").EnumerateArray().ToArray();
-        Assert.True(IsAcyclic(steps));
-        Assert.Equal(3, steps.Count(step => step.GetProperty("operation").GetString() == "layout.add-map-frame"));
-        Assert.Equal(3, steps.Count(step => step.GetProperty("operation").GetString() == "map.clear-selection"));
-        Assert.Equal("view.capture", steps[^1].GetProperty("operation").GetString());
-        Assert.DoesNotContain("D:\\", root.GetRawText(), StringComparison.Ordinal);
+        foreach (var fileName in new[]
+                 {
+                     "urban-tod-corridor.workflow.json",
+                     "urban-green-loop.workflow.json",
+                     "urban-mixed-use-massing.workflow.json"
+                 })
+        {
+            using var document = JsonDocument.Parse(ReadAsset("workflows", fileName));
+            var root = document.RootElement;
+            var source = root.GetRawText();
+            var steps = root.GetProperty("steps").EnumerateArray().ToArray();
+
+            Assert.True(IsAcyclic(steps));
+            Assert.Equal(3, steps.Count(step => step.GetProperty("operation").GetString() == "layout.add-map-frame"));
+            Assert.Equal("view.capture", steps[^2].GetProperty("operation").GetString());
+            Assert.DoesNotContain("D:\\", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("rhino", source, StringComparison.OrdinalIgnoreCase);
+
+            if (fileName == "urban-mixed-use-massing.workflow.json")
+            {
+                var elevation = Assert.Single(steps, step =>
+                    step.GetProperty("operation").GetString() == "layer.set-elevation");
+                Assert.Equal("relative-to-ground", elevation.GetProperty("arguments").GetProperty("mode").GetString());
+            }
+        }
     }
 
     private static bool IsAcyclic(JsonElement[] steps)

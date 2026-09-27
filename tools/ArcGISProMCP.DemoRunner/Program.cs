@@ -63,6 +63,19 @@ static int WriteError(
 
 static async Task<int> RunAsync(string[] args)
 {
+    if (args.Length == 2 && args[0] == "--save-workflow")
+    {
+        using var saveWorkflowDocument = JsonDocument.Parse(await File.ReadAllTextAsync(args[1]));
+        using var saveLifetime = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var saveClient = CreateClient();
+        var saved = await saveClient.CallAsync(
+            "workflow.save",
+            new { workflow = saveWorkflowDocument.RootElement.Clone() },
+            saveLifetime.Token);
+        Console.WriteLine(saved);
+        return 0;
+    }
+
     if (args.Length == 3 && args[0] == "--image")
     {
         using var captureLifetime = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -92,13 +105,56 @@ static async Task<int> RunAsync(string[] args)
         return result.ValueKind == JsonValueKind.Object && result.TryGetProperty("success", out var success) && success.ValueKind == JsonValueKind.False ? 1 : 0;
     }
 
-    static NamedPipeBridgeClient CreateClient() => new(
-        Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_PIPE") ?? BridgeProtocol.DefaultPipeName,
+    if (args.Length == 4 && args[0] == "--call-timeout")
+    {
+        if (!int.TryParse(args[1], out var timeoutMilliseconds) || timeoutMilliseconds is < 1 or > 300_000)
+            throw new ArgumentException("--call-timeout milliseconds must be between 1 and 300000.");
+        using var requestDocument = JsonDocument.Parse(await File.ReadAllTextAsync(args[2]));
+        var request = requestDocument.RootElement;
+        using var requestLifetime = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMilliseconds));
+        var client = CreateClient();
+        var method = request.GetProperty("method").GetString()!;
+        var parameters = JsonNode.Parse(request.GetProperty("parameters").GetRawText())!.AsObject();
+        if ((method == "registry.invoke" || method == "workflow.run" || method == "approval.request") && !parameters.ContainsKey("expectedRevision"))
+        {
+            var currentState = await client.CallAsync("system.get_state", new { }, requestLifetime.Token);
+            parameters["expectedRevision"] = Required(currentState, "workspace", "revision").GetString();
+        }
+        try
+        {
+            var result = await client.CallAsync(method, parameters, requestLifetime.Token);
+            await WriteJsonAsync(Path.GetFullPath(args[3]), result, CancellationToken.None);
+            Console.WriteLine(result);
+            return result.ValueKind == JsonValueKind.Object && result.TryGetProperty("success", out var success) && success.ValueKind == JsonValueKind.False ? 1 : 0;
+        }
+        catch (BridgeException exception)
+        {
+            var evidence = JsonSerializer.SerializeToElement(new
+            {
+                success = false,
+                error = new
+                {
+                    code = exception.Code,
+                    message = exception.Message,
+                    exception.Retryable,
+                    outcome = string.Equals(exception.Code, "outcome_unknown", StringComparison.Ordinal) ? "unknown" : "known"
+                }
+            });
+            await WriteJsonAsync(Path.GetFullPath(args[3]), evidence, CancellationToken.None);
+            throw;
+        }
+    }
+
+    static DiscoveringBridgeClient CreateClient() => new(
         TimeSpan.FromSeconds(3), TimeSpan.FromMinutes(7));
 
     if (args.Length != 6)
     {
-        Console.Error.WriteLine("Usage: ArcGISProMCP.DemoRunner <workflow.json> <zoning.shp> <transit.shp> <buildings.shp> <site-design.shp> <output-directory>");
+        Console.Error.WriteLine("Usage: ArcGISProMCP.DemoRunner --save-workflow <workflow.json>");
+        Console.Error.WriteLine("   or: ArcGISProMCP.DemoRunner --call <request.json> <result.json>");
+        Console.Error.WriteLine("   or: ArcGISProMCP.DemoRunner --call-timeout <milliseconds> <request.json> <result.json>");
+        Console.Error.WriteLine("   or: ArcGISProMCP.DemoRunner --image <resource-uri> <output.png>");
+        Console.Error.WriteLine("   or: ArcGISProMCP.DemoRunner <workflow.json> <zoning.shp> <transit.shp> <buildings.shp> <site-design.shp> <output-directory>");
         return 2;
     }
 
@@ -115,8 +171,7 @@ static async Task<int> RunAsync(string[] args)
     var outputDirectory = Path.GetFullPath(args[5]);
     Directory.CreateDirectory(outputDirectory);
     using var lifetime = new CancellationTokenSource(TimeSpan.FromMinutes(8));
-    var bridge = new NamedPipeBridgeClient(
-        Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_PIPE") ?? BridgeProtocol.DefaultPipeName,
+    var bridge = new DiscoveringBridgeClient(
         TimeSpan.FromSeconds(3),
         TimeSpan.FromMinutes(7));
 
@@ -150,9 +205,6 @@ static async Task<int> RunAsync(string[] args)
         lifetime.Token);
     await WriteJsonAsync(Path.Combine(outputDirectory, "registry-search.json"), discovery, lifetime.Token);
 
-    var peer = await InvokeAsync(bridge, "rhino.peer-state", new { }, initialRevision, lifetime.Token);
-    await WriteJsonAsync(Path.Combine(outputDirectory, "rhino-peer-state.json"), peer, lifetime.Token);
-
     var run = await bridge.CallAsync(
         "workflow.run",
         new
@@ -161,8 +213,10 @@ static async Task<int> RunAsync(string[] args)
             expectedRevision = initialRevision,
             parameters = new
             {
-                zoningSource = inputs[1], transitSource = inputs[2],
-                buildingsSource = inputs[3], siteDesignSource = inputs[4],
+                zoningSource = inputs[1],
+                transitSource = inputs[2],
+                buildingsSource = inputs[3],
+                siteDesignSource = inputs[4],
                 zoningLabelExpression = "$feature.land_use_1",
                 transitLabelExpression = "$feature.FULL_NAME",
                 siteLabelExpression = "$feature.Name"

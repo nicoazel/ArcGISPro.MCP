@@ -1,12 +1,12 @@
 # Development preview deployment
 
-ArcGIS Pro MCP Studio 0.2.0 is a development preview for ArcGIS Pro 3.7.1 on Windows x64. The add-in is unsigned, the latest workflow-revision guard has not yet been accepted in a reloaded ArcGIS Pro host, and an idle post-workflow ArcGIS Pro exit has been observed in native `DADFLib.dll` 13.7.0.1901. Treat that crash as an unresolved distribution blocker. Do not deploy this build as an unattended or organization-wide service.
+ArcGIS Pro MCP Studio is a development preview for ArcGIS Pro 3.7.1 on Windows x64. The add-in is unsigned, and the newly separated ArcGIS-only build plus its feature, metadata, geoprocessing, and optional ArcPy surfaces require installation and live acceptance before distribution. Do not deploy this build as an unattended or organization-wide service.
 
-The release bundle does not remove the local-review gates. Risky operations still require a short-lived approval issued from the ArcGIS Pro panel, and the server cannot approve its own request.
+By default, risky operations require a short-lived approval issued from the ArcGIS Pro panel, and the server cannot approve its own request. A trusted operator may explicitly start the host with `ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true`; this bypasses panel review and materially expands client authority.
 
 ## Build the bundle
 
-Prerequisites are Windows x64, .NET SDK 10, a licensed ArcGIS Pro 3.7.1 installation, and access to the referenced ArcGIS Pro 3.7 SDK package. Rhino features additionally require Rhino 8 and the companion Rhino.Inside-ArcGIS add-in.
+Prerequisites are Windows x64, .NET SDK 10, a licensed ArcGIS Pro 3.7.1 installation, and access to the referenced ArcGIS Pro 3.7 SDK package. Rhino and Rhino.Inside are not prerequisites.
 
 From the repository root:
 
@@ -61,7 +61,9 @@ Inspect `release.json` too. It records compatibility, framework dependency, unsi
 2. Close ArcGIS Pro. Do not replace an add-in while its assemblies are loaded.
 3. Install `ArcGISProMCP.AddIn.esriAddinX` with the normal ArcGIS Pro add-in installation flow. Organization policy may prohibit unsigned add-ins.
 4. Start ArcGIS Pro, open MCP Studio, and confirm the expected pipe and project before connecting a model client.
-5. Configure the MCP client to launch the extracted absolute path to `server\arcgis-pro-mcp.exe`. The default pipe is `ArcGISProMCP.v1`. If using `ARCGIS_PRO_MCP_PIPE`, set the same unique value for the add-in host and server processes.
+5. Configure the MCP client to launch the extracted absolute path to `server\arcgis-pro-mcp.exe`. A single discovered Pro host is selected automatically. With several hosts, set `ARCGIS_PRO_MCP_HOST_PID` for the gateway process. `ARCGIS_PRO_MCP_PIPE` remains an explicit override and must match host and gateway.
+
+New hosts default to a unique `ArcGISProMCP.v1.<pid>` pipe and publish discovery records under LocalAppData. The gateway refuses ambiguous automatic selection and lists PID/project choices. Do not deliberately configure multiple hosts with the same explicit pipe: Windows can distribute successive client connections across different projects, making state and revision checks appear inconsistent.
 
 A generic MCP client entry is:
 
@@ -75,7 +77,9 @@ A generic MCP client entry is:
 }
 ```
 
-Do not bypass the panel. Run the procedures in [manual acceptance](manual-acceptance.md) against a disposable project, including local review, reconnect, revision rejection, host shutdown, demo workflow, and embedded Rhino checks. Portable verification is not host acceptance.
+Do not bypass the panel. Run the procedures in [manual acceptance](manual-acceptance.md) against a disposable project, including local review, reconnect, revision rejection, feature/metadata/geoprocessing mutations, and host shutdown. Portable verification is not host acceptance.
+
+ArcPy is absent from the operation registry unless explicitly enabled before ArcGIS Pro starts. Follow [ArcPy configuration and trust boundaries](arcpy.md); do not enable it on a workstation that accepts untrusted scripts or untrusted MCP clients.
 
 ## Roll back
 
@@ -85,14 +89,14 @@ Do not bypass the panel. Run the procedures in [manual acceptance](manual-accept
 4. Reinstall the previously accepted add-in and point the client to that version's server executable.
 5. Restart ArcGIS Pro and repeat acceptance against a disposable project.
 
-Rollback does not undo map, geodatabase, layout, or Rhino mutations. Restore user data from its own backup/version history, and do not retry an uncertain mutation without checking its recorded outcome.
+Rollback does not undo map, geodatabase, layout, metadata, geoprocessing, or ArcPy mutations. Restore user data from its own backup/version history, and do not retry an uncertain mutation without checking its recorded outcome.
 
 ## Release boundaries
 
 - The script does not install, sign, or upload anything.
 - The operation registry is curated, not a complete ArcGIS SDK wrapper.
 - Workflows are not transactional or resumable after a crash.
-- Manual approval UI and embedded-host acceptance remain required.
-- The unresolved native host crash and the latest-build reload test block wider distribution.
+- Default-mode approval UI and live ArcGIS-host acceptance remain required. Autonomous deployments must instead verify the visible autonomous warning and unattended risky-operation audit notices.
+- The latest-build installation, reload, mutation and stability tests block wider distribution.
 
 See [production readiness](production-readiness.md) for evidence and remaining gates, and [security](security.md) for the transport and approval model.

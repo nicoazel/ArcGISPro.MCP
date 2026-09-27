@@ -1,14 +1,14 @@
-using System.Collections.Immutable;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using ArcGISProMCP.AddIn.Services;
 using ArcGISProMCP.Bridge.Protocol;
+using ArcGISProMCP.Core.Approvals;
 using ArcGISProMCP.Core.Execution;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Workflows;
-using ArcGISProMCP.Core.Approvals;
 
 namespace ArcGISProMCP.AddIn.Bridge;
 
@@ -93,7 +93,9 @@ internal sealed class ProBridgeRequestHandler(
             Limit: Integer(parameters, "limit", 12));
         var hits = registry.Search(query).Select(hit => new
         {
-            operation = Compact(hit.Descriptor), hit.Score, hit.MatchedTerms
+            operation = Compact(hit.Descriptor),
+            hit.Score,
+            hit.MatchedTerms
         });
         return JsonSerializer.SerializeToElement(hits, JsonOptions);
     }
@@ -142,7 +144,10 @@ internal sealed class ProBridgeRequestHandler(
             issues.Add(new { code = "invalid_arguments", message = $"{issue.Path}: {issue.Message}" });
         return JsonSerializer.SerializeToElement(new
         {
-            valid = issues.Count == 0, operation = Compact(operation.Descriptor), workspace.Revision, issues,
+            valid = issues.Count == 0,
+            operation = Compact(operation.Descriptor),
+            workspace.Revision,
+            issues,
             requiresConfirmation = operation.Descriptor.RequiresConfirmation
         }, JsonOptions);
     }
@@ -225,8 +230,13 @@ internal sealed class ProBridgeRequestHandler(
 
     private static JsonElement SerializeApproval(ApprovalRequestSnapshot approval) => JsonSerializer.SerializeToElement(new
     {
-        requestId = approval.Id, approval.OperationId, approval.OperationVersion, approval.WorkspaceRevision,
-        status = approval.State.ToString().ToLowerInvariant(), approval.RequestedAt, approval.ExpiresAt,
+        requestId = approval.Id,
+        approval.OperationId,
+        approval.OperationVersion,
+        approval.WorkspaceRevision,
+        status = approval.State.ToString().ToLowerInvariant(),
+        approval.RequestedAt,
+        approval.ExpiresAt,
         confirmationToken = approval.ConfirmationToken,
         instructions = approval.State == ApprovalRequestState.Pending
             ? "A person must approve or deny this exact request in the ArcGIS Pro MCP panel. Poll approval_status; there is no remote approval operation."
@@ -240,7 +250,11 @@ internal sealed class ProBridgeRequestHandler(
         var rankingByKey = rankings.ToDictionary(rank => (rank.WorkflowId, rank.Version));
         var items = definitions.Select(workflow => new
         {
-            workflow.Id, workflow.Version, workflow.Title, workflow.Summary, workflow.Tags,
+            workflow.Id,
+            workflow.Version,
+            workflow.Title,
+            workflow.Summary,
+            workflow.Tags,
             ranking = rankingByKey.GetValueOrDefault((workflow.Id, workflow.Version))
         });
         return JsonSerializer.SerializeToElement(items, JsonOptions);
@@ -353,6 +367,32 @@ internal sealed class ProBridgeRequestHandler(
                 throw new BridgeException("invalid_workflow_parameters", exception.Message, false, exception);
             }
             var result = await ExecuteCoreAsync(new OperationRequest(step.Operation, stepArguments, revision), $"{correlationId}:{step.Id}", cancellationToken).ConfigureAwait(false);
+            if (!result.Success &&
+                string.Equals(result.ErrorCode, "workspace_revision_mismatch", StringComparison.Ordinal) &&
+                !string.IsNullOrWhiteSpace(result.WorkspaceRevision))
+            {
+                // The workflow's caller revision is validated before the batch begins. ArcGIS Pro
+                // can publish delayed map-member/layout notifications after a successful SDK write,
+                // advancing the revision between serialized steps. A mismatch is raised before the
+                // operation executes, so retrying once at the newly observed revision cannot repeat
+                // a mutation. Direct operation calls retain strict fail-closed concurrency behavior.
+                var rejectedRevision = revision;
+                revision = result.WorkspaceRevision;
+                result = await ExecuteCoreAsync(
+                    new OperationRequest(step.Operation, stepArguments, revision),
+                    $"{correlationId}:{step.Id}:revision-refresh",
+                    cancellationToken).ConfigureAwait(false);
+                if (result.Success)
+                {
+                    result = result with
+                    {
+                        Notices = result.Notices.Add(new OperationNotice(
+                            "workflow_revision_refreshed",
+                            $"ArcGIS Pro advanced the workspace revision from '{rejectedRevision}' to '{revision}' between serialized workflow steps; the rejected step was retried once before execution.",
+                            "info"))
+                    };
+                }
+            }
             results.Add(new { step = step.Id, operation = step.Operation, result.Success, result.ErrorCode, result.Message, result.WorkspaceRevision, result.Data, result.Resources, result.Notices });
             revision = result.WorkspaceRevision;
             if (result.Success) succeededCount++;
@@ -411,8 +451,15 @@ internal sealed class ProBridgeRequestHandler(
 
     private static object Compact(OperationDescriptor descriptor) => new
     {
-        descriptor.Id, descriptor.Version, descriptor.Title, descriptor.Summary, descriptor.Risk,
-        descriptor.ExecutionTarget, descriptor.Tags, descriptor.RequiredCapabilities, descriptor.RequiresConfirmation,
+        descriptor.Id,
+        descriptor.Version,
+        descriptor.Title,
+        descriptor.Summary,
+        descriptor.Risk,
+        descriptor.ExecutionTarget,
+        descriptor.Tags,
+        descriptor.RequiredCapabilities,
+        descriptor.RequiresConfirmation,
         descriptor.TypicalDuration
     };
 

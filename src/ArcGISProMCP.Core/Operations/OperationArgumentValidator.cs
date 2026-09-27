@@ -345,8 +345,13 @@ public static class OperationArgumentValidator
     };
     private static string ValueType(JsonElement value) => value.ValueKind switch
     {
-        JsonValueKind.True or JsonValueKind.False => "boolean", JsonValueKind.Number => "number", JsonValueKind.String => "string",
-        JsonValueKind.Object => "object", JsonValueKind.Array => "array", JsonValueKind.Null => "null", _ => value.ValueKind.ToString().ToLowerInvariant()
+        JsonValueKind.True or JsonValueKind.False => "boolean",
+        JsonValueKind.Number => "number",
+        JsonValueKind.String => "string",
+        JsonValueKind.Object => "object",
+        JsonValueKind.Array => "array",
+        JsonValueKind.Null => "null",
+        _ => value.ValueKind.ToString().ToLowerInvariant()
     };
     private static string Join(string parent, string child) => $"{parent}.{child}";
     private static string PropertyPath(string parent, string property) => property.All(c => char.IsLetterOrDigit(c) || c == '_') ? $"{parent}.{property}" : $"{parent}[{JsonSerializer.Serialize(property)}]";

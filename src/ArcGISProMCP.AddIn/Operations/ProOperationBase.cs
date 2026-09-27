@@ -1,6 +1,6 @@
 using System.Text.Json;
-using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.AddIn.ArcGIS;
+using ArcGISProMCP.Core.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
 
@@ -20,7 +20,10 @@ internal abstract class ProOperationBase(OperationDescriptor descriptor) : IOper
             workspace.AdvanceRevision();
             // A successful write must publish its new revision even if the request was cancelled
             // while the underlying host operation was running.
-            var snapshot = await workspace.GetSnapshotAsync(CancellationToken.None).ConfigureAwait(false);
+            // ArcGIS publishes map-member and layout-element events after many SDK
+            // mutators return. Wait for those notifications to drain so the next
+            // serialized workflow step receives the revision we actually publish.
+            var snapshot = await workspace.GetSettledSnapshotAsync(CancellationToken.None).ConfigureAwait(false);
             result = result with { WorkspaceRevision = snapshot.Revision };
         }
         return result;

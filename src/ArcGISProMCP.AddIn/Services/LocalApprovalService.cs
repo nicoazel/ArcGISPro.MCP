@@ -9,9 +9,11 @@ namespace ArcGISProMCP.AddIn.Services;
 /// Add-in lifetime adapter for the process-local approval service. It deliberately exposes no
 /// remote decision path; only the dockpane can call <see cref="TryResolve"/>.
 /// </summary>
-internal sealed class LocalApprovalService : IApprovalService
+internal sealed class LocalApprovalService : IApprovalService, IAutonomousExecutionPolicy
 {
     private readonly ApprovalService _inner = new(lifetime: TimeSpan.FromMinutes(2), capacity: 128);
+
+    public bool AllowsUnattendedRiskyOperations => AutonomousControlState.Enabled;
 
     public event EventHandler? Changed
     {

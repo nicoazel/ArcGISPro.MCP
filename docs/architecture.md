@@ -19,7 +19,8 @@ The gateway exposes discovery, validation, invocation, workflow, skill, and reso
 - `ArcGISProMCP.Bridge` owns the local transport. Messages carry a protocol version and request id and are capped at 8 MiB.
 - `ArcGISProMCP.Server` is the stateless stdio MCP gateway. It has no Esri or Rhino reference.
 - `ArcGISProMCP.AddIn` owns ArcGIS Pro SDK operations, lifecycle, the named-pipe listener, and the thin MVVM dockpane.
-- McNeel's `Rhino-MCP-Platform` remains the Rhino modeling command surface. A small public Rhino.Inside peer contract exposes session discovery, startup and existing pull/preview/sync services.
+- Each Pro process defaults to `ArcGISProMCP.v1.<pid>` and publishes a local host record containing PID, process start, pipe, and current project. The gateway auto-selects a sole live host, honors `ARCGIS_PRO_MCP_HOST_PID` or `ARCGIS_PRO_MCP_PIPE`, and fails closed when multiple hosts are ambiguous.
+- Rhino.Inside-ArcGIS interoperability and McNeel's Rhino MCP are separate products and endpoints. This repository has no Rhino or RhinoCommon dependency and does not register `rhino.*` operations.
 
 ## Operation lifecycle
 
@@ -27,7 +28,7 @@ The gateway exposes discovery, validation, invocation, workflow, skill, and reso
 2. Search or browse the registry by intent/domain.
 3. Describe only the candidate operations needed for the task.
 4. Validate arguments against the descriptor and live state.
-5. For risky operations, call `approval_request` with the exact arguments and revision. A person reviews the dockpane; poll `approval_status` for the single-use token, then invoke unchanged arguments/revision. Remote approval grants are not implemented.
+5. In default mode, risky operations use `approval_request` with the exact arguments and revision. A person reviews the dockpane; poll `approval_status` for the single-use token, then invoke unchanged arguments/revision. A host started with explicit autonomous control skips this token gate but retains current-revision, schema, audit, idempotency, and operation-limit enforcement.
 6. Read returned resource handles for images or larger observations.
 
 Every ArcGIS object exposed across the bridge uses a stable URI-derived handle. Handles are resolved on each call and are expected to become invalid when a project closes or replaces the referenced object.

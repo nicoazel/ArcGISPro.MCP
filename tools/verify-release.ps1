@@ -31,7 +31,8 @@ try {
         PortableChecks = 'passed'
         LiveProtocolChecked = [bool]$Live
         HumanApprovalInteraction = 'requires separate manual UI acceptance'
-        EmbeddedSyncApply = 'requires separate disposable-project acceptance'
+        LiveFeatureMetadataGeoprocessing = 'requires separate disposable-project acceptance'
+        LiveArcPyExecution = 'requires explicit opt-in and separate disposable-project acceptance'
         Signed = $false
     }
 }

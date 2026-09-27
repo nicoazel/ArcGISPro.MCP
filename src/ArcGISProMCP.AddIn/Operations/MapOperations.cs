@@ -24,7 +24,9 @@ internal sealed class MapListOperation() : ProOperationBase(OperationDescriptor.
                 .Select(item => item.GetMap())
                 .Select(map => new
                 {
-                    id = ProHandles.ForMap(map), map.Name, type = map.MapType.ToString(),
+                    id = ProHandles.ForMap(map),
+                    map.Name,
+                    type = map.MapType.ToString(),
                     layerCount = map.GetLayersAsFlattenedList().Count,
                     isActive = string.Equals(map.URI, activeUri, StringComparison.OrdinalIgnoreCase)
                 })
@@ -67,6 +69,13 @@ internal sealed class MapEnsureOperation() : ProOperationBase(OperationDescripto
             var created = MapFactory.Instance.CreateMap(name, mapType, viewingMode, basemap);
             return new MapMutationResult(ProHandles.ForMap(created), created.Name, true);
         }, cancellationToken).ConfigureAwait(false);
+        if (data.Created)
+        {
+            // ProjectItemsChanged can arrive well after CreateMap returns. Give that
+            // one-time structural notification a chance to publish before the base
+            // operation samples the revision handed to the next workflow step.
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+        }
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
     }

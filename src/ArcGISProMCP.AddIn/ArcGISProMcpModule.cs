@@ -1,13 +1,15 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using ArcGIS.Desktop.Core;
 using ArcGISProMCP.AddIn.ArcGIS;
 using ArcGISProMCP.AddIn.Bridge;
 using ArcGISProMCP.AddIn.Operations;
 using ArcGISProMCP.AddIn.Services;
 using ArcGISProMCP.AddIn.UI;
 using ArcGISProMCP.Bridge.Protocol;
-using ArcGISProMCP.Core.Approvals;
 using ArcGISProMCP.Bridge.Transport;
+using ArcGISProMCP.Core.Approvals;
 using ArcGISProMCP.Core.Infrastructure;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Registry;
@@ -19,6 +21,8 @@ namespace ArcGISProMCP.AddIn;
 internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Contracts.Module
 {
     private readonly CancellationTokenSource _applicationStopping = new();
+    private readonly object _hostDiscoveryGate = new();
+    private readonly DateTimeOffset _processStartedAtUtc = CurrentProcessStartedAtUtc();
     private NamedPipeBridgeServer? _bridge;
     private ProBridgeRequestHandler? _handler;
     private IApprovalService? _approvals;
@@ -27,9 +31,13 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
     private FileWorkflowLibrary? _workflows;
     private JsonLineAuditLog? _audit;
     private Task? _cleanupTask;
+    private bool _hasPublishedHostDiscovery;
+    private string? _publishedProjectName;
+    private string? _publishedProjectUri;
 
     internal static ArcGISProMcpModule? Instance { get; private set; }
     internal IOperationRegistry? Registry { get; private set; }
+    internal string? PipeName { get; private set; }
 
     protected override bool Initialize()
     {
@@ -85,12 +93,37 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
         var handler = _handler = new ProBridgeRequestHandler(registry, context, workflows, resources, access);
         var configuredPipe = Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_PIPE");
         var pipeName = string.IsNullOrWhiteSpace(configuredPipe)
-            ? BridgeProtocol.DefaultPipeName
+            ? BridgeHostDiscovery.ProcessPipeName(Environment.ProcessId)
             : configuredPipe.Trim();
+        PipeName = pipeName;
         _bridge = new NamedPipeBridgeServer(handler, pipeName);
         _bridge.Start();
+        RefreshHostDiscovery(Project.Current?.Name, Project.Current?.URI);
         PanelStateSourceProvider.Factory = () => new ProPanelStateSource(context, handler, workflows, resources, access);
         return true;
+    }
+
+    internal void RefreshHostDiscovery(string? projectName, string? projectUri)
+    {
+        lock (_hostDiscoveryGate)
+        {
+            if (PipeName is null ||
+                _hasPublishedHostDiscovery &&
+                string.Equals(projectName, _publishedProjectName, StringComparison.Ordinal) &&
+                string.Equals(projectUri, _publishedProjectUri, StringComparison.Ordinal))
+                return;
+
+            BridgeHostDiscovery.Publish(new BridgeHostRecord(
+                Environment.ProcessId,
+                PipeName,
+                _processStartedAtUtc,
+                DateTimeOffset.UtcNow,
+                projectName,
+                projectUri));
+            _hasPublishedHostDiscovery = true;
+            _publishedProjectName = projectName;
+            _publishedProjectUri = projectUri;
+        }
     }
 
     protected override bool CanUnload() => _handler?.RunningOperationCount is not > 0;
@@ -122,6 +155,8 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
         _resources = null;
         _workflows = null;
         _audit = null;
+        BridgeHostDiscovery.Remove(Environment.ProcessId);
+        PipeName = null;
         _cleanupTask = DrainAndDisposeAsync(
             bridge,
             handler,
@@ -161,5 +196,11 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
             audit?.Dispose();
             applicationStopping.Dispose();
         }
+    }
+
+    private static DateTimeOffset CurrentProcessStartedAtUtc()
+    {
+        using var process = Process.GetCurrentProcess();
+        return new DateTimeOffset(process.StartTime.ToUniversalTime(), TimeSpan.Zero);
     }
 }

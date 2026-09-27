@@ -4,6 +4,7 @@ using System.Text;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Layouts;
 using ArcGIS.Desktop.Mapping;
+using ArcGISProMCP.AddIn.Services;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Workspaces;
 
@@ -16,13 +17,34 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
     public Task<WorkspaceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken) =>
         dispatcher.OnMainCimThreadAsync(CreateSnapshot, cancellationToken);
 
+    internal async Task<WorkspaceSnapshot> GetSettledSnapshotAsync(CancellationToken cancellationToken)
+    {
+        var previous = await GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+        var quietSamples = 0;
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(25), cancellationToken).ConfigureAwait(false);
+            var current = await GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+            if (string.Equals(current.Revision, previous.Revision, StringComparison.Ordinal))
+            {
+                quietSamples++;
+                if (quietSamples >= 2) return current;
+            }
+            else
+            {
+                quietSamples = 0;
+            }
+            previous = current;
+        }
+        return previous;
+    }
+
     private WorkspaceSnapshot CreateSnapshot()
     {
-        var rhinoPeerAvailable = AppDomain.CurrentDomain.GetAssemblies()
-            .Any(assembly => assembly.GetType("RhinoInside.ArcGISPro.RhinoMcpPeer", false, false) is not null);
         var project = Project.Current;
         if (project is null)
         {
+            global::ArcGISProMCP.AddIn.ArcGISProMcpModule.Instance?.RefreshHostDiscovery(null, null);
             return new WorkspaceSnapshot(
                 "closed",
                 DateTimeOffset.UtcNow,
@@ -33,6 +55,8 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
                 null,
                 [new CapabilityState("arcgis-pro", true, typeof(Map).Assembly.GetName().Version?.ToString())]);
         }
+
+        global::ArcGISProMCP.AddIn.ArcGISProMcpModule.Instance?.RefreshHostDiscovery(project.Name, project.URI);
 
         var activeMap = MapView.Active?.Map;
         var maps = project.GetItems<MapProjectItem>()
@@ -78,11 +102,23 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
             [
                 new CapabilityState("arcgis-pro", true, typeof(Map).Assembly.GetName().Version?.ToString()),
                 new CapabilityState("maps", true),
+                new CapabilityState("feature-editing", true),
+                new CapabilityState("metadata", true),
                 new CapabilityState("layouts", true),
                 new CapabilityState("geoprocessing", true),
+                new CapabilityState(
+                    "arcpy",
+                    ArcPyCapabilityState.Enabled,
+                    ArcPyCapabilityState.Enabled
+                        ? "Explicitly enabled; the configured ArcPy runtime is validated before script inspection or execution."
+                        : "Disabled by local configuration."),
+                new CapabilityState(
+                    "autonomous-control",
+                    AutonomousControlState.Enabled,
+                    AutonomousControlState.Enabled
+                        ? "Explicitly enabled; risky operations bypass local review but still require current workspace revisions."
+                        : "Disabled; risky operations require local review."),
                 new CapabilityState("visual-observations", true)
-                ,new CapabilityState("rhino-peer", rhinoPeerAvailable, rhinoPeerAvailable ? "Rhino.Inside peer contract 1.0" : "Optional peer not loaded")
-                ,new CapabilityState("rhino-sync", Services.RhinoPeerClient.CanInvoke)
             ]);
     }
 }

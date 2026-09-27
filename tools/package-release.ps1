@@ -103,8 +103,8 @@ try {
             acceptance = [ordered]@{
                 manualApprovalUiRequired = $true
                 latestBuildRequiresHostReload = $true
-                embeddedRhinoRoundtripRequired = $true
-                unresolvedNativeHostCrashBlocksDistribution = $true
+                liveFeatureMetadataAndGeoprocessingAcceptanceRequired = $true
+                liveArcPyAcceptanceRequiredWhenEnabled = $true
             }
             signed = $false
         }

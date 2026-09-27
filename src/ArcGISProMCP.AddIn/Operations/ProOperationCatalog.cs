@@ -5,8 +5,10 @@ namespace ArcGISProMCP.AddIn.Operations;
 
 internal static class ProOperationCatalog
 {
-    public static IReadOnlyList<IOperation> Create(FileResourceStore resources) =>
-    [
+    public static IReadOnlyList<IOperation> Create(FileResourceStore resources)
+    {
+        var operations = new List<IOperation>
+        {
         new ProjectGetOperation(),
         new ProjectOpenOperation(),
         new ProjectSaveOperation(),
@@ -17,6 +19,7 @@ internal static class ProOperationCatalog
         new LayerListOperation(),
         new LayerAddOperation(),
         new LayerSetAppearanceOperation(),
+        new LayerSetElevationOperation(),
         new BasemapSetOperation(),
         new StyleSearchOperation(),
         new SymbologySetSimpleOperation(),
@@ -24,7 +27,16 @@ internal static class ProOperationCatalog
         new LabelConfigureOperation(),
         new TableQueryOperation(),
         new TableStatisticsOperation(),
+        new FeatureLayerDescribeOperation(),
+        new FeatureQueryOperation(),
+        new FeatureSelectOperation(),
+        new FeatureCreateOperation(),
+        new FeatureUpdateOperation(),
+        new FeatureDeleteOperation(),
+        new MetadataGetOperation(),
+        new MetadataUpdateOperation(),
         new LayoutListOperation(),
+        new LayoutInspectOperation(),
         new LayoutEnsureOperation(),
         new LayoutAddMapFrameOperation(),
         new LayoutSetTextOperation(),
@@ -32,13 +44,15 @@ internal static class ProOperationCatalog
         new LayoutEnsureSurroundOperation(),
         new LayoutActivateOperation(),
         new GeoprocessingRunOperation(),
-        new ViewCaptureOperation(resources),
-        new RhinoPeerStateOperation(),
-        new RhinoHandoffOperation(),
-        new RhinoStartOperation(),
-        new RhinoMcpReconnectOperation(),
-        new RhinoPullOperation(),
-        new RhinoPreviewOperation(),
-        new RhinoSyncOperation()
-    ];
+            new ViewCaptureOperation(resources)
+        };
+
+        if (ArcPyCapabilityState.Settings is { } arcPySettings)
+        {
+            operations.Add(new ArcPyInspectScriptOperation(arcPySettings));
+            operations.Add(new ArcPyRunScriptOperation(arcPySettings));
+        }
+
+        return operations;
+    }
 }

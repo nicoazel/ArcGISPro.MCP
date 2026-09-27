@@ -108,8 +108,12 @@ public class FileResourceStore : IDisposable
             await file.ReadExactlyAsync(bytes, cancellationToken).ConfigureAwait(false);
             return JsonSerializer.SerializeToElement(new
             {
-                uri, resource.MimeType, resource.Name, encoding = "base64",
-                data = Convert.ToBase64String(bytes), resource.CreatedAt
+                uri,
+                resource.MimeType,
+                resource.Name,
+                encoding = "base64",
+                data = Convert.ToBase64String(bytes),
+                resource.CreatedAt
             });
         }
         finally

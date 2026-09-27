@@ -1,8 +1,8 @@
 using System.ComponentModel;
 using System.Text.Json;
 using ArcGISProMCP.Bridge.Transport;
-using ModelContextProtocol.Server;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 
 namespace ArcGISProMCP.Server.Tools;
 
@@ -19,7 +19,7 @@ public sealed class KernelTools
     public static Task<string> Search(
         IBridgeClient bridge,
         [Description("Natural-language intent such as 'make parcels transparent' or 'compose three map frames'.")] string query,
-        [Description("Optional domain: project, map, layer, basemap, style, symbology, label, layout, gp, view, workspace, rhino, workflow.")] string? domain = null,
+        [Description("Optional domain: project, map, layer, feature, table, metadata, basemap, style, symbology, label, layout, gp, arcpy, view, workspace, workflow.")] string? domain = null,
         [Description("Maximum results from 1 to 50.")] int limit = 12,
         CancellationToken cancellationToken = default) =>
         CallAsync(bridge, "registry.search", new { query, domain, limit }, cancellationToken);
@@ -52,13 +52,13 @@ public sealed class KernelTools
         CallAsync(bridge, "registry.validate", new { operationId, arguments, expectedRevision }, cancellationToken);
 
     [McpServerTool(Name = "registry_invoke", Title = "Invoke an ArcGIS operation")]
-    [Description("Invokes one previously discovered operation. Writes enforce workspace revisions and risky operations require an add-in-issued confirmation token.")]
+    [Description("Invokes one previously discovered operation. Writes enforce workspace revisions. Risky operations require an add-in-issued confirmation token unless the host was explicitly started in autonomous-control mode.")]
     public static Task<string> Invoke(
         IBridgeClient bridge,
         [Description("Stable operation id.")] string operationId,
         [Description("Arguments matching the operation schema.")] JsonElement arguments,
         [Description("Workspace revision from system_get_state; required for reliable writes.")] string? expectedRevision = null,
-        [Description("Short-lived confirmation token supplied by the ArcGIS Pro panel for risky operations.")] string? confirmationToken = null,
+        [Description("Short-lived confirmation token supplied by the ArcGIS Pro panel for risky operations; omitted only when the host explicitly advertises autonomous-control.")] string? confirmationToken = null,
         [Description("Optional key that prevents duplicate mutations when a call is retried.")] string? idempotencyKey = null,
         CancellationToken cancellationToken = default) =>
         CallAsync(bridge, "registry.invoke", new { operationId, arguments, expectedRevision, confirmationToken, idempotencyKey }, cancellationToken);
@@ -69,7 +69,7 @@ public sealed class KernelTools
         CallAsync(bridge, "workflow.list", null, cancellationToken);
 
     [McpServerTool(Name = "approval_request", Title = "Request local review", Destructive = false)]
-    [Description("Queues review of one exact risky operation in the ArcGIS Pro panel without blocking other requests. A person must approve there; this tool cannot grant approval. Poll approval_status, then invoke with the returned token and unchanged revision/arguments.")]
+    [Description("Queues review of one exact risky operation in the ArcGIS Pro panel without blocking other requests. In normal mode, a person must approve there; this tool cannot grant approval. Poll approval_status, then invoke with the returned token and unchanged revision/arguments.")]
     public static Task<string> RequestApproval(
         IBridgeClient bridge,
         [Description("Stable operation id requiring approval.")] string operationId,
@@ -79,7 +79,7 @@ public sealed class KernelTools
         CallAsync(bridge, "approval.request", new { operationId, arguments, expectedRevision }, cancellationToken);
 
     [McpServerTool(Name = "approval_status", Title = "Check local review", ReadOnly = true, Destructive = false)]
-    [Description("Returns pending, approved, denied, expired, cancelled or consumed. Only approved requests include a short-lived, single-use token. Unknown ids fail closed. No remote approval is possible.")]
+    [Description("Returns pending, approved, denied, expired, cancelled or consumed. Only approved requests include a short-lived, single-use token. Unknown ids fail closed. This does not enable autonomous-control mode.")]
     public static Task<string> ApprovalStatus(
         IBridgeClient bridge,
         [Description("Opaque id returned by approval_request.")] string requestId,

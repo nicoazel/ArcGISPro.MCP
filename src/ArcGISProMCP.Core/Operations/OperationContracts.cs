@@ -16,7 +16,6 @@ public enum ExecutionTarget
     ArcGISMainCimThread,
     ArcGISUiThread,
     Background,
-    RhinoUiThread,
     ExternalWorker
 }
 

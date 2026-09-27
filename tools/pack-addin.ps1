@@ -29,7 +29,27 @@ try {
     }
 
     if (Test-Path -LiteralPath $package) { Remove-Item -LiteralPath $package -Force }
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($stage, $package)
+    $packageStream = [IO.File]::Open($package, [IO.FileMode]::CreateNew, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    try {
+        $archive = [IO.Compression.ZipArchive]::new($packageStream, [IO.Compression.ZipArchiveMode]::Create, $false)
+        try {
+            $fixedTimestamp = [DateTimeOffset]::new(2000, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
+            foreach ($file in Get-ChildItem -LiteralPath $stage -File -Recurse | Sort-Object FullName) {
+                $relativePath = [IO.Path]::GetRelativePath($stage, $file.FullName).Replace('\', '/')
+                $entry = $archive.CreateEntry($relativePath, [IO.Compression.CompressionLevel]::Optimal)
+                $entry.LastWriteTime = $fixedTimestamp
+                $inputStream = $file.OpenRead()
+                $outputStream = $entry.Open()
+                try { $inputStream.CopyTo($outputStream) }
+                finally {
+                    $outputStream.Dispose()
+                    $inputStream.Dispose()
+                }
+            }
+        }
+        finally { $archive.Dispose() }
+    }
+    finally { $packageStream.Dispose() }
 }
 finally {
     $resolvedStage = [System.IO.Path]::GetFullPath($stage)

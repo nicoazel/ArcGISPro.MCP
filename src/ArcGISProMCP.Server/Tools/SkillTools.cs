@@ -18,7 +18,12 @@ public sealed class SkillTools
         var terms = query.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var matches = skills.Select(skill => new
         {
-            skill.Id, skill.Version, skill.Title, skill.Summary, skill.Tags, skill.WorkflowId,
+            skill.Id,
+            skill.Version,
+            skill.Title,
+            skill.Summary,
+            skill.Tags,
+            skill.WorkflowId,
             score = terms.Count(term => $"{skill.Title} {skill.Summary} {string.Join(' ', skill.Tags)}".Contains(term, StringComparison.OrdinalIgnoreCase))
         }).Where(skill => terms.Length == 0 || skill.score > 0).OrderByDescending(skill => skill.score).Take(20);
         return JsonSerializer.Serialize(matches, JsonOptions);

@@ -114,6 +114,24 @@ public sealed class HostHandlerTests
         Assert.Equal(1, fixture.ReadOperation.CallCount);
     }
 
+    [Fact]
+    public async Task Workflow_retries_once_when_host_revision_advances_before_a_step_executes()
+    {
+        var workspace = new SequenceWorkspace("r1", "r2", "r2");
+        using var fixture = new Fixture(OperationRisk.SafeWrite, workspace);
+        var workflow = new WorkflowDefinition("settling-flow", "1.0.0", "Settling", "Test", [], [], [],
+            [new("write", "test.write", JsonSerializer.SerializeToElement(new { }), [])]);
+        await fixture.Workflows.SaveAsync(workflow, TestContext.Current.CancellationToken);
+
+        var response = await fixture.Call("workflow.run", new { workflowId = workflow.Id, parameters = new { }, expectedRevision = "r1" });
+
+        Assert.True(response.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(1, fixture.Operation.CallCount);
+        var notices = response.Result.Value.GetProperty("results")[0].GetProperty("notices");
+        Assert.Contains(notices.EnumerateArray(), notice =>
+            notice.GetProperty("code").GetString() == "workflow_revision_refreshed");
+    }
+
     private sealed class Fixture : IDisposable
     {
         public ApprovalService Approvals { get; } = new();
@@ -123,14 +141,14 @@ public sealed class HostHandlerTests
         private readonly ProBridgeRequestHandler _handler;
         // Test files are isolated and intentionally retained for post-failure diagnosis.
         private readonly string _root = Path.Combine(Path.GetTempPath(), "ArcGISProMCP.Tests", Guid.NewGuid().ToString("N"));
-        public Fixture(OperationRisk risk)
+        public Fixture(OperationRisk risk, IWorkspaceStateProvider? workspace = null)
         {
             Operation = new(risk);
             var registry = new OperationRegistry();
             registry.Register(Operation);
             registry.Register(ReadOperation);
             Workflows = new FileWorkflowLibrary(Path.Combine(_root, "workflows"), registry);
-            var context = new OperationContext(new Dispatcher(), new Workspace(), Approvals, new Audit(), "test", CancellationToken.None);
+            var context = new OperationContext(new Dispatcher(), workspace ?? new Workspace(), Approvals, new Audit(), "test", CancellationToken.None);
             _handler = new ProBridgeRequestHandler(registry, context, Workflows, new FileResourceStore(Path.Combine(_root, "resources")), new BridgeAccessState());
         }
         public Task<BridgeResponse> Call(string method, object parameters) => _handler.HandleAsync(
@@ -154,6 +172,17 @@ public sealed class HostHandlerTests
     {
         public Task<WorkspaceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken) =>
             Task.FromResult(new WorkspaceSnapshot("r1", DateTimeOffset.UtcNow, new("Test", "test.aprx", false, true), [], [], null, null, []));
+    }
+
+    private sealed class SequenceWorkspace(params string[] revisions) : IWorkspaceStateProvider
+    {
+        private int _index = -1;
+
+        public Task<WorkspaceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
+        {
+            var index = Math.Min(Interlocked.Increment(ref _index), revisions.Length - 1);
+            return Task.FromResult(new WorkspaceSnapshot(revisions[index], DateTimeOffset.UtcNow, new("Test", "test.aprx", false, true), [], [], null, null, []));
+        }
     }
     private sealed class Dispatcher : IOperationDispatcher
     {

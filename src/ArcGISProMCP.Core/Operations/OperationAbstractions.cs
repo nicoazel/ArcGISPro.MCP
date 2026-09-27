@@ -43,6 +43,11 @@ public interface IConfirmationValidator
         CancellationToken cancellationToken);
 }
 
+public interface IAutonomousExecutionPolicy
+{
+    bool AllowsUnattendedRiskyOperations { get; }
+}
+
 public interface IOperationAuditLog
 {
     ValueTask WriteAsync(OperationAuditEvent auditEvent, CancellationToken cancellationToken);

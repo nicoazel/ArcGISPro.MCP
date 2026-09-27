@@ -13,7 +13,7 @@ internal sealed class LayoutListOperation() : ProOperationBase(OperationDescript
     "Lists project layouts and their map frames using stable handles.",
     JsonSchemas.EmptyObject,
     capabilities: ["layouts"], tags: ["layout", "map frame", "browse"], aliases: ["layouts", "print layouts"],
-    related: ["layout.ensure", "layout.add-map-frame", "layout.activate"]))
+    related: ["layout.inspect", "layout.ensure", "layout.add-map-frame", "layout.activate"]))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
@@ -22,7 +22,8 @@ internal sealed class LayoutListOperation() : ProOperationBase(OperationDescript
                 .Select(item => item.GetLayout())
                 .Select(layout => new
                 {
-                    id = ProHandles.ForLayout(layout), layout.Name,
+                    id = ProHandles.ForLayout(layout),
+                    layout.Name,
                     mapFrames = layout.GetElementsAsFlattenedList().OfType<MapFrame>()
                         .Select(frame => new { frame.Name, map = frame.Map is null ? null : ProHandles.ForMap(frame.Map) }).ToArray()
                 })
@@ -33,6 +34,98 @@ internal sealed class LayoutListOperation() : ProOperationBase(OperationDescript
     }
 }
 
+internal sealed class LayoutInspectOperation() : ProOperationBase(OperationDescriptor.Create(
+    "layout.inspect", "Inspect layout",
+    "Returns a layout's page dimensions and flattened element geometry, including map-frame bindings and cameras.",
+    JsonSchemas.ObjectSchema("\"layout\": {\"type\": \"string\", \"minLength\": 1}", "layout"),
+    capabilities: ["layouts"], tags: ["layout", "inspect", "map frame", "camera", "verification"],
+    aliases: ["inspect layout elements", "verify layout geometry", "read map frames"],
+    related: ["layout.list", "layout.add-map-frame", "layout.set-frame-extent", "view.capture"]))
+{
+    protected override async Task<OperationResult> ExecuteCoreAsync(
+        JsonElement arguments,
+        OperationContext context,
+        CancellationToken cancellationToken)
+    {
+        var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
+        {
+            var layout = ProHandles.ResolveLayout(RequiredString(arguments, "layout"));
+            var page = layout.GetPage();
+            var elements = layout.GetElementsAsFlattenedList()
+                .Select((element, drawingOrder) =>
+                {
+                    var bounds = element.GetBounds(false);
+                    object? mapFrame = null;
+                    if (element is MapFrame frame)
+                    {
+                        var camera = frame.Camera;
+                        mapFrame = new
+                        {
+                            map = frame.Map is null ? null : ProHandles.ForMap(frame.Map),
+                            mapName = frame.Map?.Name,
+                            camera = new
+                            {
+                                x = Finite(camera.X),
+                                y = Finite(camera.Y),
+                                z = Finite(camera.Z),
+                                scale = Finite(camera.Scale),
+                                heading = Finite(camera.Heading),
+                                pitch = Finite(camera.Pitch),
+                                roll = Finite(camera.Roll),
+                                viewpoint = camera.Viewpoint.ToString(),
+                                viewportWidth = Finite(camera.ViewportWidth),
+                                viewportHeight = Finite(camera.ViewportHeight),
+                                spatialReferenceWkid = camera.SpatialReference?.Wkid
+                            }
+                        };
+                    }
+
+                    return new
+                    {
+                        element.Name,
+                        type = ElementType(element),
+                        drawingOrder,
+                        bounds = new
+                        {
+                            x = bounds.XMin,
+                            y = bounds.YMin,
+                            width = bounds.Width,
+                            height = bounds.Height,
+                            xMax = bounds.XMax,
+                            yMax = bounds.YMax
+                        },
+                        mapFrame
+                    };
+                })
+                .ToArray();
+
+            return new
+            {
+                id = ProHandles.ForLayout(layout),
+                layout.Name,
+                page = new { width = page.Width, height = page.Height, units = page.Units.Name },
+                elements
+            };
+        }, cancellationToken).ConfigureAwait(false);
+        var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
+        return OperationResult.Ok(Json(data), snapshot.Revision);
+    }
+
+    private static double? Finite(double value) => double.IsFinite(value) ? value : null;
+
+    private static string ElementType(Element element) => element switch
+    {
+        MapFrame => "map-frame",
+        Legend => "legend",
+        NorthArrow => "north-arrow",
+        ScaleBar => "scale-bar",
+        TextElement => "text",
+        GroupElement => "group",
+        GraphicElement => "graphic",
+        _ => element.GetType().Name
+    };
+}
+
 internal sealed class LayoutEnsureOperation() : ProOperationBase(OperationDescriptor.Create(
     "layout.ensure", "Ensure layout exists",
     "Returns an existing named layout or creates a page in inches using the requested dimensions.",
@@ -40,7 +133,7 @@ internal sealed class LayoutEnsureOperation() : ProOperationBase(OperationDescri
         "\"name\": {\"type\": \"string\", \"minLength\": 1}, \"width\": {\"type\": \"number\", \"exclusiveMinimum\": 0}, \"height\": {\"type\": \"number\", \"exclusiveMinimum\": 0}",
         "name"),
     risk: OperationRisk.SafeWrite, capabilities: ["layouts"], tags: ["layout", "page", "create"],
-    aliases: ["new layout", "create layout"], related: ["layout.add-map-frame", "layout.activate"], undoable: true))
+    aliases: ["new layout", "create layout"], related: ["layout.inspect", "layout.add-map-frame", "layout.activate"], undoable: true))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
@@ -53,16 +146,53 @@ internal sealed class LayoutEnsureOperation() : ProOperationBase(OperationDescri
             var existing = (Project.Current?.GetItems<LayoutProjectItem>() ?? [])
                 .Select(item => item.GetLayout())
                 .FirstOrDefault(layout => string.Equals(layout.Name, name, StringComparison.OrdinalIgnoreCase));
-            if (existing is not null) return new LayoutMutationResult(ProHandles.ForLayout(existing), existing.Name, false, width, height);
+            if (existing is not null)
+            {
+                var page = existing.GetPage();
+                var updated = page.Units.FactoryCode != LinearUnit.Inches.FactoryCode ||
+                              !NearlyEqual(page.Width, width) ||
+                              !NearlyEqual(page.Height, height);
+                if (updated)
+                {
+                    page.Units = LinearUnit.Inches;
+                    page.Width = width;
+                    page.Height = height;
+                    existing.SetPage(page, false);
+                    page = existing.GetPage();
+                }
+
+                if (page.Units.FactoryCode != LinearUnit.Inches.FactoryCode ||
+                    !NearlyEqual(page.Width, width) ||
+                    !NearlyEqual(page.Height, height))
+                {
+                    throw new InvalidOperationException($"Layout '{existing.Name}' did not accept the requested {width} by {height} inch page size.");
+                }
+
+                return new LayoutMutationResult(
+                    ProHandles.ForLayout(existing), existing.Name, false, updated,
+                    page.Width, page.Height, page.Units.Name);
+            }
             var layout = LayoutFactory.Instance.CreateLayout(width, height, LinearUnit.Inches, false, 0);
             layout.SetName(name);
-            return new LayoutMutationResult(ProHandles.ForLayout(layout), layout.Name, true, width, height);
+            var createdPage = layout.GetPage();
+            return new LayoutMutationResult(
+                ProHandles.ForLayout(layout), layout.Name, true, false,
+                createdPage.Width, createdPage.Height, createdPage.Units.Name);
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
     }
 
-    private sealed record LayoutMutationResult(string Id, string Name, bool Created, double Width, double Height);
+    private static bool NearlyEqual(double left, double right) => Math.Abs(left - right) <= 1e-6;
+
+    private sealed record LayoutMutationResult(
+        string Id,
+        string Name,
+        bool Created,
+        bool Updated,
+        double Width,
+        double Height,
+        string Units);
 }
 
 internal sealed class LayoutAddMapFrameOperation() : ProOperationBase(OperationDescriptor.Create(
@@ -72,7 +202,7 @@ internal sealed class LayoutAddMapFrameOperation() : ProOperationBase(OperationD
         "\"layout\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\", \"minLength\": 1}, \"name\": {\"type\": \"string\"}, \"x\": {\"type\": \"number\"}, \"y\": {\"type\": \"number\"}, \"width\": {\"type\": \"number\", \"exclusiveMinimum\": 0}, \"height\": {\"type\": \"number\", \"exclusiveMinimum\": 0}",
         "layout", "map"),
     risk: OperationRisk.SafeWrite, capabilities: ["layouts", "maps"], tags: ["layout", "map frame", "compose", "multi-map"],
-    aliases: ["place map on layout", "multi map layout"], related: ["layout.ensure", "layout.list"], undoable: true))
+    aliases: ["place map on layout", "multi map layout"], related: ["layout.ensure", "layout.inspect", "layout.list"], undoable: true))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
@@ -88,17 +218,30 @@ internal sealed class LayoutAddMapFrameOperation() : ProOperationBase(OperationD
         {
             var layout = ProHandles.ResolveLayout(layoutReference);
             var map = ProHandles.ResolveMap(mapReference);
+            var envelope = EnvelopeBuilderEx.CreateEnvelope(x, y, x + width, y + height);
             var existing = layout.GetElementsAsFlattenedList().OfType<MapFrame>()
                 .FirstOrDefault(frame => string.Equals(frame.Name, name, StringComparison.OrdinalIgnoreCase));
             if (existing is not null)
             {
+                var mapChanged = existing.Map is null ||
+                                 !string.Equals(existing.Map.URI, map.URI, StringComparison.OrdinalIgnoreCase);
+                var boundsChanged = !LayoutElementPlacement.BoundsMatch(existing.GetBounds(false), envelope);
+                if (mapChanged) existing.SetMap(map);
+                if (boundsChanged) LayoutElementPlacement.Apply(existing, envelope);
                 ZoomToOperationalLayers(existing, map);
-                return new FrameMutationResult(ProHandles.ForLayout(layout), ProHandles.ForMap(map), existing.Name, x, y, width, height, false);
+                var actual = existing.GetBounds(false);
+                EnsureConverged(existing, map, actual, envelope);
+                return new FrameMutationResult(
+                    ProHandles.ForLayout(layout), ProHandles.ForMap(map), existing.Name,
+                    actual.XMin, actual.YMin, actual.Width, actual.Height, false, mapChanged || boundsChanged);
             }
-            var envelope = EnvelopeBuilderEx.CreateEnvelope(x, y, x + width, y + height);
             var frame = ElementFactory.Instance.CreateMapFrameElement(layout, envelope, map, name, false, null);
             ZoomToOperationalLayers(frame, map);
-            return new FrameMutationResult(ProHandles.ForLayout(layout), ProHandles.ForMap(map), frame.Name, x, y, width, height, true);
+            var createdBounds = frame.GetBounds(false);
+            EnsureConverged(frame, map, createdBounds, envelope);
+            return new FrameMutationResult(
+                ProHandles.ForLayout(layout), ProHandles.ForMap(map), frame.Name,
+                createdBounds.XMin, createdBounds.YMin, createdBounds.Width, createdBounds.Height, true, false);
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
@@ -110,6 +253,16 @@ internal sealed class LayoutAddMapFrameOperation() : ProOperationBase(OperationD
         if (layers.Length > 0) frame.SetCamera(layers, false);
     }
 
+    private static void EnsureConverged(MapFrame frame, Map requestedMap, Envelope actual, Envelope requested)
+    {
+        if (frame.Map is null ||
+            !string.Equals(frame.Map.URI, requestedMap.URI, StringComparison.OrdinalIgnoreCase) ||
+            !LayoutElementPlacement.BoundsMatch(actual, requested))
+        {
+            throw new InvalidOperationException($"Map frame '{frame.Name}' did not accept its requested map binding and bounds.");
+        }
+    }
+
     private sealed record FrameMutationResult(
         string Layout,
         string Map,
@@ -118,7 +271,26 @@ internal sealed class LayoutAddMapFrameOperation() : ProOperationBase(OperationD
         double Y,
         double Width,
         double Height,
-        bool Created);
+        bool Created,
+        bool Updated);
+}
+
+internal static class LayoutElementPlacement
+{
+    public static bool BoundsMatch(Envelope actual, Envelope expected) =>
+        Math.Abs(actual.XMin - expected.XMin) <= 1e-6 &&
+        Math.Abs(actual.YMin - expected.YMin) <= 1e-6 &&
+        Math.Abs(actual.XMax - expected.XMax) <= 1e-6 &&
+        Math.Abs(actual.YMax - expected.YMax) <= 1e-6;
+
+    public static void Apply(Element element, Envelope expected)
+    {
+        element.SetWidth(expected.Width);
+        element.SetHeight(expected.Height);
+        var resized = element.GetBounds(false);
+        element.SetX(element.GetX() + expected.XMin - resized.XMin);
+        element.SetY(element.GetY() + expected.YMin - resized.YMin);
+    }
 }
 
 internal sealed class LayoutActivateOperation() : ProOperationBase(OperationDescriptor.Create(

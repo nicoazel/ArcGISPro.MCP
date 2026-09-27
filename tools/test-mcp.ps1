@@ -50,6 +50,13 @@ try {
     if (-not $Offline) {
         $state=Invoke-Mcp 'tools/call' @{name='system_get_state';arguments=@{}}
         $search=Invoke-Mcp 'tools/call' @{name='registry_search';arguments=@{query='layout title';limit=5}}
+        $describe=Invoke-Mcp 'tools/call' @{name='registry_describe';arguments=@{operationId='feature.create'}}
+        $descriptor=$describe.content[0].text | ConvertFrom-Json
+        if($descriptor.id -ne 'feature.create' -or -not $descriptor.inputSchema -or
+            -not $descriptor.inputSchema.properties.geometry) { throw 'Feature-create registry schema was missing or incomplete.' }
+        $validate=Invoke-Mcp 'tools/call' @{name='registry_validate';arguments=@{operationId='project.get';arguments=@{}}}
+        $validation=$validate.content[0].text | ConvertFrom-Json
+        if(-not $validation.valid) { throw 'Registry validation rejected valid project.get arguments.' }
     }
     $approvalVerified=$false
     if($ApprovalProbe) {
@@ -77,7 +84,7 @@ try {
         if($image.Count -ne 1 -or -not $image[0].data) { throw 'Expected one native MCP image block.' }
         $imageVerified=$true
     }
-    [pscustomobject]@{Server=$init.serverInfo.name;Protocol=$init.protocolVersion;Tools=@($tools.tools).Count;LiveState=(-not $Offline);SkillRead=$true;RegistrySearch=(-not $Offline);ImageBlock=$imageVerified;PendingCancelReview=$approvalVerified}
+    [pscustomobject]@{Server=$init.serverInfo.name;Protocol=$init.protocolVersion;Tools=@($tools.tools).Count;LiveState=(-not $Offline);SkillRead=$true;RegistrySearch=(-not $Offline);RegistrySchema=(-not $Offline);ImageBlock=$imageVerified;PendingCancelReview=$approvalVerified}
 }
 finally {
     $process.StandardInput.Close()

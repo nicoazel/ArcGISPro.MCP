@@ -11,3 +11,6 @@ artifacts/
 *.snk
 *.log
 .DS_Store
+__pycache__/
+*.pyc
+*.gdb/*.lock

@@ -50,7 +50,20 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
             else if (!request.DryRun && (descriptor.RequiresConfirmation ||
                 descriptor.Risk is OperationRisk.Destructive or OperationRisk.ExternalSideEffect))
             {
-                if (string.IsNullOrWhiteSpace(request.ConfirmationToken) ||
+                if (context.Confirmation is IAutonomousExecutionPolicy { AllowsUnattendedRiskyOperations: true })
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    result = await ExecuteOrDescribeAsync(operation, descriptor, request, startSnapshot.Revision, context, cancellationToken)
+                        .ConfigureAwait(false);
+                    result = result with
+                    {
+                        Notices = result.Notices.Add(new OperationNotice(
+                            "autonomous_control",
+                            "The host's explicit autonomous-control setting bypassed local review for this risky operation.",
+                            "warning"))
+                    };
+                }
+                else if (string.IsNullOrWhiteSpace(request.ConfirmationToken) ||
                     !await context.Confirmation.IsValidAsync(
                         request.ConfirmationToken,
                         descriptor,
@@ -106,8 +119,11 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
             {
                 // Observability failure must not hide the known outcome of an accepted mutation.
                 System.Diagnostics.Trace.TraceError("Operation audit write failed: {0}", exception);
-                result = result with { Notices = result.Notices.Add(new OperationNotice(
-                    "audit_write_failed", "Operation result is known, but the audit record could not be persisted. Inspect host diagnostics before further work.", "warning")) };
+                result = result with
+                {
+                    Notices = result.Notices.Add(new OperationNotice(
+                    "audit_write_failed", "Operation result is known, but the audit record could not be persisted. Inspect host diagnostics before further work.", "warning"))
+                };
             }
         }
 

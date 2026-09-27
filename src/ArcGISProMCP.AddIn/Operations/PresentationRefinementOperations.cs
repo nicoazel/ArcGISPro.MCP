@@ -11,11 +11,11 @@ namespace ArcGISProMCP.AddIn.Operations;
 
 internal sealed class LayoutSetFrameExtentOperation() : ProOperationBase(OperationDescriptor.Create(
     "layout.set-frame-extent", "Frame a layer on a layout",
-    "Fits a named map frame to a feature layer with optional scale padding.",
+    "Fits a named map frame to a feature layer with optional scale padding and camera heading/pitch overrides.",
     JsonSchemas.ObjectSchema(
-        "\"layout\":{\"type\":\"string\"},\"frame\":{\"type\":\"string\"},\"layer\":{\"type\":\"string\"},\"padding\":{\"type\":\"number\",\"minimum\":1,\"maximum\":20}",
+        "\"layout\":{\"type\":\"string\"},\"frame\":{\"type\":\"string\"},\"layer\":{\"type\":\"string\"},\"padding\":{\"type\":\"number\",\"minimum\":1,\"maximum\":20},\"heading\":{\"type\":\"number\",\"minimum\":-360,\"maximum\":360},\"pitch\":{\"type\":\"number\",\"minimum\":-90,\"maximum\":90}",
         "layout", "frame", "layer"),
-    risk: OperationRisk.SafeWrite, capabilities: ["layouts"], tags: ["layout", "extent", "camera", "zoom"] ))
+    risk: OperationRisk.SafeWrite, capabilities: ["layouts"], tags: ["layout", "extent", "camera", "zoom"]))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
@@ -28,12 +28,91 @@ internal sealed class LayoutSetFrameExtentOperation() : ProOperationBase(Operati
             var layer = ProHandles.ResolveLayer(frame.Map, RequiredString(arguments, "layer"));
             frame.SetCamera(layer, false);
             var camera = frame.Camera;
-            camera.Scale *= OptionalDouble(arguments, "padding", 1.2);
-            frame.SetCamera(camera);
-            return new { frame = frame.Name, camera.Scale, camera.Heading };
+            var padding = OptionalDouble(arguments, "padding", 1.2);
+            if (frame.Map.MapType == MapType.Scene)
+            {
+                // A scene camera is an observer position, not a 2D scale. Resolve the
+                // ground Z at the layer center and place an explicit LookFrom observer
+                // above and opposite the requested viewing direction. This also keeps
+                // relative-to-ground geometry and the camera on the same vertical datum.
+                var extent = layer.QueryExtent(false);
+                if (extent.Width <= 0 || extent.Height <= 0 || extent.SpatialReference is null)
+                    throw new InvalidOperationException($"Layer '{layer.Name}' has no usable scene extent.");
+                var frameBounds = frame.GetBounds(false);
+                var frameAspect = frameBounds.Width / frameBounds.Height;
+                var target = extent.Center;
+                var sourceCenterZ = double.IsFinite(extent.ZMin) && double.IsFinite(extent.ZMax)
+                    ? (extent.ZMin + extent.ZMax) / 2d
+                    : 0d;
+                var groundZ = ResolveGroundZ(frame.Map, target);
+                var elevationType = layer.GetElevationTypeDefinition().ElevationType;
+                var targetZ = elevationType is LayerElevationType.OnGround or LayerElevationType.RelativeToGround
+                    ? groundZ + sourceCenterZ
+                    : sourceCenterZ;
+                var pitch = OptionalDouble(arguments, "pitch", -55d);
+                if (pitch is > -5d or <= -90d)
+                    throw new ArgumentOutOfRangeException(nameof(arguments), "Scene pitch must be greater than -90 and no greater than -5 degrees.");
+                var heading = OptionalDouble(arguments, "heading", 15d);
+                var horizontalDistance = Math.Max(extent.Width, extent.Height * frameAspect) * padding * 1.25d;
+                var headingRadians = heading * Math.PI / 180d;
+                var pitchRadians = Math.Abs(pitch) * Math.PI / 180d;
+                camera = new Camera(
+                    // ArcGIS SDK heading is positive toward west (90 = west),
+                    // so the X component has the opposite sign from a conventional
+                    // compass-bearing vector.
+                    target.X + Math.Sin(headingRadians) * horizontalDistance,
+                    target.Y - Math.Cos(headingRadians) * horizontalDistance,
+                    targetZ + Math.Tan(pitchRadians) * horizontalDistance,
+                    pitch,
+                    heading,
+                    extent.SpatialReference,
+                    CameraViewpoint.LookFrom);
+                frame.SetCamera(camera);
+            }
+            else
+            {
+                camera.Scale *= padding;
+                if (arguments.TryGetProperty("heading", out _)) camera.Heading = OptionalDouble(arguments, "heading", camera.Heading);
+                if (arguments.TryGetProperty("pitch", out _)) camera.Pitch = OptionalDouble(arguments, "pitch", camera.Pitch);
+                frame.SetCamera(camera);
+            }
+            var actual = frame.Camera;
+            return new
+            {
+                frame = frame.Name,
+                actual.Scale,
+                actual.Heading,
+                actual.Pitch,
+                viewpoint = actual.Viewpoint.ToString(),
+                X = double.IsFinite(actual.X) ? actual.X : (double?)null,
+                Y = double.IsFinite(actual.Y) ? actual.Y : (double?)null,
+                Z = double.IsFinite(actual.Z) ? actual.Z : (double?)null,
+                actual.ViewportWidth,
+                actual.ViewportHeight
+            };
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
+    }
+
+    private static double ResolveGroundZ(Map map, MapPoint target)
+    {
+        try
+        {
+            var profile = map.GetElevationProfileFromSurface([target]);
+            var first = profile.Status == SurfaceZsResultStatus.Ok
+                ? profile.Polyline?.Points.FirstOrDefault()
+                : null;
+            return first is not null && double.IsFinite(first.Z) ? first.Z : 0d;
+        }
+        catch (InvalidOperationException)
+        {
+            return 0d;
+        }
+        catch (ArgumentException)
+        {
+            return 0d;
+        }
     }
 }
 
@@ -43,7 +122,7 @@ internal sealed class SymbologySetUniqueValuesOperation() : ProOperationBase(Ope
     JsonSchemas.ObjectSchema(
         "\"map\":{\"type\":\"string\"},\"layer\":{\"type\":\"string\"},\"field\":{\"type\":\"string\"},\"classes\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\"},\"label\":{\"type\":\"string\"},\"color\":{\"type\":\"string\"}},\"required\":[\"value\",\"color\"],\"additionalProperties\":false}},\"defaultColor\":{\"type\":\"string\"}",
         "layer", "field", "classes"),
-    risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["symbology", "categories", "zoning", "land use", "unique values"] ))
+    risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["symbology", "categories", "zoning", "land use", "unique values"]))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
@@ -68,8 +147,10 @@ internal sealed class SymbologySetUniqueValuesOperation() : ProOperationBase(Ope
             }).ToArray();
             layer.SetRenderer(new CIMUniqueValueRenderer
             {
-                Fields = [field], Groups = [new CIMUniqueValueGroup { Heading = field, Classes = classes }],
-                UseDefaultSymbol = true, DefaultLabel = "Other / unclassified",
+                Fields = [field],
+                Groups = [new CIMUniqueValueGroup { Heading = field, Classes = classes }],
+                UseDefaultSymbol = true,
+                DefaultLabel = "Other / unclassified",
                 DefaultSymbol = Symbol(OptionalString(arguments, "defaultColor") ?? "#DBDDD8")
             });
             return new { layer = ProHandles.ForLayer(layer), field, classes = classes.Length };

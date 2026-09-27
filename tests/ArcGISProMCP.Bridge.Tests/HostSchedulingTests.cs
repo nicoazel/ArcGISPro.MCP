@@ -72,7 +72,9 @@ public sealed class HostSchedulingTests
         using var fixture = new Fixture(OperationRisk.Destructive);
         var initial = await fixture.Call("approval.request", new
         {
-            operationId = "test.write", arguments = new { }, expectedRevision = "r1"
+            operationId = "test.write",
+            arguments = new { },
+            expectedRevision = "r1"
         });
         Assert.True(initial.Success, initial.Error?.Message);
         var requestId = initial.Result!.Value.GetProperty("requestId").GetString()!;
@@ -82,13 +84,18 @@ public sealed class HostSchedulingTests
 
         var invoke = fixture.Call("registry.invoke", new
         {
-            operationId = "test.write", arguments = new { }, expectedRevision = "r1", confirmationToken = token
+            operationId = "test.write",
+            arguments = new { },
+            expectedRevision = "r1",
+            confirmationToken = token
         });
         await fixture.Operation.Started.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
         var pending = fixture.Call("approval.request", new
         {
-            operationId = "test.write", arguments = new { }, expectedRevision = "r1"
+            operationId = "test.write",
+            arguments = new { },
+            expectedRevision = "r1"
         });
         var completed = await Task.WhenAny(pending, Task.Delay(500, TestContext.Current.CancellationToken));
         Assert.Same(pending, completed);

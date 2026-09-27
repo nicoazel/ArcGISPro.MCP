@@ -1,6 +1,6 @@
 # Live master-plan demonstration
 
-Historical 0.1.0 milestone. Subsequent 0.2.0 hardening and its live acceptance status are tracked in [production readiness](production-readiness.md); limitations below describe the original run.
+Historical integrated Rhino/ArcGIS 0.1.0 milestone. The active workflow was removed from the ArcGIS-only package and retained as `integrated-rhino-east-liberty-presentation.workflow.json` for evidence. Current standalone acceptance is tracked in [production readiness](production-readiness.md); limitations below describe the original run.
 
 Validated locally on 2026-09-08 with ArcGIS Pro 3.7.1.1904, embedded Rhino 8.34.26223.11001, and McNeel Rhino-MCP-Platform 0.1.5. This is a development-preview milestone, not a production release certification.
 
@@ -36,7 +36,7 @@ The approved-sync dialog itself was not clicked during unattended validation. Th
 
 ## Reproduction
 
-Run the bootstrap workflow with `tools/ArcGISProMCP.DemoRunner`, supplying the five absolute input paths documented by its usage. Save and run `workflows/east-liberty-presentation.workflow.json` through the workflow gateway, passing `proposalSource` as the native absolute path to the synchronized feature class. Its prerequisite maps/layers come from the bootstrap and Rhino design steps; it is not a standalone data generator.
+The original run used `tools/ArcGISProMCP.DemoRunner` and the retained historical `docs/integrated-rhino-east-liberty-presentation.workflow.json`. It depended on prerequisite maps/layers from Rhino design and is not an active standalone workflow or data generator.
 
 For focused diagnostics:
 
