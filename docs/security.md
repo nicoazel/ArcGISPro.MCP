@@ -28,11 +28,11 @@ Status: development preview. The supported configuration is an interactive same-
 
 ## Geoprocessing risk tiers
 
-The add-in reads the installed system toolboxes' metadata (`Resources\ArcToolBox\toolboxes` next to `ArcGISPro.exe`, or `ARCGIS_PRO_MCP_TOOLBOX_ROOT`) without running any toolbox code, and classifies each tool. The first matching tier wins:
+The add-in reads the installed system toolboxes' metadata (`Resources\ArcToolBox\toolboxes` next to `ArcGISPro.exe`, or `ARCGIS_PRO_MCP_TOOLBOX_ROOT`) without running any toolbox code, and classifies each tool. The first matching rule wins, in this order: (1) tool-level user code, meaning a script tool from a user (non-system) toolbox, or an unindexed `.pyt` or legacy binary `.tbx` toolbox, is UserCode; (2) Destructive; (3) a parameter that can select a Python expression makes the tool UserCode; (4) ConsumesCredits; (5) ReadOnlyQuery; (6) Standard. Because Destructive outranks expression-parameter UserCode, a tool such as `management.CalculateField` (declares `input_data_change` and accepts a Python expression) reports tier Destructive with `executesUserCode: true`. The table lists what each tier means for `gp.run`:
 
 | Tier | Meaning | `gp.run` in default mode | `gp.run` in autonomous mode |
 | --- | --- | --- | --- |
-| **UserCode** | Python toolboxes (`.pyt`), non-system script tools, legacy binary `.tbx` toolboxes, and tools with a parameter that can select a Python expression. | Approval required; card says "Runs user code". | Refused: `destructive_tool_requires_review`. |
+| **UserCode** | Python toolboxes (`.pyt`), non-system script tools and legacy binary `.tbx` toolboxes (rule 1), and non-Destructive tools with a parameter that can select a Python expression (rule 3). | Approval required; card says "Runs user code". | Refused: `destructive_tool_requires_review`. |
 | **Destructive** | Declares `input_data_change` or `edit_session`, or is on the curated list (`management.Delete`, `Rename`, `DeleteRows`, `DeleteFeatures`, `DeleteField`, `TruncateTable`, ...). | Approval required; card says "Modifies/deletes input data in place"; result carries `gp_mutates_input`. | Refused: `destructive_tool_requires_review`. |
 | **ConsumesCredits** | Declares `credits` (ArcGIS Online billable). | Approval required; card says "Consumes ArcGIS Online credits"; result carries `gp_consumes_credits`. | Runs, with the `autonomous_control` warning. |
 | **ReadOnlyQuery** | Curated allowlist: `management.GetCount`, `management.GetRasterProperties`, `management.GetCellValue`. | Also runnable through `gp.query` without review. | Same. |
