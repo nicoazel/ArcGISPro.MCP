@@ -20,6 +20,26 @@ public sealed class ToolListSnapshotTests
     }
 
     [Fact]
+    public async Task Concurrently_started_hosts_never_publish_the_injected_bridge_as_an_argument()
+    {
+        // Regression: hosts that built their tools concurrently could publish IBridgeClient as a
+        // required "bridge" argument (see McpServerSetup). Tests now run in parallel again.
+        var schemas = await Task.WhenAll(Enumerable.Range(0, 8).Select(async _ =>
+        {
+            await using var server = await McpTestServer.StartAsync(cancellationToken: TestContext.Current.CancellationToken);
+            var tools = await server.Client.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
+            return tools.Select(tool => (tool.Name, Schema: tool.JsonSchema)).ToArray();
+        }));
+
+        foreach (var (name, schema) in schemas.SelectMany(list => list))
+        {
+            Assert.False(
+                schema.TryGetProperty("properties", out var properties) && properties.TryGetProperty("bridge", out _),
+                $"Tool '{name}' publishes the injected bridge as an argument.");
+        }
+    }
+
+    [Fact]
     public async Task Tools_list_names_annotations_and_schemas_match_snapshot()
     {
         await using var server = await McpTestServer.StartAsync(cancellationToken: TestContext.Current.CancellationToken);
