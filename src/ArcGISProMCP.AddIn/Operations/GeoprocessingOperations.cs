@@ -19,7 +19,8 @@ internal sealed class GeoprocessingRunOperation() : ProOperationBase(OperationDe
         "tool", "parameters"),
     risk: OperationRisk.ExternalSideEffect, requiresConfirmation: true, executionTarget: ExecutionTarget.Background, capabilities: ["geoprocessing"],
     tags: ["gp", "geoprocessing", "analysis", "data processing"], aliases: ["run tool", "spatial analysis", "buffer", "clip"],
-    examples: ["Run analysis.Buffer with input, output, and distance parameters."], related: ["layer.add", "view.capture"], typicalDuration: "seconds-to-hours"))
+    examples: ["Run analysis.Buffer with input, output, and distance parameters."], related: ["layer.add", "view.capture"], typicalDuration: "seconds-to-hours",
+    executesUserCode: true))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
