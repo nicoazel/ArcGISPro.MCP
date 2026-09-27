@@ -84,6 +84,57 @@ public sealed class JsonLineAuditLogTests : IDisposable
     }
 
     [Fact]
+    public async Task Rotation_failure_does_not_drop_the_record()
+    {
+        var path = Path.Combine(_root, "operations.jsonl");
+        Directory.CreateDirectory(_root);
+        await File.WriteAllTextAsync(path, new string('x', 128) + Environment.NewLine, TestContext.Current.CancellationToken);
+        using var log = new JsonLineAuditLog(path, maximumBytes: 64, retainedFiles: 5, timeProvider: new SteppingClock());
+
+        // Simulate another Pro process holding the shared file without delete sharing, so the
+        // rename fails with a sharing violation.
+        using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+        {
+            await log.WriteAsync(Event("kept"), TestContext.Current.CancellationToken);
+        }
+
+        Assert.Empty(Directory.GetFiles(_root, "operations.*.jsonl"));
+        var lines = await File.ReadAllLinesAsync(path, TestContext.Current.CancellationToken);
+        Assert.Equal(2, lines.Length);
+        Assert.Contains("\"kept\"", lines[1], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Rotates_only_when_the_size_limit_is_exceeded()
+    {
+        var path = Path.Combine(_root, "operations.jsonl");
+        Directory.CreateDirectory(_root);
+        await File.WriteAllBytesAsync(path, new byte[64], TestContext.Current.CancellationToken);
+        using var log = new JsonLineAuditLog(path, maximumBytes: 64, retainedFiles: 5, timeProvider: new SteppingClock());
+
+        await log.WriteAsync(Event("at-limit"), TestContext.Current.CancellationToken);
+        Assert.Empty(Directory.GetFiles(_root, "operations.*.jsonl"));
+
+        await log.WriteAsync(Event("over-limit"), TestContext.Current.CancellationToken);
+        Assert.Single(Directory.GetFiles(_root, "operations.*.jsonl"));
+    }
+
+    [Fact]
+    public async Task Other_processes_can_read_while_the_log_appends()
+    {
+        var path = Path.Combine(_root, "operations.jsonl");
+        using var log = new JsonLineAuditLog(path);
+        await log.WriteAsync(Event("first"), TestContext.Current.CancellationToken);
+
+        using var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        await log.WriteAsync(Event("second"), TestContext.Current.CancellationToken);
+
+        using var text = new StreamReader(reader);
+        var content = await text.ReadToEndAsync(TestContext.Current.CancellationToken);
+        Assert.Contains("\"second\"", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Defaults_are_sixteen_mebibytes_and_five_files()
     {
         Assert.Equal(16L * 1024 * 1024, JsonLineAuditLog.DefaultMaximumBytes);

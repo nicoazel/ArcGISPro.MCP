@@ -10,12 +10,19 @@ namespace ArcGISProMCP.Core.Infrastructure;
 /// <c>maximumBytes</c> it is renamed to <c>&lt;name&gt;.&lt;utc-timestamp&gt;.jsonl</c> and only the newest
 /// <c>retainedFiles</c> rotated files are kept.
 /// </summary>
+/// <remarks>
+/// Every ArcGIS Pro process shares the same file, so rotation is best effort: if another process
+/// holds the file or has already rotated it, rotation is skipped and the record is still appended.
+/// A rotation failure never drops a record. Each record is appended with one write through a
+/// handle that lets other processes read, write, rename and delete the file.
+/// </remarks>
 public sealed class JsonLineAuditLog : IOperationAuditLog, IDisposable
 {
     public const long DefaultMaximumBytes = 16L * 1024 * 1024;
     public const int DefaultRetainedFiles = 5;
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly UTF8Encoding Utf8NoBom = new(false);
     private readonly string _path;
     private readonly string _directory;
     private readonly string _baseName;
@@ -49,12 +56,31 @@ public sealed class JsonLineAuditLog : IOperationAuditLog, IDisposable
 
     public async ValueTask WriteAsync(OperationAuditEvent auditEvent, CancellationToken cancellationToken)
     {
-        var line = JsonSerializer.Serialize(auditEvent, JsonOptions) + Environment.NewLine;
+        var line = Utf8NoBom.GetBytes(JsonSerializer.Serialize(auditEvent, JsonOptions) + Environment.NewLine);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            RotateIfNeeded();
-            await File.AppendAllTextAsync(_path, line, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+            try
+            {
+                RotateIfNeeded();
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Typically another Pro process has the file open or rotated it first.
+                System.Diagnostics.Trace.TraceWarning("Audit log rotation skipped for '{0}': {1}", _path, exception.Message);
+            }
+
+            var stream = new FileStream(
+                _path,
+                FileMode.Append,
+                FileAccess.Write,
+                FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 0,
+                FileOptions.Asynchronous);
+            await using (stream.ConfigureAwait(false))
+            {
+                await stream.WriteAsync(line, cancellationToken).ConfigureAwait(false);
+            }
         }
         finally
         {
@@ -65,7 +91,7 @@ public sealed class JsonLineAuditLog : IOperationAuditLog, IDisposable
     private void RotateIfNeeded()
     {
         var active = new FileInfo(_path);
-        if (!active.Exists || active.Length < _maximumBytes) return;
+        if (!active.Exists || active.Length <= _maximumBytes) return;
 
         var stamp = _timeProvider.GetUtcNow().UtcDateTime.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture);
         var destination = Path.Combine(_directory, $"{_baseName}.{stamp}{_extension}");
