@@ -29,7 +29,10 @@ public sealed class ProjectOperationSourceTests
     {
         var panel = ReadSource("Services", "ProPanelStateSource.cs");
 
-        Assert.Contains("SelfApprovePanelRequest(id, argumentElement, workspace)", panel, StringComparison.Ordinal);
+        Assert.Contains("SelfApprovePanelRequestAsync(id, argumentElement, workspace)", panel, StringComparison.Ordinal);
+        Assert.Contains("WriteApprovalAuditAsync(request, ApprovalResolution.ApproveOnce, \"panel-action\")", panel, StringComparison.Ordinal);
+        Assert.Contains("WriteApprovalAuditAsync(request, resolution, \"panel-card\")", panel, StringComparison.Ordinal);
+        Assert.Contains("Kind: OperationAuditKinds.Approval", panel, StringComparison.Ordinal);
         Assert.Contains("approvals.Request(descriptor, arguments, workspace)", panel, StringComparison.Ordinal);
         Assert.Contains("approvals.TryResolve(request.Id, ApprovalResolution.ApproveOnce)", panel, StringComparison.Ordinal);
         Assert.Contains("approvals.GetStatus(request.Id)", panel, StringComparison.Ordinal);
