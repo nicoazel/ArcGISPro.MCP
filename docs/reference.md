@@ -144,6 +144,7 @@ Codes a client should handle. The message carries the details.
 | `invalid_workflow` | workflow run (and malformed save input) | The definition failed validation; the message lists each issue. |
 | `operation_not_found` | describe, invoke | Unknown operation id. Invocations with unknown ids are audited. |
 | `request_cancelled` | any bridge call | The caller cancelled the request before it completed. A write may already have been accepted; check state. |
+| `host_stopping` | any bridge call | ArcGIS Pro is shutting down and cancelled the request, including keyed work shared by several callers. Retryable against a new host; a write may already have been accepted, so check state first. |
 | `outcome_unknown` | gateway | The connection failed after the request was sent. Inspect state before repeating. |
 
 ## Scripts

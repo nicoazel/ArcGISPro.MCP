@@ -158,6 +158,23 @@ public sealed class HostSchedulingTests
         Assert.Equal(1, fixture.Operation.CallCount);
     }
 
+    [Fact]
+    public async Task Keyed_work_cancelled_by_host_shutdown_reports_host_stopping()
+    {
+        using var stopping = new CancellationTokenSource();
+        using var fixture = new Fixture(OperationRisk.SafeWrite, applicationStopping: stopping.Token);
+        var request = new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", idempotencyKey = "stopping-key" };
+
+        var call = fixture.Call("registry.invoke", request);
+        await fixture.Operation.Started.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await stopping.CancelAsync();
+        var response = await call.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+
+        Assert.False(response.Success);
+        Assert.Equal("host_stopping", response.Error!.Code);
+        Assert.True(response.Error.Retryable);
+    }
+
     private sealed class Fixture : IDisposable
     {
         private readonly ProBridgeRequestHandler _handler;
@@ -166,7 +183,7 @@ public sealed class HostSchedulingTests
         public ApprovalService Approvals { get; } = new();
         public TestOperation Operation { get; }
 
-        public Fixture(OperationRisk risk, IOperationAuditLog? audit = null, bool blocks = true)
+        public Fixture(OperationRisk risk, IOperationAuditLog? audit = null, bool blocks = true, CancellationToken applicationStopping = default)
         {
             Operation = new TestOperation(risk) { Blocks = blocks };
             var registry = new OperationRegistry();
@@ -174,7 +191,7 @@ public sealed class HostSchedulingTests
             var workflows = new FileWorkflowLibrary(Path.Combine(_root, "workflows"), registry);
             var context = new OperationContext(
                 new DirectDispatcher(), new FixedWorkspace(), Approvals,
-                audit ?? new NoopAudit(), "test", CancellationToken.None);
+                audit ?? new NoopAudit(), "test", applicationStopping);
             _handler = new ProBridgeRequestHandler(
                 registry, context, workflows,
                 new ProResourceStore(Path.Combine(_root, "resources")),
