@@ -37,9 +37,49 @@ public sealed class UserCodeExecutionDetectorTests
     [InlineData(" PYTHON_9.3 ")]
     public void Python_expression_type_parameter_is_flagged(string expressionType)
     {
-        var arguments = Args(new { tool = "management.CalculateField", parameters = new[] { "parcels", "area", "!shape.area!", expressionType } });
+        var arguments = Args(new { tool = "sample.ExpressionTool", parameters = new[] { "parcels", "area", "!shape.area!", expressionType } });
 
         Assert.True(UserCodeExecutionDetector.RunsUserCode(GpRun, arguments));
+    }
+
+    [Theory]
+    [InlineData("management.CalculateField")]
+    [InlineData("CalculateField_management")]
+    [InlineData("arcpy.management.CalculateFields")]
+    [InlineData("MANAGEMENT.calculatevalue")]
+    public void Expression_evaluating_tools_are_flagged_without_an_expression_type(string tool)
+    {
+        // Pro defaults expression_type to PYTHON3, so omitting it still runs Python.
+        var arguments = Args(new { tool, parameters = new[] { "parcels", "area", "!shape.area!" } });
+
+        Assert.True(UserCodeExecutionDetector.RunsUserCode(GpRun, arguments));
+        Assert.Contains("defaults to Python", UserCodeExecutionDetector.GetWarning(GpRun, arguments) ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Three_parameter_calculate_field_is_flagged()
+    {
+        var arguments = Args(new { tool = "management.CalculateField", parameters = new[] { "parcels", "area", "!shape.area!" } });
+
+        Assert.True(UserCodeExecutionDetector.RunsUserCode(GpRun, arguments));
+    }
+
+    [Fact]
+    public void Calculate_value_is_flagged()
+    {
+        var arguments = Args(new { tool = "management.CalculateValue", parameters = new[] { "1 + 1" } });
+
+        Assert.True(UserCodeExecutionDetector.RunsUserCode(GpRun, arguments));
+    }
+
+    [Theory]
+    [InlineData("management.CalculateGeometryAttributes")]
+    [InlineData("custom.PrecalculateField")]
+    public void Similarly_named_tools_are_not_flagged(string tool)
+    {
+        var arguments = Args(new { tool, parameters = new[] { "parcels", "area" } });
+
+        Assert.False(UserCodeExecutionDetector.RunsUserCode(GpRun, arguments));
     }
 
     [Fact]
@@ -47,7 +87,7 @@ public sealed class UserCodeExecutionDetectorTests
     {
         var arguments = Args(new
         {
-            tool = "management.CalculateField",
+            tool = "sample.ExpressionTool",
             parameters = new object[] { "parcels", "area", new[] { "arcpy.env.workspace" } }
         });
 

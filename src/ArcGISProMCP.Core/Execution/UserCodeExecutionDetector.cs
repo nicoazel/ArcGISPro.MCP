@@ -16,6 +16,10 @@ public static class UserCodeExecutionDetector
     private static readonly string[] PythonExpressionTypes = ["PYTHON", "PYTHON3", "PYTHON_9.3"];
     private static readonly string[] CustomToolboxExtensions = [".pyt", ".atbx", ".tbx"];
 
+    // System tools that evaluate an expression. ArcGIS Pro defaults their expression type to
+    // PYTHON3, so they run Python even when no parameter names the expression type.
+    private static readonly string[] ExpressionEvaluatingTools = ["CalculateField", "CalculateFields", "CalculateValue"];
+
     /// <summary>Returns true when the request will (or is likely to) execute user-supplied Python.</summary>
     public static bool RunsUserCode(OperationDescriptor descriptor, JsonElement arguments) =>
         Detect(descriptor, arguments) is not null;
@@ -34,9 +38,14 @@ public static class UserCodeExecutionDetector
             return "this request runs a Python script in the ArcGIS Pro Python environment";
         if (arguments.ValueKind != JsonValueKind.Object) return null;
 
-        if (arguments.TryGetProperty("tool", out var tool) && tool.ValueKind == JsonValueKind.String &&
-            IsCustomToolbox(tool.GetString()))
-            return "the tool comes from a custom toolbox (.pyt/.atbx/.tbx) that can contain arbitrary Python";
+        if (arguments.TryGetProperty("tool", out var tool) && tool.ValueKind == JsonValueKind.String)
+        {
+            var toolName = tool.GetString();
+            if (IsCustomToolbox(toolName))
+                return "the tool comes from a custom toolbox (.pyt/.atbx/.tbx) that can contain arbitrary Python";
+            if (IsExpressionEvaluatingTool(toolName))
+                return "the tool evaluates an expression that defaults to Python";
+        }
 
         if (arguments.TryGetProperty("parameters", out var parameters) && ContainsPythonMarker(parameters))
             return "a parameter selects a Python expression or references arcpy";
@@ -57,6 +66,23 @@ public static class UserCodeExecutionDetector
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Matches the tool segment after the last '.', '\' or '/' (for example
+    /// <c>management.CalculateField</c>), also accepting the <c>CalculateField_management</c> form.
+    /// </summary>
+    private static bool IsExpressionEvaluatingTool(string? tool)
+    {
+        if (string.IsNullOrWhiteSpace(tool)) return false;
+        var value = tool.Trim();
+        var segment = value[(value.LastIndexOfAny(['.', '\\', '/']) + 1)..];
+        if (Matches(segment)) return true;
+        var underscore = segment.LastIndexOf('_');
+        return underscore > 0 && Matches(segment[..underscore]);
+
+        static bool Matches(string name) => ExpressionEvaluatingTools.Any(candidate =>
+            string.Equals(candidate, name, StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool ContainsPythonMarker(JsonElement value, int depth = 0)
