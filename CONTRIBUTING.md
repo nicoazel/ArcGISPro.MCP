@@ -27,6 +27,22 @@ Before opening a pull request, run the same gate as CI:
 
 It runs `tools/verify-release.ps1` (Release build, both test suites, `git diff --check`, add-in packaging and content inspection), then publishes the gateway, smoke-tests the MCP handshake offline, and builds the preview bundle under `artifacts/releases/`.
 
+## Lint
+
+CI lints the scripts under `tools/`. PowerShell scripts must stay compatible with Windows PowerShell 5.1 and PowerShell 7.x; Python scripts target the ArcGIS Pro environment (Python 3.11).
+
+```powershell
+Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Scope CurrentUser
+Invoke-ScriptAnalyzer -Path tools -Settings ./PSScriptAnalyzerSettings.psd1
+```
+
+```powershell
+uvx ruff@0.16.9 check tools
+uvx ruff@0.16.9 format --check tools
+```
+
+The analyzer settings live in `PSScriptAnalyzerSettings.psd1` and the Ruff settings in `ruff.toml`. CI currently excludes `PSUseDeclaredVarsMoreThanAssignments` for `tools/test-mcp.ps1` only.
+
 Changes that touch ArcGIS Pro behavior should also be checked in a live Pro session against a disposable project. See [manual acceptance](docs/manual-acceptance.md) and describe what you tested in the pull request.
 
 ## Pull requests
