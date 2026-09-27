@@ -63,7 +63,7 @@ public sealed class OperationExecutorArgumentTests
             "test.arguments.execute",
             "Argument test",
             "Exercises operation argument validation.",
-            JsonSchemas.ObjectSchema("\"name\": { \"type\": \"string\", \"minLength\": 3 }", "name"),
+            JsonSchemas.Object([("name", JsonSchemas.String(minLength: 3))], ["name"]),
             risk: risk);
 
         public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)

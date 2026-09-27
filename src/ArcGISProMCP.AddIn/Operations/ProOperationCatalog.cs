@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using ArcGISProMCP.AddIn.Services;
+using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Core.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
@@ -7,6 +9,9 @@ internal static class ProOperationCatalog
 {
     public static IReadOnlyList<IOperation> Create(ProResourceStore resources)
     {
+        // One toolbox catalog shared by every gp.* operation and the approval-card warnings.
+        var toolboxes = ToolboxCatalog.Default;
+        WarmUp(toolboxes);
         var operations = new List<IOperation>
         {
         new ProjectGetOperation(),
@@ -43,7 +48,10 @@ internal static class ProOperationCatalog
         new LayoutSetFrameExtentOperation(),
         new LayoutEnsureSurroundOperation(),
         new LayoutActivateOperation(),
-        new GeoprocessingRunOperation(),
+        new GeoprocessingSearchOperation(toolboxes),
+        new GeoprocessingDescribeOperation(toolboxes),
+        new GeoprocessingQueryOperation(toolboxes),
+        new GeoprocessingRunOperation(toolboxes),
             new ViewCaptureOperation(resources)
         };
 
@@ -55,4 +63,18 @@ internal static class ProOperationCatalog
 
         return operations;
     }
+
+    /// <summary>Builds the toolbox index in the background so the first gp.* call or approval card does not pay for it.</summary>
+    private static void WarmUp(ToolboxCatalog toolboxes) =>
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                _ = toolboxes.ToolCount;
+            }
+            catch (Exception exception)
+            {
+                Trace.TraceWarning("Toolbox catalog warm-up failed: {0}", exception);
+            }
+        });
 }

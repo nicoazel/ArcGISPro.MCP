@@ -9,6 +9,7 @@ internal sealed class ProjectGetOperation() : ProOperationBase(OperationDescript
     "project.get", "Get project",
     "Returns the current ArcGIS Pro project identity, path, dirty state, and revision.",
     JsonSchemas.EmptyObject,
+    outputSchema: ProjectOperationSchemas.GetOutput,
     tags: ["project", "workspace", "state"], aliases: ["current project", "workspace state"],
     related: ["project.open", "project.save", "map.list"]))
 {
@@ -22,7 +23,7 @@ internal sealed class ProjectGetOperation() : ProOperationBase(OperationDescript
 internal sealed class ProjectOpenOperation() : ProOperationBase(OperationDescriptor.Create(
     "project.open", "Open project",
     "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Unsaved changes are handled by ArcGIS Pro's normal project lifecycle.",
-    JsonSchemas.ObjectSchema("\"path\": {\"type\": \"string\", \"minLength\": 1}", "path"),
+    ProjectOperationSchemas.OpenInput,
     risk: OperationRisk.SafeWrite, requiresConfirmation: true, executionTarget: ExecutionTarget.ArcGISUiThread,
     tags: ["project", "workspace", "open"], aliases: ["open aprx", "switch project"],
     related: ["project.get", "map.list"]))

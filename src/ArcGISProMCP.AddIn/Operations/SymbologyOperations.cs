@@ -11,9 +11,7 @@ namespace ArcGISProMCP.AddIn.Operations;
 internal sealed class SymbologySetSimpleOperation() : ProOperationBase(OperationDescriptor.Create(
     "symbology.set-simple", "Set simple symbology",
     "Applies a single-symbol renderer appropriate to a point, line, or polygon feature layer.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"color\": {\"type\": \"string\", \"pattern\": \"^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$\"}, \"size\": {\"type\": \"number\", \"exclusiveMinimum\": 0}, \"outlineColor\": {\"type\": \"string\"}, \"outlineWidth\": {\"type\": \"number\", \"minimum\": 0}",
-        "layer", "color"),
+    SymbologyOperationSchemas.SetSimpleInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["symbology", "renderer", "color", "cartography"],
     aliases: ["change color", "simple renderer", "restyle layer"], related: ["style.search", "layer.set-appearance", "label.configure"], undoable: true))
 {
@@ -59,9 +57,7 @@ internal sealed class SymbologySetSimpleOperation() : ProOperationBase(Operation
 internal sealed class LabelConfigureOperation() : ProOperationBase(OperationDescriptor.Create(
     "label.configure", "Configure labels",
     "Enables or disables feature labels and optionally sets the Arcade expression, font family, size, and text color.",
-    JsonSchemas.ObjectSchema(
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"enabled\": {\"type\": \"boolean\"}, \"expression\": {\"type\": \"string\"}, \"fontFamily\": {\"type\": \"string\"}, \"fontStyle\": {\"type\": \"string\"}, \"size\": {\"type\": \"number\", \"exclusiveMinimum\": 0}, \"color\": {\"type\": \"string\"}",
-        "layer"),
+    SymbologyOperationSchemas.LabelConfigureInput,
     risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["label", "font", "text", "cartography"],
     aliases: ["turn labels on", "change label font", "label field"], related: ["symbology.set-simple", "layer.set-appearance"], undoable: true))
 {

@@ -8,18 +8,6 @@ public sealed class JsonSchemaBuilderTests
 {
     private static readonly JsonSerializerOptions WireOptions = new(JsonSerializerDefaults.Web);
 
-    // Copied verbatim from feature.layer.describe (src/ArcGISProMCP.AddIn/Operations/FeatureOperations.cs).
-    private const string FeatureLayerDescribeProperties =
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}";
-
-    // Copied verbatim from feature.query (src/ArcGISProMCP.AddIn/Operations/FeatureOperations.cs).
-    private const string FeatureQueryProperties =
-        "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"where\": {\"type\": \"string\", \"maxLength\": 4096}, \"fields\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}, \"maxItems\": 64}, \"envelope\": {\"type\": \"object\", \"properties\": {\"xmin\": {\"type\": \"number\"}, \"ymin\": {\"type\": \"number\"}, \"xmax\": {\"type\": \"number\"}, \"ymax\": {\"type\": \"number\"}}, \"required\": [\"xmin\", \"ymin\", \"xmax\", \"ymax\"], \"additionalProperties\": false}, \"spatialRelationship\": {\"type\": \"string\", \"enum\": [\"intersects\", \"envelopeIntersects\", \"contains\", \"within\", \"touches\", \"crosses\", \"overlaps\"]}, \"limit\": {\"type\": \"integer\", \"minimum\": 1, \"maximum\": 500}";
-
-    // Copied verbatim from arcpy.inspect-script (src/ArcGISProMCP.AddIn/Operations/ArcPyOperations.cs).
-    private const string ArcPyInspectProperties =
-        "\"scriptPath\": {\"type\": \"string\", \"minLength\": 1, \"maxLength\": 512}";
-
     private static JsonElement FeatureQuerySchema() => JsonSchemas.Object(
         [
             ("layer", JsonSchemas.String(minLength: 1)),
@@ -39,38 +27,48 @@ public sealed class JsonSchemaBuilderTests
         ],
         ["layer"]);
 
+    // The original hand-written input schemas, captured before migration (see OperationSchemaMigrationTests).
+    private static readonly Dictionary<string, JsonElement> Original = OperationSchemaMigrationTests.LoadFixture();
+
     [Fact]
-    public void Object_matches_ObjectSchema_for_feature_layer_describe()
+    public void Object_matches_the_original_feature_layer_describe_schema()
     {
-        var legacy = JsonSchemas.ObjectSchema(FeatureLayerDescribeProperties, "layer");
         var built = JsonSchemas.Object(
             [("layer", JsonSchemas.String(minLength: 1)), ("map", JsonSchemas.String())],
             ["layer"]);
-        Assert.True(JsonElement.DeepEquals(legacy, built), built.GetRawText());
+        Assert.True(JsonElement.DeepEquals(Original["feature.layer.describe"], built), built.GetRawText());
     }
 
     [Fact]
-    public void Object_matches_ObjectSchema_for_feature_query()
+    public void Object_matches_the_original_feature_query_schema()
     {
-        var legacy = JsonSchemas.ObjectSchema(FeatureQueryProperties, "layer");
         var built = FeatureQuerySchema();
-        Assert.True(JsonElement.DeepEquals(legacy, built), built.GetRawText());
+        Assert.True(JsonElement.DeepEquals(Original["feature.query"], built), built.GetRawText());
     }
 
     [Fact]
-    public void Object_matches_ObjectSchema_for_arcpy_inspect_script()
+    public void Object_matches_literal_arcpy_inspect_script_schema()
     {
-        var legacy = JsonSchemas.ObjectSchema(ArcPyInspectProperties, "scriptPath");
+        var expected = JsonSchemas.Parse("""
+            {
+              "type": "object",
+              "properties": { "scriptPath": { "type": "string", "minLength": 1, "maxLength": 512 } },
+              "required": ["scriptPath"],
+              "additionalProperties": false
+            }
+            """);
         var built = JsonSchemas.Object([("scriptPath", JsonSchemas.String(minLength: 1, maxLength: 512))], ["scriptPath"]);
-        Assert.True(JsonElement.DeepEquals(legacy, built), built.GetRawText());
+        Assert.True(JsonElement.DeepEquals(expected, built), built.GetRawText());
     }
 
     [Fact]
-    public void Object_without_properties_matches_ObjectSchema_shape()
+    public void Object_without_properties_still_emits_properties_required_and_additional_properties()
     {
-        var legacy = JsonSchemas.ObjectSchema("");
+        var expected = JsonSchemas.Parse("""
+            { "type": "object", "properties": { }, "required": [], "additionalProperties": false }
+            """);
         var built = JsonSchemas.Object([]);
-        Assert.True(JsonElement.DeepEquals(legacy, built), built.GetRawText());
+        Assert.True(JsonElement.DeepEquals(expected, built), built.GetRawText());
     }
 
     [Theory]

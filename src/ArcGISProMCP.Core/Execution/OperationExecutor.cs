@@ -31,7 +31,8 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
                     startSnapshot.Revision,
                     startSnapshot.Revision,
                     result.ErrorCode,
-                    Hash(request.Arguments))).ConfigureAwait(false);
+                    Hash(request.Arguments),
+                    request.DryRun ? OperationAuditKinds.DryRun : OperationAuditKinds.Operation)).ConfigureAwait(false);
                 return unknownWritten ? result : WithAuditFailureNotice(result);
             }
 
@@ -63,7 +64,14 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
             else if (!request.DryRun && (descriptor.RequiresConfirmation ||
                 descriptor.Risk is OperationRisk.Destructive or OperationRisk.ExternalSideEffect))
             {
-                if (context.Confirmation is IAutonomousExecutionPolicy { AllowsUnattendedRiskyOperations: true })
+                if (context.Confirmation is IAutonomousExecutionPolicy { AllowsUnattendedRiskyOperations: true } &&
+                    operation is IUnattendedExecutionGate gate &&
+                    await gate.CheckUnattendedAsync(request.Arguments, cancellationToken).ConfigureAwait(false) is { } refusal)
+                {
+                    // Autonomous mode skips review, so requests the operation reserves for a person are refused.
+                    result = OperationResult.Fail(refusal.Code, refusal.Message, startSnapshot.Revision);
+                }
+                else if (context.Confirmation is IAutonomousExecutionPolicy { AllowsUnattendedRiskyOperations: true })
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     autonomousBypass = true;
@@ -126,6 +134,7 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
                 result.WorkspaceRevision,
                 result.ErrorCode,
                 Hash(request.Arguments),
+                request.DryRun ? OperationAuditKinds.DryRun : OperationAuditKinds.Operation,
                 AutonomousBypass: autonomousBypass)).ConfigureAwait(false);
             // Observability failure must not hide the known outcome of an accepted mutation.
             if (!written) result = WithAuditFailureNotice(result);
@@ -172,6 +181,12 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
         if (!request.DryRun)
         {
             return await operation.ExecuteAsync(request.Arguments, context, cancellationToken).ConfigureAwait(false);
+        }
+
+        // A dry run never reaches ExecuteAsync: operations with static validation describe it themselves.
+        if (operation is IDryRunnableOperation dryRunnable)
+        {
+            return await dryRunnable.DryRunAsync(request.Arguments, context, cancellationToken).ConfigureAwait(false);
         }
 
         using var dryRun = JsonDocument.Parse(JsonSerializer.Serialize(new

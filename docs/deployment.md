@@ -89,6 +89,8 @@ ArcPy is absent from the operation registry unless explicitly enabled before Arc
 ## Implemented surface
 
 - Searchable registry with curated project, map, scene, layer, cartography, feature, table, metadata, geoprocessing, layout, observation, workflow and optional ArcPy operations. See the [reference](reference.md).
+- Geoprocessing discovery (`gp.search`, `gp.describe`) from installed toolbox metadata, allowlisted read-only `gp.query`, per-tool risk tiers with an autonomous-mode refusal for Destructive and UserCode tools, and static `gp.run` dry runs.
+- Typed MCP results (`{ ok, result, error }` structured content, output schemas, `isError`), explicit tool annotations, `arcgis://` resources and skill/workflow prompts.
 - Typed point, single-part polyline and single-part polygon feature CRUD with GlobalID-first addressing, bounded queries, spatial filters, selection and revision checks.
 - Metadata read/update that preserves unrelated ArcGIS XML, plus scene elevation placement metadata.
 - Live legends, north arrows, scale bars and dynamic project/date/map-frame-scale text.

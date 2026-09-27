@@ -82,7 +82,86 @@ public sealed class OperationExecutorRiskTests
         Assert.Equal("confirmation_required", auditEvent.ErrorCode);
     }
 
+    [Fact]
+    public async Task Autonomous_mode_refuses_requests_the_operation_reserves_for_review()
+    {
+        var operation = new GatedOperation(refuse: true);
+        var audit = new CapturingAudit();
+        var executor = Autonomous(operation, audit);
+
+        var result = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), Revision),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Equal("destructive_tool_requires_review", result.ErrorCode);
+        Assert.Equal(0, operation.CallCount);
+        Assert.Equal(1, operation.GateCalls);
+        var auditEvent = Assert.Single(audit.Events);
+        Assert.False(auditEvent.AutonomousBypass);
+        Assert.Equal("destructive_tool_requires_review", auditEvent.ErrorCode);
+    }
+
+    [Fact]
+    public async Task Autonomous_mode_runs_requests_the_gate_accepts()
+    {
+        var operation = new GatedOperation(refuse: false);
+        var executor = Autonomous(operation, new CapturingAudit());
+
+        var result = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), Revision),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, operation.CallCount);
+        Assert.Contains(result.Notices, notice => notice.Code == "autonomous_control");
+    }
+
+    [Fact]
+    public async Task Interactive_mode_does_not_consult_the_unattended_gate()
+    {
+        var operation = new GatedOperation(refuse: true);
+        var executor = new OperationExecutor(
+            new SingleOperationRegistry(operation),
+            new OperationContext(new InlineDispatcher(), new StaticWorkspace(), new RejectConfirmation(), new CapturingAudit(), "risk-test", CancellationToken.None));
+
+        var result = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), Revision),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("confirmation_required", result.ErrorCode);
+        Assert.Equal(0, operation.GateCalls);
+    }
+
+    private static OperationExecutor Autonomous(IOperation operation, CapturingAudit audit) =>
+        new(
+            new SingleOperationRegistry(operation),
+            new OperationContext(new InlineDispatcher(), new StaticWorkspace(), new AutonomousConfirmation(), audit, "autonomous-test", CancellationToken.None));
+
     private const string Revision = "revision-risk";
+
+    private sealed class GatedOperation(bool refuse) : IOperation, IUnattendedExecutionGate
+    {
+        public int CallCount { get; private set; }
+
+        public int GateCalls { get; private set; }
+
+        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(
+            "test.gated.execute", "Gated", "Unattended gate test.", JsonSchemas.EmptyObject,
+            risk: OperationRisk.ExternalSideEffect, requiresConfirmation: true);
+
+        public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+        {
+            CallCount++;
+            return Task.FromResult(OperationResult.Ok(null, Revision));
+        }
+
+        public ValueTask<OperationRefusal?> CheckUnattendedAsync(JsonElement arguments, CancellationToken cancellationToken)
+        {
+            GateCalls++;
+            return ValueTask.FromResult(refuse ? new OperationRefusal("destructive_tool_requires_review", "Needs a person.") : null);
+        }
+    }
 
     private sealed class RiskyOperation : IOperation
     {

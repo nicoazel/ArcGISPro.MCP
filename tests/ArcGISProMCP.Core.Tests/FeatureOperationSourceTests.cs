@@ -1,3 +1,5 @@
+using ArcGISProMCP.AddIn.Operations;
+
 namespace ArcGISProMCP.Core.Tests;
 
 public sealed class FeatureOperationSourceTests
@@ -13,7 +15,7 @@ public sealed class FeatureOperationSourceTests
         Assert.Contains("\"feature.create\"", source, StringComparison.Ordinal);
         Assert.Contains("\"feature.update\"", source, StringComparison.Ordinal);
         Assert.Contains("\"feature.delete\"", source, StringComparison.Ordinal);
-        Assert.Contains("JsonSchemas.ObjectSchema", source, StringComparison.Ordinal);
+        Assert.Contains("FeatureOperationSchemas.", source, StringComparison.Ordinal);
         Assert.DoesNotContain("\"oneOf\"", source, StringComparison.Ordinal);
         Assert.DoesNotContain("\"format\"", source, StringComparison.Ordinal);
         Assert.Contains("new EditOperation", source, StringComparison.Ordinal);
@@ -75,7 +77,10 @@ public sealed class FeatureOperationSourceTests
 
         Assert.Contains("risk: OperationRisk.SafeWrite, requiresConfirmation: true", descriptor, StringComparison.Ordinal);
         Assert.Contains("Updates exactly one feature", descriptor, StringComparison.Ordinal);
-        Assert.Contains("maxProperties", descriptor, StringComparison.Ordinal);
+        Assert.Contains("FeatureOperationSchemas.UpdateInput", descriptor, StringComparison.Ordinal);
+        var target = FeatureOperationSchemas.UpdateInput.GetProperty("properties").GetProperty("target");
+        Assert.Equal(1, target.GetProperty("minProperties").GetInt32());
+        Assert.Equal(1, target.GetProperty("maxProperties").GetInt32());
     }
 
     [Fact]

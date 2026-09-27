@@ -32,6 +32,28 @@ public sealed class GeoprocessingRealInstallTests
     }
 
     [Fact]
+    public void Run_policy_resolves_query_tools_and_refuses_destructive_tools_on_the_installed_toolboxes()
+    {
+        Assert.SkipUnless(Directory.Exists(InstalledRoot), $"ArcGIS Pro toolboxes not found at '{InstalledRoot}'.");
+
+        var catalog = new ToolboxCatalog(InstalledRoot);
+
+        foreach (var tool in GeoprocessingRiskPolicy.ReadOnlyQueryTools)
+            Assert.True(GeoprocessingRunPolicy.ResolveQueryTool(catalog, tool).Succeeded, tool);
+        Assert.Equal("tool_not_query_allowed", GeoprocessingRunPolicy.ResolveQueryTool(catalog, "management.Delete").ErrorCode);
+
+        foreach (var tool in new[] { "management.Delete", "management.DeleteFeatures", "management.CalculateField", "management.TruncateTable" })
+        {
+            Assert.Equal(GeoprocessingRunPolicy.DestructiveToolRequiresReviewCode,
+                GeoprocessingRunPolicy.UnattendedRefusal(tool, GeoprocessingRunPolicy.Assess(catalog, tool), userCodeDetected: false)?.Code);
+        }
+
+        Assert.Null(GeoprocessingRunPolicy.UnattendedRefusal("analysis.Buffer", GeoprocessingRunPolicy.Assess(catalog, "analysis.Buffer"), userCodeDetected: false));
+        Assert.Contains("Modifies/deletes input data in place",
+            GeoprocessingRunPolicy.ApprovalWarning(GeoprocessingRunPolicy.Assess(catalog, "management.DeleteFeatures")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Curated_policy_names_exist_in_the_installed_toolboxes()
     {
         Assert.SkipUnless(Directory.Exists(InstalledRoot), $"ArcGIS Pro toolboxes not found at '{InstalledRoot}'.");

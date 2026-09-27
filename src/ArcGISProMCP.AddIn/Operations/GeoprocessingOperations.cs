@@ -2,30 +2,40 @@ using System.Diagnostics;
 using System.Text.Json;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGISProMCP.Core.Execution;
+using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Core.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
 
-internal sealed class GeoprocessingRunOperation() : ProOperationBase(OperationDescriptor.Create(
+/// <summary>
+/// Generic geoprocessing runner. Always confirmation-gated. Uses the toolbox catalog's risk tier to
+/// refuse Destructive and UserCode tools in autonomous mode (<see cref="IUnattendedExecutionGate"/>),
+/// to warn on the approval card and in result notices, and to statically validate dry runs.
+/// </summary>
+internal sealed class GeoprocessingRunOperation(ToolboxCatalog catalog) : ProOperationBase(OperationDescriptor.Create(
     "gp.run", "Run geoprocessing tool",
-    "Runs an ArcGIS geoprocessing tool by toolbox-qualified name with bounded ordered parameters, explicit environments, deterministic history/output flags, and complete result messages and derived values.",
-    JsonSchemas.ObjectSchema(
-        "\"tool\": {\"type\": \"string\", \"minLength\": 1, \"maxLength\": 2048}, " +
-        "\"parameters\": {\"type\": \"array\", \"maxItems\": 256}, " +
-        "\"environments\": {\"type\": \"object\", \"maxProperties\": 128}, " +
-        "\"overwriteOutput\": {\"type\": \"boolean\"}, " +
-        "\"addOutputsToMap\": {\"type\": \"boolean\"}, " +
-        "\"addToHistory\": {\"type\": \"boolean\"}, " +
-        "\"refreshProjectItems\": {\"type\": \"boolean\"}",
-        "tool", "parameters"),
+    "Runs an ArcGIS geoprocessing tool by toolbox-qualified name with bounded positional parameters (gp.describe 'signature' order), explicit environments, deterministic history/output flags, and complete result messages and derived values. Always requires review; autonomous mode refuses Destructive and UserCode tools. A dry run statically validates the parameters and reports the risk tier.",
+    JsonSchemas.Object(
+        [
+            ("tool", JsonSchemas.String(1, 2048)),
+            ("parameters", JsonSchemas.Array(maxItems: 256)),
+            ("environments", JsonSchemas.Object([], additionalProperties: true, maxProperties: 128)),
+            ("overwriteOutput", JsonSchemas.Boolean()),
+            ("addOutputsToMap", JsonSchemas.Boolean()),
+            ("addToHistory", JsonSchemas.Boolean()),
+            ("refreshProjectItems", JsonSchemas.Boolean())
+        ],
+        ["tool", "parameters"]),
     risk: OperationRisk.ExternalSideEffect, requiresConfirmation: true, executionTarget: ExecutionTarget.Background, capabilities: ["geoprocessing"],
     tags: ["gp", "geoprocessing", "analysis", "data processing"], aliases: ["run tool", "spatial analysis", "buffer", "clip"],
-    examples: ["Run analysis.Buffer with input, output, and distance parameters."], related: ["layer.add", "view.capture"], typicalDuration: "seconds-to-hours",
-    executesUserCode: true))
+    examples: ["Run analysis.Buffer with input, output, and distance parameters."], related: ["gp.search", "gp.describe", "gp.query", "layer.add", "view.capture"],
+    typicalDuration: "seconds-to-hours",
+    executesUserCode: true)), IDryRunnableOperation, IUnattendedExecutionGate, IApprovalWarningSource
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
         var request = GeoprocessingRequest.Parse(arguments);
+        var risk = await Task.Run(() => GeoprocessingRunPolicy.Assess(catalog, request.Tool), cancellationToken).ConfigureAwait(false);
         var flags = GPExecuteToolFlags.GPThread;
         if (OptionalBoolean(arguments, "addToHistory", true)) flags |= GPExecuteToolFlags.AddToHistory;
         if (OptionalBoolean(arguments, "refreshProjectItems", true)) flags |= GPExecuteToolFlags.RefreshProjectItems;
@@ -51,6 +61,7 @@ internal sealed class GeoprocessingRunOperation() : ProOperationBase(OperationDe
             values = result.Values?.ToArray() ?? [],
             valueTypes = result.ValueTypes?.ToArray() ?? [],
             elapsedMilliseconds = timer.ElapsedMilliseconds,
+            riskTier = risk?.Tier.ToString(),
             flags = new
             {
                 addOutputsToMap = OptionalBoolean(arguments, "addOutputsToMap", true),
@@ -66,16 +77,112 @@ internal sealed class GeoprocessingRunOperation() : ProOperationBase(OperationDe
                 "This geoprocessing request executed user-supplied Python (custom toolbox or Python expression).",
                 "warning")]
             : [];
+        var riskNotices = userCodeNotice.Concat(GeoprocessingRunPolicy.ResultNotices(request.Tool, risk)).ToArray();
         return result.IsFailed || result.IsCanceled
             ? OperationResult.Fail(result.IsCanceled ? "geoprocessing_cancelled" : "geoprocessing_failed",
                 result.ErrorMessages.FirstOrDefault()?.Text ?? $"Geoprocessing tool '{request.Tool}' did not complete.", snapshot.Revision) with
-            { Data = data, Notices = [.. userCodeNotice] }
+            { Data = data, Notices = [.. riskNotices] }
             : OperationResult.Ok(
                 data,
                 snapshot.Revision,
-                userCodeNotice.Concat(result.Messages
+                riskNotices.Concat(result.Messages
                     .Where(message => message.Type == GPMessageType.Warning)
                     .Select(message => new OperationNotice("geoprocessing_warning", message.Text, "warning"))));
+    }
+
+    /// <summary>Static validation plus tier/confirmation/user-code flags. Never touches ArcGIS.</summary>
+    public async Task<OperationResult> DryRunAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+    {
+        var revision = (await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false)).Revision;
+        GeoprocessingRequest request;
+        try
+        {
+            request = GeoprocessingRequest.Parse(arguments);
+        }
+        catch (ArgumentException exception)
+        {
+            return OperationResult.Fail("invalid_arguments", exception.Message, revision);
+        }
+
+        var autonomous = context.Confirmation is IAutonomousExecutionPolicy { AllowsUnattendedRiskyOperations: true };
+        var userCode = UserCodeExecutionDetector.RunsUserCode(Descriptor, arguments);
+        var report = await Task.Run(() => GeoprocessingRunPolicy.DryRun(
+            catalog, request.Tool, request.Parameters, userCode, requiresConfirmation: true, autonomous), cancellationToken).ConfigureAwait(false);
+        var data = GeoprocessingJson.Serialize(new
+        {
+            report.Valid,
+            dryRun = true,
+            operation = Descriptor.Id,
+            tool = request.Tool,
+            report.Validation.Validated,
+            toolSummary = report.Validation.ToolSummary is { } summary ? GeoprocessingJson.Summary(summary) : null,
+            report.RiskTier,
+            mutatesInput = report.Risk?.MutatesInput ?? false,
+            report.ExecutesUserCode,
+            consumesCredits = report.Risk?.ConsumesCredits ?? false,
+            riskReasons = report.Risk?.Reasons ?? [],
+            report.RequiresConfirmation,
+            report.AutonomousMode,
+            report.WouldBeRefused,
+            unattendedRefusal = report.UnattendedRefusal,
+            report.ApprovalWarning,
+            issues = report.Validation.Issues,
+            flags = new
+            {
+                addOutputsToMap = OptionalBoolean(arguments, "addOutputsToMap", true),
+                addToHistory = OptionalBoolean(arguments, "addToHistory", true),
+                refreshProjectItems = OptionalBoolean(arguments, "refreshProjectItems", true),
+                overwriteOutput = request.OverwriteOutput
+            },
+            workspaceRevision = revision
+        });
+        return OperationResult.Ok(data, revision);
+    }
+
+    /// <summary>In autonomous mode, Destructive and UserCode tools (and detected user code) need a person.</summary>
+    public async ValueTask<OperationRefusal?> CheckUnattendedAsync(JsonElement arguments, CancellationToken cancellationToken)
+    {
+        GeoprocessingRequest request;
+        try
+        {
+            request = GeoprocessingRequest.Parse(arguments);
+        }
+        catch (ArgumentException)
+        {
+            // Malformed requests fail in ExecuteCoreAsync with the parse error.
+            return null;
+        }
+
+        var userCode = UserCodeExecutionDetector.RunsUserCode(Descriptor, arguments);
+        var risk = await Task.Run(() => GeoprocessingRunPolicy.Assess(catalog, request.Tool), cancellationToken).ConfigureAwait(false);
+        return GeoprocessingRunPolicy.UnattendedRefusal(request.Tool, risk, userCode);
+    }
+
+    /// <summary>User-code warning plus "modifies/deletes input data in place" / "consumes ArcGIS Online credits".</summary>
+    public string? GetApprovalWarning(JsonElement arguments)
+    {
+        var userCode = UserCodeExecutionDetector.GetWarning(Descriptor, arguments);
+        string? risk = null;
+        if (arguments.ValueKind == JsonValueKind.Object &&
+            arguments.TryGetProperty("tool", out var tool) && tool.ValueKind == JsonValueKind.String)
+        {
+            try
+            {
+                risk = GeoprocessingRunPolicy.ApprovalWarning(GeoprocessingRunPolicy.Assess(catalog, tool.GetString()));
+            }
+            catch (Exception exception) when (exception is System.IO.IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                Trace.TraceWarning("Geoprocessing approval warning unavailable: {0}", exception.Message);
+            }
+        }
+
+        return (userCode, risk) switch
+        {
+            (null, null) => null,
+            ({ } code, null) => code,
+            (null, { } data) => data,
+            ({ } code, { } data) => $"{data} {code}"
+        };
     }
 }
 
@@ -131,7 +238,7 @@ internal sealed record GeoprocessingRequest(
         return new GeoprocessingRequest(tool, parameters, environments.ToArray(), overwriteOutput);
     }
 
-    private static string ToGpValue(JsonElement element)
+    internal static string ToGpValue(JsonElement element)
     {
         var value = element.ValueKind switch
         {
