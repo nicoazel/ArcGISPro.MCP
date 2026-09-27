@@ -759,6 +759,11 @@
             "null"
           ],
           "default": null
+        },
+        "dryRun": {
+          "description": "Validate statically without executing; no revision or confirmation token needed.",
+          "type": "boolean",
+          "default": false
         }
       },
       "required": [

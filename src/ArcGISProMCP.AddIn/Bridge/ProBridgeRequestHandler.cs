@@ -156,12 +156,18 @@ internal sealed class ProBridgeRequestHandler(
         var arguments = RequiredObject(parameters, "arguments");
         var expectedRevision = OptionalString(parameters, "expectedRevision");
         var idempotencyKey = OptionalString(parameters, "idempotencyKey");
+        var dryRun = Boolean(parameters, "dryRun", false);
+        // A dry run executes nothing, so there is nothing to deduplicate; caching it under a key
+        // would also let a later real invocation with that key replay the dry-run result.
+        if (dryRun && idempotencyKey is not null)
+            throw new BridgeException("dry_run_idempotency_conflict", "dryRun cannot be combined with idempotencyKey; a dry run executes nothing and is never cached.");
         var request = new OperationRequest(
             operationId,
             arguments,
             expectedRevision,
             OptionalString(parameters, "confirmationToken"),
-            idempotencyKey);
+            idempotencyKey,
+            dryRun);
         OperationResult result;
         if (idempotencyKey is null)
         {
@@ -562,6 +568,11 @@ internal sealed class ProBridgeRequestHandler(
     private static int Integer(JsonElement parameters, string name, int defaultValue) =>
         parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out var value) && value.TryGetInt32(out var parsed)
             ? parsed : defaultValue;
+
+    private static bool Boolean(JsonElement parameters, string name, bool defaultValue) =>
+        parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out var value) &&
+        value.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? value.GetBoolean() : defaultValue;
 
     private static string Fingerprint(string operationId, JsonElement arguments, string? expectedRevision)
     {

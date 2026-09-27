@@ -72,7 +72,7 @@ public sealed class KernelTools
     [McpServerTool(Name = "registry_invoke", Title = "Invoke an ArcGIS operation",
         ReadOnly = false, Destructive = true, Idempotent = false, OpenWorld = false,
         UseStructuredContent = true, OutputSchemaType = typeof(ToolEnvelope<OperationResult>))]
-    [Description("Invokes one previously discovered operation. Writes enforce workspace revisions. Risky operations require an add-in-issued confirmation token unless the host was explicitly started in autonomous-control mode. When the operation reports success: false the call is an error (isError) and result still carries the operation's result.")]
+    [Description("Invokes one previously discovered operation. Writes enforce workspace revisions. Risky operations require an add-in-issued confirmation token unless the host was explicitly started in autonomous-control mode. When the operation reports success: false the call is an error (isError) and result still carries the operation's result. With dryRun the operation is validated statically and never executed; a completed dry run succeeds and reports its verdict in result.data (for example valid: false), and dryRun cannot be combined with idempotencyKey.")]
     public static Task<CallToolResult> Invoke(
         IBridgeClient bridge,
         [Description("Stable operation id.")] string operationId,
@@ -80,9 +80,10 @@ public sealed class KernelTools
         [Description("Workspace revision from system_get_state; required for reliable writes.")] string? expectedRevision = null,
         [Description("Short-lived confirmation token supplied by the ArcGIS Pro panel for risky operations; omitted only when the host explicitly advertises autonomous-control.")] string? confirmationToken = null,
         [Description("Optional key that prevents duplicate mutations when a call is retried.")] string? idempotencyKey = null,
+        [Description("Validate statically without executing; no revision or confirmation token needed.")] bool dryRun = false,
         CancellationToken cancellationToken = default) =>
         ToolResults.CallAsync<OperationResult>(
-            bridge, "registry.invoke", new { operationId, arguments, expectedRevision, confirmationToken, idempotencyKey }, cancellationToken,
+            bridge, "registry.invoke", new { operationId, arguments, expectedRevision, confirmationToken, idempotencyKey, dryRun }, cancellationToken,
             result => result.Success ? null : new ToolError(
                 result.ErrorCode ?? "operation_failed",
                 result.Message ?? "The operation reported a failure.",

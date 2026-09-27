@@ -15,7 +15,7 @@ Every tool declares all four MCP hints. `openWorldHint` is always false: nothing
 | `registry_browse` | ✓ | | ✓ | browse | Without `domain`: `total` and per-domain `domains` counts. With `domain`: that domain's `operations`. The unused pair is null. Search and browse entries include `executesUserCode`. |
 | `registry_describe` | ✓ | | ✓ | descriptor | Returns one operation's full descriptor: input schema, required capabilities, examples, risk, confirmation requirement, related operations, and `resultSchema`, the JSON schema of that operation's `registry_invoke` result (`success`, `data`, `errorCode`, `message`, `workspaceRevision`, `notices`, `resources`). `outputSchema` describes `data` and is null while the operation declares none; `data` is then unconstrained. |
 | `registry_validate` | ✓ | | ✓ | validation | Checks arguments against the operation's input schema and, for writes, the expected revision against the current one. It does not resolve layers, maps or paths, so a valid result does not guarantee success. Never writes. |
-| `registry_invoke` | | ✓ | | operation result | Runs one operation. Writes need the current revision, and confirmation-gated operations also need an approval token. An operation result with `success: false` makes the call an error that still carries the result. |
+| `registry_invoke` | | ✓ | | operation result | Runs one operation. Writes need the current revision, and confirmation-gated operations also need an approval token. An operation result with `success: false` makes the call an error that still carries the result. `dryRun: true` validates without executing (see [dry runs](#dry-runs)). |
 | `approval_request` | | | | approval | Queues local review of one exact risky call in the ArcGIS Pro panel. It cannot approve itself. |
 | `approval_status` | ✓ | | ✓ | approval | Returns `pending`, `approved`, `denied`, `expired`, `cancelled`, or `consumed`. Only an `approved` status carries the single-use token. `waitSeconds` (0–120, clamped) holds a pending request until a person decides or the wait elapses, then returns the status either way; keep it below your client's tool-call timeout. |
 | `approval_cancel` | | | ✓ | `{requestId, cancelled}` | Cancels a pending or approved request and revokes its token. |
@@ -120,7 +120,11 @@ The add-in registers these operations. Risk determines the gate each one passes 
 
 Geoprocessing parameters are positional in the `signature` order that `gp.describe` returns (definition order with derived outputs removed), not the tool dialog's display order. Use `null` or `"#"` to leave an optional value unset; a JSON array becomes a `;`-separated multivalue. See [geoprocessing risk tiers](security.md#geoprocessing-risk-tiers).
 
-A dry run of `gp.run` never executes the tool. It returns `valid`, the static-validation `issues` (unknown or deprecated tool, too many values, missing required values, coded-value membership, boolean/integer/double parsing and ranges, checked per multivalue element), `riskTier`, `mutatesInput`, `executesUserCode`, `consumesCredits`, `requiresConfirmation`, `wouldBeRefused` (autonomous mode) and the `approvalWarning` the dockpane would show. Passing static validation does not guarantee that the tool's own validation accepts the request. Other operations report a generic dry-run description. Dry runs are audited with kind `dry-run`.
+### Dry runs
+
+`registry_invoke` with `dryRun: true` validates the call without executing it. The input schema is still checked, but no revision or confirmation token is needed, and a dry run neither queues a review nor consumes a token. It cannot be combined with `idempotencyKey` (`dry_run_idempotency_conflict`), so a dry run is never cached or replayed. A dry run that ran its validation returns `success: true` and reports its verdict in `data`, for example `valid: false`, so it is not an MCP error; only failures before validation (unknown operation, schema violations, unparseable arguments) set `isError`. Dry runs are audited with kind `dry-run`.
+
+Operations without their own static validation return a generic description (`valid`, `operation`, `risk`, `executionTarget`, `workspaceRevision`) that checks only the input schema. A dry run of `gp.run` never executes the tool. It returns `valid`, the static-validation `issues` (unknown or deprecated tool, too many values, missing required values, coded-value membership, boolean/integer/double parsing and ranges, checked per multivalue element), `riskTier`, `mutatesInput`, `executesUserCode`, `consumesCredits`, `requiresConfirmation`, `wouldBeRefused` (autonomous mode) and the `approvalWarning` the dockpane would show. Passing static validation does not guarantee that the tool's own validation accepts the request.
 
 The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 
@@ -185,6 +189,11 @@ Codes a client should handle. The message carries the details.
 | `operation_not_allowed` | workflow validation issue | A step's operation is not permitted by the workflow's `allowedOperations`. The issue is returned as `operation_not_allowed: <message>` inside an `invalid_workflow` error on both `workflow_save` and `workflow_run`. |
 | `invalid_workflow` | workflow save and run | The definition failed validation; the message lists each issue as `<code>: <message>`. |
 | `operation_not_found` | describe, invoke | Unknown operation id. Invocations with unknown ids are audited. |
+| `idempotency_conflict` | invoke, workflow run | The `idempotencyKey` was already used with a different operation, arguments or revision in this Pro session. |
+| `dry_run_idempotency_conflict` | invoke | `dryRun` was combined with `idempotencyKey`. Nothing ran and the key was not recorded. |
+| `destructive_tool_requires_review` | `gp.run` result | Autonomous mode refused a Destructive or UserCode geoprocessing tool; it needs local review. |
+| `tool_not_found`, `tool_not_query_allowed`, `invalid_tool_name` | `gp.describe`, `gp.query` results | Unknown tool, a tool outside the `gp.query` allowlist, or a malformed `alias.ToolName`. |
+| `geoprocessing_failed`, `geoprocessing_cancelled` | `gp.run`, `gp.query` results | ArcGIS Pro reported a failed or cancelled tool run; its messages are in the result. |
 | `request_cancelled` | any bridge call | The caller cancelled the request before it completed. A write may already have been accepted; check state. |
 | `host_stopping` | any bridge call | ArcGIS Pro is shutting down and cancelled the request, including keyed work shared by several callers. Retryable against a new host; a write may already have been accepted, so check state first. |
 | `outcome_unknown` | gateway | The connection failed after the request was sent. Inspect state before repeating. |

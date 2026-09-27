@@ -54,6 +54,54 @@ public sealed class HostHandlerTests
     }
 
     [Fact]
+    public async Task Dry_run_reaches_the_executor_without_revision_token_or_execution()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var response = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, dryRun = true });
+        Assert.True(response.Success, response.Error?.Message);
+        var result = response.Result!.Value;
+        Assert.True(result.GetProperty("success").GetBoolean());
+        Assert.True(result.GetProperty("data").GetProperty("dryRun").GetBoolean());
+        Assert.Equal(1, fixture.Operation.DryRunCount);
+        Assert.Equal(0, fixture.Operation.CallCount);
+        // A dry run of a risky operation neither queues nor needs a local review.
+        Assert.Empty(fixture.Approvals.GetPending());
+    }
+
+    [Fact]
+    public async Task Dry_run_does_not_consume_an_approved_token()
+    {
+        using var fixture = new Fixture(OperationRisk.Destructive);
+        var pending = await fixture.Call("approval.request", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1" });
+        var requestId = pending.Result!.Value.GetProperty("requestId").GetString()!;
+        Assert.True(fixture.Approvals.TryResolve(requestId, ApprovalResolution.ApproveOnce));
+        var token = (await fixture.Call("approval.status", new { requestId })).Result!.Value.GetProperty("confirmationToken").GetString();
+
+        var dry = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", confirmationToken = token, dryRun = true });
+        Assert.True(dry.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(0, fixture.Operation.CallCount);
+
+        var real = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", confirmationToken = token });
+        Assert.True(real.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(1, fixture.Operation.CallCount);
+    }
+
+    [Fact]
+    public async Task Dry_run_with_idempotency_key_is_rejected_before_the_key_is_cached()
+    {
+        using var fixture = new Fixture(OperationRisk.SafeWrite);
+        var conflict = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", idempotencyKey = "key", dryRun = true });
+        Assert.False(conflict.Success);
+        Assert.Equal("dry_run_idempotency_conflict", conflict.Error!.Code);
+        Assert.Equal(0, fixture.Operation.DryRunCount);
+
+        // The rejected call left no cache entry, so the key is still free for a real invocation.
+        var real = await fixture.Call("registry.invoke", new { operationId = "test.write", arguments = new { }, expectedRevision = "r1", idempotencyKey = "key" });
+        Assert.True(real.Result!.Value.GetProperty("success").GetBoolean());
+        Assert.Equal(1, fixture.Operation.CallCount);
+    }
+
+    [Fact]
     public async Task Workflow_save_reports_validation_failures_as_invalid_workflow()
     {
         using var fixture = new Fixture(OperationRisk.SafeWrite);
@@ -473,9 +521,10 @@ public sealed class HostHandlerTests
         string title = "Test operation",
         string summary = "Test",
         bool? requiresConfirmation = null,
-        bool executesUserCode = false) : IOperation
+        bool executesUserCode = false) : IOperation, IDryRunnableOperation
     {
         public int CallCount { get; private set; }
+        public int DryRunCount { get; private set; }
         public bool Fail { get; set; }
         public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(id, title, summary, JsonSchemas.EmptyObject, risk: risk, capabilities: capabilities,
             requiresConfirmation: requiresConfirmation ?? risk == OperationRisk.Destructive, executesUserCode: executesUserCode);
@@ -485,6 +534,12 @@ public sealed class HostHandlerTests
             // Like real operations, report the workspace revision observed after running.
             var revision = (await context.Workspace.GetSnapshotAsync(cancellationToken)).Revision;
             return Fail ? OperationResult.Fail("test_failure", "Deliberate failure", revision) : OperationResult.Ok(JsonSerializer.SerializeToElement(new { }), revision);
+        }
+        public async Task<OperationResult> DryRunAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+        {
+            DryRunCount++;
+            var revision = (await context.Workspace.GetSnapshotAsync(cancellationToken)).Revision;
+            return OperationResult.Ok(JsonSerializer.SerializeToElement(new { valid = true, dryRun = true }), revision);
         }
     }
 

@@ -193,6 +193,26 @@ public sealed class ToolCallTests
     }
 
     [Fact]
+    public async Task Invoke_forwards_dry_run_and_a_completed_dry_run_is_not_an_error()
+    {
+        // A dry run that ran its validation succeeds even when the verdict is invalid.
+        var bridge = new FakeBridgeClient().Returns("registry.invoke",
+            OperationResult.Ok(JsonSerializer.SerializeToElement(new { valid = false, dryRun = true }), "r1"));
+        await using var server = await McpTestServer.StartAsync(bridge, Token);
+
+        var (call, schema) = await CallAsync(server, "registry_invoke",
+            new() { ["operationId"] = "gp.run", ["arguments"] = new { }, ["dryRun"] = true });
+        await CallAsync(server, "registry_invoke", new() { ["operationId"] = "gp.run", ["arguments"] = new { } });
+
+        Assert.NotEqual(true, call.IsError);
+        var envelope = AssertEnvelope(call, schema);
+        Assert.False(envelope.GetProperty("result").GetProperty("data").GetProperty("valid").GetBoolean());
+        var calls = bridge.Calls.Where(c => c.Method == "registry.invoke").ToArray();
+        Assert.True(calls[0].Parameters.GetProperty("dryRun").GetBoolean());
+        Assert.False(calls[1].Parameters.GetProperty("dryRun").GetBoolean());
+    }
+
+    [Fact]
     public async Task Image_resource_is_an_image_block_and_structured_metadata_without_the_payload()
     {
         byte[] png = [0x89, 0x50, 0x4E, 0x47];
