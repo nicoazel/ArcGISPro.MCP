@@ -43,6 +43,7 @@ public sealed class OperationSchemaMigrationTests
         ["symbology.set-unique-values"] = (PresentationRefinementOperationSchemas.SetUniqueValuesInput, "PresentationRefinementOperationSchemas.SetUniqueValuesInput"),
         ["map.ensure"] = (MapOperationSchemas.EnsureInput, "MapOperationSchemas.EnsureInput"),
         ["map.activate"] = (MapOperationSchemas.ActivateInput, "MapOperationSchemas.ActivateInput"),
+        ["map.clear-selection"] = (MapSelectionOperationSchemas.ClearSelectionInput, "MapSelectionOperationSchemas.ClearSelectionInput"),
     };
 
     [Fact]
