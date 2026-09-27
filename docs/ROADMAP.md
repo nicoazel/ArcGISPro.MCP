@@ -35,7 +35,7 @@ Decisions already taken:
 - 2.4 Per-operation result schemas returned by `registry_describe`, with contract tests.
 - 2.5 MCP resources for project state, operations, skills, workflows and observations.
 - 2.6 MCP prompts generated from workflows and skills.
-- 2.7 Elicitation-based approval when the client supports it; the dockpane remains the authority.
+- 2.7 `approval_status` can wait (`waitSeconds`, up to 120) for the dockpane decision instead of polling. Elicitation is not used for approval: it would make the client look like an approval authority, and many clients lack it. URL-mode elicitation that points at the dockpane decision remains a possible future addition.
 - 2.8 Build JSON schemas with structured builders instead of string concatenation.
 
 ## Phase 3: geoprocessing usability

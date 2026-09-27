@@ -28,7 +28,7 @@ The gateway exposes discovery, validation, invocation, workflow, skill, and reso
 2. Search or browse the registry by intent/domain.
 3. Describe only the candidate operations needed for the task.
 4. Validate arguments against the descriptor's schema and the current revision. Validation does not resolve layers or paths.
-5. In default mode, confirmation-gated operations use `approval_request` with the exact arguments and revision. A person reviews the dockpane; poll `approval_status` for the single-use token, then invoke unchanged arguments/revision. A host started with explicit autonomous control skips this token gate but retains current-revision, schema, audit, idempotency, and operation-limit enforcement.
+5. In default mode, confirmation-gated operations use `approval_request` with the exact arguments and revision. A person reviews the dockpane; call `approval_status` (optionally with `waitSeconds` to wait for the decision) for the single-use token, then invoke unchanged arguments/revision. A host started with explicit autonomous control skips this token gate but retains current-revision, schema, audit, idempotency, and operation-limit enforcement.
 6. Read returned resource handles for images or larger observations.
 
 Every ArcGIS object exposed across the bridge uses a stable URI-derived handle. Handles are resolved on each call and are expected to become invalid when a project closes or replaces the referenced object.
