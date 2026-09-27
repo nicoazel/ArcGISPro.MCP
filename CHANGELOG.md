@@ -19,7 +19,14 @@ All notable changes to this project are documented here. The format is based on 
 - MCP prompts: one per bundled skill (`skill.<id>`) and, while ArcGIS Pro is running, one per saved workflow (`run.<id>`) with arguments from the workflow parameters.
 - `tests/ArcGISProMCP.Server.Tests`: in-process MCP client/server harness with a scriptable fake bridge and `tools/list`, `resources/list` and `prompts/list` snapshots (`UPDATE_SNAPSHOTS=1` regenerates them).
 
+- Geoprocessing operations `gp.search` and `gp.describe` (ReadOnly) over the installed system toolbox metadata, returning execution names, risk tiers and the positional parameter `signature` `gp.run` expects.
+- `gp.query` (ReadOnly, no review) runs only the allowlisted read-only system tools `management.GetCount`, `management.GetRasterProperties` and `management.GetCellValue`, resolved against the system toolboxes, with no map outputs, no overwrite and no history.
+- Geoprocessing risk tiers (UserCode, Destructive, ConsumesCredits, ReadOnlyQuery, Standard). Approval cards for `gp.run` say "Modifies/deletes input data in place" or "Consumes ArcGIS Online credits"; results carry `gp_mutates_input`, `gp_consumes_credits` or `gp_tool_not_indexed` notices.
+- Static dry runs: operations can implement `IDryRunnableOperation`; `gp.run` dry runs validate parameters against the catalog and report the tier, confirmation, user-code and autonomous-refusal flags without executing. Dry runs are audited with kind `dry-run`.
+
 ### Changed
+
+- **Breaking:** in autonomous mode `gp.run` refuses Destructive and UserCode tools, and requests flagged as running user code, with `destructive_tool_requires_review`.
 
 - **Breaking:** `project.open`, `project.save` and `feature.update` now require a local-review approval token (or autonomous mode). Dockpane buttons that trigger them approve through the same audited approval queue.
 - **Breaking:** a workflow whose workspace revision changes mid-run now stops with `workspace_changed` (reporting `stoppedAtStep`, `stepIndex`, `expectedRevision`, `currentRevision`) instead of retrying the step against the new revision. `continueOnError` does not override this, and completed steps are not rolled back.

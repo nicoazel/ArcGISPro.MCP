@@ -95,9 +95,16 @@ The add-in registers these operations. Risk determines the gate each one passes 
 
 | Id | Risk | Does |
 | --- | --- | --- |
-| `gp.run` | **ExternalSideEffect** | Runs a toolbox-qualified GP tool with bounded parameters, explicit environments, and overwrite behavior. |
+| `gp.search` | ReadOnly | Searches installed system toolbox metadata; returns `alias.ToolName` execution names with risk tiers. Never runs a tool. |
+| `gp.describe` | ReadOnly | One tool's parameters (types, required/optional/derived, defaults, coded values, ranges), positional `signature`, environments and risk tier with reasons. |
+| `gp.query` | ReadOnly | Runs one allowlisted read-only system tool (`management.GetCount`, `management.GetRasterProperties`, `management.GetCellValue`) without review; no map outputs, overwrite or history. |
+| `gp.run` | **ExternalSideEffect** | Runs a toolbox-qualified GP tool with bounded positional parameters, explicit environments, and overwrite behavior. Always reviewed; autonomous mode refuses Destructive and UserCode tools. Supports a static dry run. |
 | `arcpy.inspect-script` | ReadOnly | Size and SHA-256 of a script in the configured root, without running it. *Opt-in.* |
 | `arcpy.run-script` | **ExternalSideEffect** | Runs a hash-pinned script in ArcGIS Pro's Python environment. *Opt-in.* |
+
+Geoprocessing parameters are positional in the `signature` order that `gp.describe` returns (definition order with derived outputs removed), not the tool dialog's display order. Use `null` or `"#"` to leave an optional value unset; a JSON array becomes a `;`-separated multivalue. See [geoprocessing risk tiers](security.md#geoprocessing-risk-tiers).
+
+A dry run of `gp.run` never executes the tool. It returns `valid`, the static-validation `issues` (unknown or deprecated tool, too many values, missing required values, coded-value membership, boolean/integer/double parsing and ranges, checked per multivalue element), `riskTier`, `mutatesInput`, `executesUserCode`, `consumesCredits`, `requiresConfirmation`, `wouldBeRefused` (autonomous mode) and the `approvalWarning` the dockpane would show. Passing static validation does not guarantee that the tool's own validation accepts the request. Other operations report a generic dry-run description. Dry runs are audited with kind `dry-run`.
 
 The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 
