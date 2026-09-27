@@ -1,19 +1,18 @@
 using System.Diagnostics;
 using System.Text.Json;
-using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGISProMCP.Core.Execution;
 using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Core.Operations;
-using ArcGISProMCP.Operations;
+using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.AddIn.Operations;
+namespace ArcGISProMCP.Operations;
 
 /// <summary>
 /// Generic geoprocessing runner. Always confirmation-gated. Uses the toolbox catalog's risk tier to
 /// refuse Destructive and UserCode tools in autonomous mode (<see cref="IUnattendedExecutionGate"/>),
 /// to warn on the approval card and in result notices, and to statically validate dry runs.
 /// </summary>
-internal sealed class GeoprocessingRunOperation(ToolboxCatalog catalog) : ProOperationBase(OperationDescriptor.Create(
+internal sealed class GeoprocessingRunOperation(ToolboxCatalog catalog, IGeoprocessingService geoprocessing) : ProOperationBase(OperationDescriptor.Create(
     "gp.run", "Run geoprocessing tool",
     "Runs an ArcGIS geoprocessing tool by toolbox-qualified name with bounded positional parameters (gp.describe 'signature' order), explicit environments, deterministic history/output flags, and complete result messages and derived values. Always requires review; autonomous mode refuses Destructive and UserCode tools. A dry run statically validates the parameters and reports the risk tier.",
     JsonSchemas.Object(
@@ -37,19 +36,19 @@ internal sealed class GeoprocessingRunOperation(ToolboxCatalog catalog) : ProOpe
     {
         var request = GeoprocessingRequest.Parse(arguments);
         var risk = await Task.Run(() => GeoprocessingRunPolicy.Assess(catalog, request.Tool), cancellationToken).ConfigureAwait(false);
-        var flags = GPExecuteToolFlags.GPThread;
-        if (OptionalBoolean(arguments, "addToHistory", true)) flags |= GPExecuteToolFlags.AddToHistory;
-        if (OptionalBoolean(arguments, "refreshProjectItems", true)) flags |= GPExecuteToolFlags.RefreshProjectItems;
-        if (OptionalBoolean(arguments, "addOutputsToMap", true)) flags |= GPExecuteToolFlags.AddOutputsToMap;
+        // The tool always runs on the GP thread; history, project refresh and map output default on.
+        var flags = new GeoprocessingExecutionFlags(
+            AddOutputsToMap: OptionalBoolean(arguments, "addOutputsToMap", true),
+            AddToHistory: OptionalBoolean(arguments, "addToHistory", true),
+            RefreshProjectItems: OptionalBoolean(arguments, "refreshProjectItems", true));
 
         var timer = Stopwatch.StartNew();
-        var result = await Geoprocessing.ExecuteToolAsync(
+        var result = await geoprocessing.ExecuteAsync(
             request.Tool,
             request.Parameters,
             request.Environments,
-            cancellationToken,
-            null,
-            flags).ConfigureAwait(false);
+            flags,
+            cancellationToken).ConfigureAwait(false);
         timer.Stop();
         var snapshot = await context.Workspace.GetSnapshotAsync(CancellationToken.None).ConfigureAwait(false);
         var data = Json(new
@@ -70,7 +69,7 @@ internal sealed class GeoprocessingRunOperation(ToolboxCatalog catalog) : ProOpe
                 refreshProjectItems = OptionalBoolean(arguments, "refreshProjectItems", true),
                 overwriteOutput = request.OverwriteOutput
             },
-            messages = result.Messages.Select(message => new { type = message.Type.ToString(), message.Text, message.ErrorCode }).ToArray()
+            messages = result.Messages.Select(message => new { type = message.Type, message.Text, message.ErrorCode }).ToArray()
         });
         OperationNotice[] userCodeNotice = UserCodeExecutionDetector.RunsUserCode(Descriptor, arguments)
             ? [new OperationNotice(
@@ -81,13 +80,13 @@ internal sealed class GeoprocessingRunOperation(ToolboxCatalog catalog) : ProOpe
         var riskNotices = userCodeNotice.Concat(GeoprocessingRunPolicy.ResultNotices(request.Tool, risk)).ToArray();
         return result.IsFailed || result.IsCanceled
             ? OperationResult.Fail(result.IsCanceled ? "geoprocessing_cancelled" : "geoprocessing_failed",
-                result.ErrorMessages.FirstOrDefault()?.Text ?? $"Geoprocessing tool '{request.Tool}' did not complete.", snapshot.Revision) with
+                result.FirstErrorMessage ?? $"Geoprocessing tool '{request.Tool}' did not complete.", snapshot.Revision) with
             { Data = data, Notices = [.. riskNotices] }
             : OperationResult.Ok(
                 data,
                 snapshot.Revision,
                 riskNotices.Concat(result.Messages
-                    .Where(message => message.Type == GPMessageType.Warning)
+                    .Where(message => message.Type == GeoprocessingMessageTypes.Warning)
                     .Select(message => new OperationNotice("geoprocessing_warning", message.Text, "warning"))));
     }
 

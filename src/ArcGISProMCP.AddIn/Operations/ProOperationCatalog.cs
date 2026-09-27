@@ -52,8 +52,8 @@ internal static class ProOperationCatalog
         new LayoutActivateOperation(),
         new GeoprocessingSearchOperation(toolboxes),
         new GeoprocessingDescribeOperation(toolboxes),
-        new GeoprocessingQueryOperation(toolboxes),
-        new GeoprocessingRunOperation(toolboxes),
+        new GeoprocessingQueryOperation(toolboxes, services.Geoprocessing),
+        new GeoprocessingRunOperation(toolboxes, services.Geoprocessing),
             new ViewCaptureOperation(resources, services.Views)
         };
 

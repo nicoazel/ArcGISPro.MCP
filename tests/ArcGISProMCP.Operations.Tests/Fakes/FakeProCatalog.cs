@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ArcGISProMCP.Core.Execution;
+using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Registry;
 using ArcGISProMCP.Core.Resources;
@@ -20,7 +21,8 @@ internal sealed class FakePro : IDisposable
         FakeProState? state = null,
         ArcPyExecutionSettings? arcPy = null,
         bool autonomous = false,
-        TimeSpan? mapStructuralSettleDelay = null)
+        TimeSpan? mapStructuralSettleDelay = null,
+        ToolboxCatalog? toolboxes = null)
     {
         State = state ?? new FakeProState();
         Dispatcher = new FakeDispatcher();
@@ -30,14 +32,17 @@ internal sealed class FakePro : IDisposable
         Resources = new FileResourceStore(_resourceRoot);
         Views = new FakeViewCaptureService(State);
         Features = new FakeFeatureService(State);
+        Geoprocessing = new FakeGeoprocessingService();
+        Toolboxes = toolboxes ?? FakeToolboxes.Catalog;
         Services = new ArcGisServices(
             new FakeProjectService(State),
             new FakeMapService(State),
             new FakeLayerService(),
             Views,
-            Features);
+            Features,
+            Geoprocessing);
         Context = new OperationContext(Dispatcher, Workspace, Confirmation, Audit, "fake-pro", CancellationToken.None);
-        Registry = FakeProCatalog.CreateRegistry(Services, Resources, arcPy, mapStructuralSettleDelay ?? TimeSpan.Zero);
+        Registry = FakeProCatalog.CreateRegistry(Services, Resources, Toolboxes, arcPy, mapStructuralSettleDelay ?? TimeSpan.Zero);
         Executor = new OperationExecutor(Registry, Context);
     }
 
@@ -56,6 +61,10 @@ internal sealed class FakePro : IDisposable
     public FakeViewCaptureService Views { get; }
 
     public FakeFeatureService Features { get; }
+
+    public FakeGeoprocessingService Geoprocessing { get; }
+
+    public ToolboxCatalog Toolboxes { get; }
 
     public ArcGisServices Services { get; }
 
@@ -109,6 +118,7 @@ internal static class FakeProCatalog
     public static IReadOnlyList<IOperation> CreateOperations(
         ArcGisServices services,
         FileResourceStore resources,
+        ToolboxCatalog toolboxes,
         ArcPyExecutionSettings? arcPy = null,
         TimeSpan? mapStructuralSettleDelay = null)
     {
@@ -128,6 +138,10 @@ internal static class FakeProCatalog
             new FeatureCreateOperation(services.Features),
             new FeatureUpdateOperation(services.Features),
             new FeatureDeleteOperation(services.Features),
+            new GeoprocessingSearchOperation(toolboxes),
+            new GeoprocessingDescribeOperation(toolboxes),
+            new GeoprocessingQueryOperation(toolboxes, services.Geoprocessing),
+            new GeoprocessingRunOperation(toolboxes, services.Geoprocessing),
             new ViewCaptureOperation(resources, services.Views),
         };
 
@@ -143,11 +157,12 @@ internal static class FakeProCatalog
     public static OperationRegistry CreateRegistry(
         ArcGisServices services,
         FileResourceStore resources,
+        ToolboxCatalog toolboxes,
         ArcPyExecutionSettings? arcPy = null,
         TimeSpan? mapStructuralSettleDelay = null)
     {
         var registry = new OperationRegistry();
-        foreach (var operation in CreateOperations(services, resources, arcPy, mapStructuralSettleDelay)) registry.Register(operation);
+        foreach (var operation in CreateOperations(services, resources, toolboxes, arcPy, mapStructuralSettleDelay)) registry.Register(operation);
         return registry;
     }
 }

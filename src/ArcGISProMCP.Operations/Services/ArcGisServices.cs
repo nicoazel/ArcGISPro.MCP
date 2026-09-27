@@ -17,7 +17,8 @@ internal sealed record ArcGisServices(
     IMapService Maps,
     ILayerService Layers,
     IViewCaptureService Views,
-    IFeatureService Features);
+    IFeatureService Features,
+    IGeoprocessingService Geoprocessing);
 
 /// <summary>Project lifecycle. Both members run on the ArcGIS UI thread.</summary>
 internal interface IProjectService
@@ -122,4 +123,46 @@ internal interface IViewCaptureService
 
     /// <summary>Rescales PNG bytes to exactly the requested pixel size. Thread-agnostic.</summary>
     byte[] ResizePng(byte[] png, int width, int height);
+}
+
+/// <summary>Geoprocessing history and map flags; the tool always runs on the GP thread.</summary>
+internal sealed record GeoprocessingExecutionFlags(bool AddOutputsToMap, bool AddToHistory, bool RefreshProjectItems)
+{
+    /// <summary>GP thread only: nothing added to the map, history or project items.</summary>
+    public static GeoprocessingExecutionFlags None { get; } = new(false, false, false);
+}
+
+/// <summary>One geoprocessing message.</summary>
+/// <param name="Type">The ArcGIS message type name (Informative, Warning, Error, ...).</param>
+internal sealed record GeoprocessingMessage(string Type, string Text, int ErrorCode);
+
+/// <summary>The complete result of one geoprocessing tool execution.</summary>
+/// <param name="Values">Result values; null when ArcGIS reports none.</param>
+/// <param name="ValueTypes">Result value types; null when ArcGIS reports none.</param>
+/// <param name="FirstErrorMessage">The first error message text, if any.</param>
+internal sealed record GeoprocessingExecutionResult(
+    bool IsFailed,
+    bool IsCanceled,
+    int ErrorCode,
+    string? ReturnValue,
+    IReadOnlyList<string>? Values,
+    IReadOnlyList<string>? ValueTypes,
+    IReadOnlyList<GeoprocessingMessage> Messages,
+    string? FirstErrorMessage);
+
+/// <summary>Runs geoprocessing tools. Thread-agnostic: ArcGIS schedules the tool itself.</summary>
+internal interface IGeoprocessingService
+{
+    Task<GeoprocessingExecutionResult> ExecuteAsync(
+        string tool,
+        IReadOnlyList<string> parameters,
+        IReadOnlyList<KeyValuePair<string, string>> environments,
+        GeoprocessingExecutionFlags flags,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>ArcGIS geoprocessing message type names the operations act on.</summary>
+internal static class GeoprocessingMessageTypes
+{
+    public const string Warning = "Warning";
 }

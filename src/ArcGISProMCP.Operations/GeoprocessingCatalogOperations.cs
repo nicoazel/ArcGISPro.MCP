@@ -1,12 +1,11 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Core.Operations;
-using ArcGISProMCP.Operations;
+using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.AddIn.Operations;
+namespace ArcGISProMCP.Operations;
 
 /// <summary>Serialization shared by the geoprocessing catalog operations (camelCase, enums as names).</summary>
 internal static class GeoprocessingJson
@@ -133,7 +132,7 @@ internal sealed class GeoprocessingDescribeOperation(ToolboxCatalog catalog) : P
 /// review. The name must be a plain alias.Name that resolves to a system toolbox, parameters are
 /// statically validated first, and outputs are never added to the map, overwritten or added to history.
 /// </summary>
-internal sealed class GeoprocessingQueryOperation(ToolboxCatalog catalog) : ProOperationBase(OperationDescriptor.Create(
+internal sealed class GeoprocessingQueryOperation(ToolboxCatalog catalog, IGeoprocessingService geoprocessing) : ProOperationBase(OperationDescriptor.Create(
     "gp.query", "Run read-only geoprocessing query",
     "Runs one read-only system geoprocessing query tool (management.GetCount, management.GetRasterProperties, management.GetCellValue) without review and returns its result values and messages. Outputs are not added to the map, nothing is overwritten and nothing is written to geoprocessing history. Use gp.run for every other tool.",
     JsonSchemas.Object(
@@ -177,13 +176,12 @@ internal sealed class GeoprocessingQueryOperation(ToolboxCatalog catalog) : ProO
         // Only GPThread: no AddOutputsToMap, AddToHistory or RefreshProjectItems, and overwrite explicitly off.
         KeyValuePair<string, string>[] environments = [new("overwriteoutput", "false")];
         var timer = Stopwatch.StartNew();
-        var result = await Geoprocessing.ExecuteToolAsync(
+        var result = await geoprocessing.ExecuteAsync(
             description.Tool.ExecutionName,
             parameters,
             environments,
-            cancellationToken,
-            null,
-            GPExecuteToolFlags.GPThread).ConfigureAwait(false);
+            GeoprocessingExecutionFlags.None,
+            cancellationToken).ConfigureAwait(false);
         timer.Stop();
         var data = GeoprocessingJson.Serialize(new
         {
@@ -196,17 +194,17 @@ internal sealed class GeoprocessingQueryOperation(ToolboxCatalog catalog) : ProO
             valueTypes = result.ValueTypes?.ToArray() ?? [],
             elapsedMilliseconds = timer.ElapsedMilliseconds,
             flags = new { addOutputsToMap = false, addToHistory = false, refreshProjectItems = false, overwriteOutput = false },
-            messages = result.Messages.Select(message => new { type = message.Type.ToString(), message.Text, message.ErrorCode }).ToArray()
+            messages = result.Messages.Select(message => new { type = message.Type, message.Text, message.ErrorCode }).ToArray()
         });
         return result.IsFailed || result.IsCanceled
             ? OperationResult.Fail(result.IsCanceled ? "geoprocessing_cancelled" : "geoprocessing_failed",
-                result.ErrorMessages.FirstOrDefault()?.Text ?? $"Geoprocessing tool '{description.Tool.ExecutionName}' did not complete.", revision) with
+                result.FirstErrorMessage ?? $"Geoprocessing tool '{description.Tool.ExecutionName}' did not complete.", revision) with
             { Data = data }
             : OperationResult.Ok(
                 data,
                 revision,
                 result.Messages
-                    .Where(message => message.Type == GPMessageType.Warning)
+                    .Where(message => message.Type == GeoprocessingMessageTypes.Warning)
                     .Select(message => new OperationNotice("geoprocessing_warning", message.Text, "warning")));
     }
 }
