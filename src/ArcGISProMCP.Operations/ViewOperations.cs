@@ -1,17 +1,11 @@
-using System.IO;
 using System.Text.Json;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using ArcGIS.Desktop.Layouts;
-using ArcGIS.Desktop.Mapping;
-using ArcGISProMCP.AddIn.ArcGIS;
-using ArcGISProMCP.AddIn.Services;
 using ArcGISProMCP.Core.Operations;
-using ArcGISProMCP.Operations;
+using ArcGISProMCP.Core.Resources;
+using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.AddIn.Operations;
+namespace ArcGISProMCP.Operations;
 
-internal sealed class ViewCaptureOperation(ProResourceStore resources) : ProOperationBase(OperationDescriptor.Create(
+internal sealed class ViewCaptureOperation(FileResourceStore resources, IViewCaptureService views) : ProOperationBase(OperationDescriptor.Create(
     "view.capture", "Capture map or layout view",
     "Captures the active map view or a named layout as PNG visual evidence and returns a resource handle plus semantic context.",
     ViewOperationSchemas.CaptureInput,
@@ -49,28 +43,20 @@ internal sealed class ViewCaptureOperation(ProResourceStore resources) : ProOper
             resources: [resource]);
     }
 
-    private static Task<CaptureResult> CaptureMapAsync(
+    private Task<CaptureResult> CaptureMapAsync(
         int width,
         int height,
         OperationContext context,
         CancellationToken cancellationToken) =>
         context.Dispatcher.OnUiThreadAsync(() =>
         {
-            var view = MapView.Active ?? throw new InvalidOperationException("An active map view is required for capture.");
-            if (!view.IsReady) throw new InvalidOperationException("The active map view is still drawing; retry when it is ready.");
-            var bitmap = view.CaptureThumbnail(width, height)
-                ?? throw new InvalidOperationException("ArcGIS Pro could not capture the active map view.");
-            bitmap.Freeze();
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            using var stream = new MemoryStream();
-            encoder.Save(stream);
+            var capture = views.CaptureActiveMap(width, height);
             return Task.FromResult(new CaptureResult(
-                stream.ToArray(), bitmap.PixelWidth, bitmap.PixelHeight,
-                "map", view.Map.Name, view.Map.URI));
+                capture.Png, capture.Width, capture.Height,
+                "map", capture.MapName, capture.MapUri));
         }, cancellationToken);
 
-    private static async Task<CaptureResult> CaptureLayoutAsync(
+    private async Task<CaptureResult> CaptureLayoutAsync(
         string? layoutReference,
         int width,
         int height,
@@ -80,26 +66,13 @@ internal sealed class ViewCaptureOperation(ProResourceStore resources) : ProOper
         var temporaryPath = Path.Combine(Path.GetTempPath(), $"ArcGISProMCP-{Guid.NewGuid():N}.png");
         try
         {
-            var metadata = await context.Dispatcher.OnMainCimThreadAsync(() =>
-            {
-                var layout = string.IsNullOrWhiteSpace(layoutReference)
-                    ? LayoutView.Active?.Layout ?? throw new InvalidOperationException("Specify a layout or activate one before capture.")
-                    : ProHandles.ResolveLayout(layoutReference);
-                var page = layout.GetPage();
-                var resolution = (int)Math.Ceiling(Math.Max(width / page.Width, height / page.Height));
-                layout.Export(new PNGFormat
-                {
-                    OutputFileName = temporaryPath,
-                    Width = width,
-                    Height = height,
-                    Resolution = Math.Clamp(resolution, 24, 1200),
-                    HasWorldFile = false,
-                    HasTransparentBackground = false
-                });
-                return new CaptureMetadata(layout.Name, layout.URI);
-            }, cancellationToken).ConfigureAwait(false);
+            var metadata = await context.Dispatcher.OnMainCimThreadAsync(
+                () => views.ExportLayout(layoutReference, width, height, temporaryPath),
+                cancellationToken).ConfigureAwait(false);
             var bytes = await File.ReadAllBytesAsync(temporaryPath, cancellationToken).ConfigureAwait(false);
-            bytes = ResizePng(bytes, width, height);
+            // The export resolution is rounded up, so the file can exceed the requested size;
+            // the stored image and the reported dimensions are always the requested ones.
+            bytes = views.ResizePng(bytes, width, height);
             return new CaptureResult(bytes, width, height, "layout", metadata.Name, metadata.Uri);
         }
         finally
@@ -111,24 +84,6 @@ internal sealed class ViewCaptureOperation(ProResourceStore resources) : ProOper
     private static int Integer(JsonElement arguments, string name, int defaultValue) =>
         arguments.TryGetProperty(name, out var element) && element.TryGetInt32(out var value) ? value : defaultValue;
 
-    private static byte[] ResizePng(byte[] bytes, int width, int height)
-    {
-        using var input = new MemoryStream(bytes, writable: false);
-        var decoder = new PngBitmapDecoder(input, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-        var source = decoder.Frames[0];
-        if (source.PixelWidth == width && source.PixelHeight == height) return bytes;
-
-        var resized = new TransformedBitmap(
-            source,
-            new ScaleTransform((double)width / source.PixelWidth, (double)height / source.PixelHeight));
-        resized.Freeze();
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(resized));
-        using var output = new MemoryStream();
-        encoder.Save(output);
-        return output.ToArray();
-    }
-
     private sealed record CaptureResult(
         byte[] Bytes,
         int Width,
@@ -136,6 +91,4 @@ internal sealed class ViewCaptureOperation(ProResourceStore resources) : ProOper
         string SourceKind,
         string SourceName,
         string SourceUri);
-
-    private sealed record CaptureMetadata(string Name, string Uri);
 }

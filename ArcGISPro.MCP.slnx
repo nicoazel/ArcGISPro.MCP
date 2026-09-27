@@ -9,6 +9,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/ArcGISProMCP.Core.Tests/ArcGISProMCP.Core.Tests.csproj" />
     <Project Path="tests/ArcGISProMCP.Bridge.Tests/ArcGISProMCP.Bridge.Tests.csproj" />
+    <Project Path="tests/ArcGISProMCP.Operations.Tests/ArcGISProMCP.Operations.Tests.csproj" />
     <Project Path="tests/ArcGISProMCP.Server.Tests/ArcGISProMCP.Server.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

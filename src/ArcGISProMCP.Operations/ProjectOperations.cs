@@ -1,10 +1,8 @@
-using System.IO;
 using System.Text.Json;
-using ArcGIS.Desktop.Core;
 using ArcGISProMCP.Core.Operations;
-using ArcGISProMCP.Operations;
+using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.AddIn.Operations;
+namespace ArcGISProMCP.Operations;
 
 internal sealed class ProjectGetOperation() : ProOperationBase(OperationDescriptor.Create(
     "project.get", "Get project",
@@ -21,7 +19,7 @@ internal sealed class ProjectGetOperation() : ProOperationBase(OperationDescript
     }
 }
 
-internal sealed class ProjectOpenOperation() : ProOperationBase(OperationDescriptor.Create(
+internal sealed class ProjectOpenOperation(IProjectService project) : ProOperationBase(OperationDescriptor.Create(
     "project.open", "Open project",
     "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Unsaved changes are handled by ArcGIS Pro's normal project lifecycle.",
     ProjectOperationSchemas.OpenInput,
@@ -38,7 +36,7 @@ internal sealed class ProjectOpenOperation() : ProOperationBase(OperationDescrip
 
         await context.Dispatcher.OnUiThreadAsync(async () =>
         {
-            await Project.OpenAsync(path).ConfigureAwait(true);
+            await project.OpenAsync(path).ConfigureAwait(true);
             return true;
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
@@ -46,7 +44,7 @@ internal sealed class ProjectOpenOperation() : ProOperationBase(OperationDescrip
     }
 }
 
-internal sealed class ProjectSaveOperation() : ProOperationBase(OperationDescriptor.Create(
+internal sealed class ProjectSaveOperation(IProjectService project) : ProOperationBase(OperationDescriptor.Create(
     "project.save", "Save project",
     "Saves the current ArcGIS Pro project to disk. Requires local approval because it persists every pending change in the .aprx.",
     JsonSchemas.EmptyObject,
@@ -54,11 +52,16 @@ internal sealed class ProjectSaveOperation() : ProOperationBase(OperationDescrip
     tags: ["project", "workspace", "save"], aliases: ["save aprx", "persist project"],
     related: ["project.get"]))
 {
+    /// <summary>Snapshots re-sampled while waiting for the saved (clean) project state.</summary>
+    internal const int CleanStateAttempts = 40;
+
+    /// <summary>Delay between those samples.</summary>
+    internal static readonly TimeSpan CleanStateInterval = TimeSpan.FromMilliseconds(50);
+
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
         await context.Dispatcher.OnUiThreadAsync(async () =>
         {
-            var project = Project.Current ?? throw new InvalidOperationException("No ArcGIS Pro project is open.");
             await project.SaveAsync().ConfigureAwait(true);
             return true;
         }, cancellationToken).ConfigureAwait(false);
@@ -68,9 +71,9 @@ internal sealed class ProjectSaveOperation() : ProOperationBase(OperationDescrip
         // step fail optimistic concurrency even though no competing client changed the project.
         // Wait only for the documented saved state; a genuine later edit will still advance the
         // revision and be rejected by the next write.
-        for (var attempt = 0; snapshot.Project.IsDirty && attempt < 40; attempt++)
+        for (var attempt = 0; snapshot.Project.IsDirty && attempt < CleanStateAttempts; attempt++)
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(CleanStateInterval, cancellationToken).ConfigureAwait(false);
             snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         }
         if (snapshot.Project.IsDirty)

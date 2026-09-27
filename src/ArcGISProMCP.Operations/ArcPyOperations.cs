@@ -1,9 +1,8 @@
 using System.Text.Json;
 using ArcGISProMCP.Core.Execution;
 using ArcGISProMCP.Core.Operations;
-using ArcGISProMCP.Operations;
 
-namespace ArcGISProMCP.AddIn.Operations;
+namespace ArcGISProMCP.Operations;
 
 internal sealed class ArcPyInspectScriptOperation(ArcPyExecutionSettings settings) : ProOperationBase(OperationDescriptor.Create(
     "arcpy.inspect-script",

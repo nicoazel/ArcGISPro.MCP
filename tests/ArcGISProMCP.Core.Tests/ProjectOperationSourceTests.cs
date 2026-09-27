@@ -1,29 +1,11 @@
-using System.Text.RegularExpressions;
-
 namespace ArcGISProMCP.Core.Tests;
 
+/// <summary>
+/// Panel approval wiring needs WPF and ArcGIS Pro, so it stays source-level. Project operation
+/// descriptors and behavior are tested against the real operations in Operations.Tests.
+/// </summary>
 public sealed class ProjectOperationSourceTests
 {
-    [Theory]
-    [InlineData("project.open")]
-    [InlineData("project.save")]
-    public void Project_lifecycle_writes_require_confirmation(string id)
-    {
-        var descriptor = Descriptor(ReadSource("Operations", "ProjectOperations.cs"), id);
-
-        Assert.Contains("risk: OperationRisk.SafeWrite, requiresConfirmation: true", descriptor, StringComparison.Ordinal);
-        Assert.Contains("Requires local approval", descriptor, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Project_get_stays_read_only_without_confirmation()
-    {
-        var descriptor = Descriptor(ReadSource("Operations", "ProjectOperations.cs"), "project.get");
-
-        Assert.DoesNotContain("requiresConfirmation", descriptor, StringComparison.Ordinal);
-        Assert.DoesNotContain("OperationRisk.", descriptor, StringComparison.Ordinal);
-    }
-
     [Fact]
     public void Panel_initiated_confirmation_gated_operations_self_approve_through_the_audited_queue()
     {
@@ -52,14 +34,6 @@ public sealed class ProjectOperationSourceTests
 
         Assert.Contains("catch (Exception exception) when (exception is not OperationCanceledException)", body, StringComparison.Ordinal);
         Assert.Contains("AddActivity(ActivityLevel.Warning, \"Audit write failed\"", body, StringComparison.Ordinal);
-    }
-
-    private static string Descriptor(string source, string id)
-    {
-        var match = Regex.Match(source, $@"OperationDescriptor\.Create\(\s*""{Regex.Escape(id)}""");
-        Assert.True(match.Success, $"Descriptor {id} not found.");
-        var end = source.IndexOf("protected override", match.Index, StringComparison.Ordinal);
-        return source[match.Index..end];
     }
 
     private static string ReadSource(params string[] segments)

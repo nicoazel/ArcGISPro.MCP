@@ -1,0 +1,3238 @@
+{
+  "arcpy.inspect-script": {
+    "id": "arcpy.inspect-script",
+    "version": "1.0.0",
+    "title": "Inspect an ArcPy script",
+    "summary": "Returns the size and SHA-256 of a Python script in the locally configured ArcPy script root without executing it.",
+    "risk": "ReadOnly",
+    "executionTarget": "ExternalWorker",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": "milliseconds",
+    "requiredCapabilities": [
+      "arcpy"
+    ],
+    "tags": [
+      "arcpy",
+      "hash",
+      "inspect",
+      "python",
+      "script"
+    ],
+    "aliases": [
+      "hash arcpy script",
+      "inspect python script"
+    ],
+    "examples": [
+      "Inspect analysis.py and use the returned SHA-256 when requesting approval for arcpy.run-script."
+    ],
+    "relatedOperations": [
+      "arcpy.run-script"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scriptPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "scriptPath"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "arcpy.run-script": {
+    "id": "arcpy.run-script",
+    "version": "1.0.0",
+    "title": "Run an approved ArcPy script",
+    "summary": "Runs a hash-pinned Python script from the locally configured ArcPy script root in the ArcGIS Pro Python environment.",
+    "risk": "ExternalSideEffect",
+    "executionTarget": "ExternalWorker",
+    "requiresConfirmation": true,
+    "undoable": false,
+    "executesUserCode": true,
+    "typicalDuration": "seconds-to-minutes",
+    "requiredCapabilities": [
+      "arcpy"
+    ],
+    "tags": [
+      "arcpy",
+      "automation",
+      "python",
+      "script"
+    ],
+    "aliases": [
+      "run arcpy script",
+      "execute python script"
+    ],
+    "examples": [
+      "Run analysis.py after obtaining its SHA-256 and approving the exact path, hash, arguments, and workspace revision."
+    ],
+    "relatedOperations": [
+      "gp.run"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "scriptPath": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "scriptSha256": {
+          "type": "string",
+          "pattern": "^[A-Fa-f0-9]{64}$"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "maxItems": 64
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 900
+        }
+      },
+      "required": [
+        "scriptPath",
+        "scriptSha256"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "basemap.set": {
+    "id": "basemap.set",
+    "version": "1.0.0",
+    "title": "Set basemap",
+    "summary": "Sets a map\u0027s basemap using an ArcGIS Pro basemap name.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "basemap",
+      "map",
+      "style"
+    ],
+    "aliases": [
+      "change basemap",
+      "set imagery",
+      "set topo"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "map.list",
+      "map.ensure"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "basemap": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "basemap"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "feature.create": {
+    "id": "feature.create",
+    "version": "1.0.0",
+    "title": "Create one feature",
+    "summary": "Creates one point, single-part polyline, or single-part polygon in an editable layer using schema-validated attributes. Coordinates must use the layer spatial reference.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "attributes",
+      "create",
+      "edit",
+      "feature",
+      "geometry"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [
+      "feature.layer.describe",
+      "feature.update",
+      "feature.delete"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": true
+        },
+        "geometry": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "point",
+                "polyline",
+                "polygon"
+              ]
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            },
+            "coordinates": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 3
+              },
+              "minItems": 2
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "layer",
+        "geometry"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "objectId": {
+          "description": "ObjectID from the edit row token; may be null."
+        },
+        "globalId": {
+          "description": "GlobalID from the edit row token; may be null."
+        }
+      },
+      "required": [
+        "map",
+        "layer",
+        "objectId",
+        "globalId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "feature.delete": {
+    "id": "feature.delete",
+    "version": "1.0.0",
+    "title": "Delete one feature",
+    "summary": "Deletes exactly one editable-layer feature selected by stable ObjectID or GlobalID. This is deliberately not a where-clause or bulk-delete operation.",
+    "risk": "Destructive",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": true,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "delete",
+      "destructive",
+      "edit",
+      "feature"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [
+      "feature.query",
+      "feature.update"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "target": {
+          "type": "object",
+          "properties": {
+            "objectId": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "globalId": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 38
+            }
+          },
+          "required": [],
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 1
+        }
+      },
+      "required": [
+        "layer",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "objectId": {
+          "type": "integer"
+        },
+        "deleted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "map",
+        "layer",
+        "objectId",
+        "deleted"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "feature.layer.describe": {
+    "id": "feature.layer.describe",
+    "version": "1.0.0",
+    "title": "Describe editable feature layer",
+    "summary": "Returns the feature layer schema, geometry type, stable identifier fields, and editability needed before a feature edit.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "feature",
+      "inspect",
+      "layer",
+      "metadata",
+      "schema"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [
+      "feature.query",
+      "feature.create",
+      "feature.update",
+      "feature.delete"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "editable": {
+          "type": "boolean"
+        },
+        "objectIdField": {
+          "type": "string"
+        },
+        "globalIdField": {
+          "description": "GlobalID field name; null when the layer has none."
+        },
+        "shapeField": {
+          "description": "Shape field name; null for non-feature-class definitions."
+        },
+        "geometryType": {
+          "description": "Shape type name; null for non-feature-class definitions."
+        },
+        "spatialReference": {
+          "description": "{ wkid, name }; null for non-feature-class definitions."
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Name": {
+                "type": "string"
+              },
+              "AliasName": {},
+              "type": {
+                "type": "string"
+              },
+              "IsNullable": {
+                "type": "boolean"
+              },
+              "IsEditable": {
+                "type": "boolean"
+              },
+              "Length": {
+                "type": "integer"
+              },
+              "isObjectId": {
+                "type": "boolean"
+              },
+              "isGlobalId": {
+                "type": "boolean"
+              },
+              "isGeometry": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "Name",
+              "AliasName",
+              "type",
+              "IsNullable",
+              "IsEditable",
+              "Length",
+              "isObjectId",
+              "isGlobalId",
+              "isGeometry"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "map",
+        "layer",
+        "Name",
+        "editable",
+        "objectIdField",
+        "globalIdField",
+        "shapeField",
+        "geometryType",
+        "spatialReference",
+        "fields"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "feature.query": {
+    "id": "feature.query",
+    "version": "1.0.0",
+    "title": "Query features by attributes and extent",
+    "summary": "Runs a bounded feature query with a safe where clause and optional layer-coordinate envelope/spatial relationship. Results always include ObjectID and GlobalID when available.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "attributes",
+      "feature",
+      "query",
+      "selection",
+      "spatial"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [
+      "feature.layer.describe",
+      "feature.select",
+      "table.query"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "where": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 64
+        },
+        "envelope": {
+          "type": "object",
+          "properties": {
+            "xmin": {
+              "type": "number"
+            },
+            "ymin": {
+              "type": "number"
+            },
+            "xmax": {
+              "type": "number"
+            },
+            "ymax": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "xmin",
+            "ymin",
+            "xmax",
+            "ymax"
+          ],
+          "additionalProperties": false
+        },
+        "spatialRelationship": {
+          "type": "string",
+          "enum": [
+            "intersects",
+            "envelopeIntersects",
+            "contains",
+            "within",
+            "touches",
+            "crosses",
+            "overlaps"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "where": {
+          "type": "string"
+        },
+        "spatialRelationship": {
+          "description": "Spatial relationship name; null without a spatial filter."
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "returned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "description": "objectId, globalId (null without a GlobalID field), and the requested field values.",
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "map",
+        "layer",
+        "where",
+        "spatialRelationship",
+        "fields",
+        "returned",
+        "limit",
+        "rows"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "feature.select": {
+    "id": "feature.select",
+    "version": "1.0.0",
+    "title": "Select bounded features",
+    "summary": "Replaces or adds to a layer selection using a bounded attribute/spatial query. This changes selection only; it does not edit feature data.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "feature",
+      "select",
+      "selection",
+      "spatial"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [
+      "feature.query",
+      "map.clear-selection"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "where": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "envelope": {
+          "type": "object",
+          "properties": {
+            "xmin": {
+              "type": "number"
+            },
+            "ymin": {
+              "type": "number"
+            },
+            "xmax": {
+              "type": "number"
+            },
+            "ymax": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "xmin",
+            "ymin",
+            "xmax",
+            "ymax"
+          ],
+          "additionalProperties": false
+        },
+        "spatialRelationship": {
+          "type": "string",
+          "enum": [
+            "intersects",
+            "envelopeIntersects",
+            "contains",
+            "within",
+            "touches",
+            "crosses",
+            "overlaps"
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "new",
+            "add"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "new",
+            "add"
+          ]
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selectionCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        }
+      },
+      "required": [
+        "map",
+        "layer",
+        "mode",
+        "matched",
+        "selectionCount",
+        "limit"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "feature.update": {
+    "id": "feature.update",
+    "version": "1.0.0",
+    "title": "Update one feature\u0027s attributes or geometry",
+    "summary": "Updates exactly one feature selected by ObjectID or GlobalID. Attribute names and values are validated against the layer schema; coordinates use the layer spatial reference.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": true,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "attributes",
+      "edit",
+      "feature",
+      "geometry",
+      "update"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [
+      "feature.layer.describe",
+      "feature.create",
+      "feature.delete"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "target": {
+          "type": "object",
+          "properties": {
+            "objectId": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "globalId": {
+              "type": "string",
+              "minLength": 32,
+              "maxLength": 38
+            }
+          },
+          "required": [],
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 1
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": true
+        },
+        "geometry": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "point",
+                "polyline",
+                "polygon"
+              ]
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            },
+            "coordinates": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 3
+              },
+              "minItems": 2
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "layer",
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "objectId": {
+          "type": "integer"
+        },
+        "updatedAttributes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "geometryUpdated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "map",
+        "layer",
+        "objectId",
+        "updatedAttributes",
+        "geometryUpdated"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "gp.describe": {
+    "id": "gp.describe",
+    "version": "1.0.0",
+    "title": "Describe geoprocessing tool",
+    "summary": "Describes one system geoprocessing tool from its toolbox metadata: parameters (data types, required/optional/derived, direction, defaults, domains such as coded values and ranges), the positional signature gp.run expects, environments, attributes and the risk tier with its reasons. Never runs the tool.",
+    "risk": "ReadOnly",
+    "executionTarget": "Background",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "geoprocessing"
+    ],
+    "tags": [
+      "describe",
+      "geoprocessing",
+      "gp",
+      "parameters",
+      "signature",
+      "toolbox"
+    ],
+    "aliases": [
+      "tool parameters",
+      "tool help",
+      "tool syntax"
+    ],
+    "examples": [
+      "Describe analysis.Buffer before building gp.run parameters."
+    ],
+    "relatedOperations": [
+      "gp.search",
+      "gp.run",
+      "gp.query"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tool": {
+          "description": "Execution name such as \u0027analysis.Buffer\u0027 (the \u0027Buffer_analysis\u0027 form is also accepted).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "tool"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "gp.query": {
+    "id": "gp.query",
+    "version": "1.0.0",
+    "title": "Run read-only geoprocessing query",
+    "summary": "Runs one read-only system geoprocessing query tool (management.GetCount, management.GetRasterProperties, management.GetCellValue) without review and returns its result values and messages. Outputs are not added to the map, nothing is overwritten and nothing is written to geoprocessing history. Use gp.run for every other tool.",
+    "risk": "ReadOnly",
+    "executionTarget": "Background",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": "seconds",
+    "requiredCapabilities": [
+      "geoprocessing"
+    ],
+    "tags": [
+      "count",
+      "geoprocessing",
+      "gp",
+      "query",
+      "raster",
+      "read-only"
+    ],
+    "aliases": [
+      "get count",
+      "row count",
+      "raster properties",
+      "cell value"
+    ],
+    "examples": [
+      "Run management.GetCount on a layer to count its rows."
+    ],
+    "relatedOperations": [
+      "gp.describe",
+      "gp.run",
+      "table.statistics"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tool": {
+          "description": "Allowlisted execution name, for example \u0027management.GetCount\u0027.",
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9]\u002B\\.[A-Za-z0-9]\u002B$"
+        },
+        "parameters": {
+          "description": "Positional values in gp.describe \u0027signature\u0027 order; null or \u0027#\u0027 leaves a value unset.",
+          "type": "array",
+          "maxItems": 32
+        }
+      },
+      "required": [
+        "tool",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "gp.run": {
+    "id": "gp.run",
+    "version": "1.0.0",
+    "title": "Run geoprocessing tool",
+    "summary": "Runs an ArcGIS geoprocessing tool by toolbox-qualified name with bounded positional parameters (gp.describe \u0027signature\u0027 order), explicit environments, deterministic history/output flags, and complete result messages and derived values. Always requires review; autonomous mode refuses Destructive and UserCode tools. A dry run statically validates the parameters and reports the risk tier.",
+    "risk": "ExternalSideEffect",
+    "executionTarget": "Background",
+    "requiresConfirmation": true,
+    "undoable": false,
+    "executesUserCode": true,
+    "typicalDuration": "seconds-to-hours",
+    "requiredCapabilities": [
+      "geoprocessing"
+    ],
+    "tags": [
+      "analysis",
+      "data processing",
+      "geoprocessing",
+      "gp"
+    ],
+    "aliases": [
+      "run tool",
+      "spatial analysis",
+      "buffer",
+      "clip"
+    ],
+    "examples": [
+      "Run analysis.Buffer with input, output, and distance parameters."
+    ],
+    "relatedOperations": [
+      "gp.search",
+      "gp.describe",
+      "gp.query",
+      "layer.add",
+      "view.capture"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tool": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "parameters": {
+          "type": "array",
+          "maxItems": 256
+        },
+        "environments": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": true,
+          "maxProperties": 128
+        },
+        "overwriteOutput": {
+          "type": "boolean"
+        },
+        "addOutputsToMap": {
+          "type": "boolean"
+        },
+        "addToHistory": {
+          "type": "boolean"
+        },
+        "refreshProjectItems": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tool",
+        "parameters"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "gp.search": {
+    "id": "gp.search",
+    "version": "1.0.0",
+    "title": "Search geoprocessing tools",
+    "summary": "Searches the installed ArcGIS Pro system toolboxes by name, display name, keywords and summary. Returns execution names (alias.ToolName) for gp.describe and gp.run, with each tool\u0027s risk tier. Reads toolbox metadata only; never runs a tool.",
+    "risk": "ReadOnly",
+    "executionTarget": "Background",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "geoprocessing"
+    ],
+    "tags": [
+      "discover",
+      "geoprocessing",
+      "gp",
+      "search",
+      "tool",
+      "toolbox"
+    ],
+    "aliases": [
+      "find tool",
+      "which tool",
+      "list tools"
+    ],
+    "examples": [
+      "Search \u0027buffer\u0027 to find analysis.Buffer and its risk tier."
+    ],
+    "relatedOperations": [
+      "gp.describe",
+      "gp.run",
+      "gp.query"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "description": "Words to match; empty lists tools alphabetically.",
+          "type": "string",
+          "maxLength": 512
+        },
+        "limit": {
+          "description": "Maximum results (default 20).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "label.configure": {
+    "id": "label.configure",
+    "version": "1.0.0",
+    "title": "Configure labels",
+    "summary": "Enables or disables feature labels and optionally sets the Arcade expression, font family, size, and text color.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "cartography",
+      "font",
+      "label",
+      "text"
+    ],
+    "aliases": [
+      "turn labels on",
+      "change label font",
+      "label field"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "symbology.set-simple",
+      "layer.set-appearance"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "expression": {
+          "type": "string"
+        },
+        "fontFamily": {
+          "type": "string"
+        },
+        "fontStyle": {
+          "type": "string"
+        },
+        "size": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "color": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "layer.add": {
+    "id": "layer.add",
+    "version": "1.0.0",
+    "title": "Add layer",
+    "summary": "Adds a dataset, layer file, or service URL to a map and returns its stable layer handle.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "create",
+      "data",
+      "layer",
+      "service"
+    ],
+    "aliases": [
+      "add data",
+      "load layer",
+      "add service"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "layer.list",
+      "symbology.set-simple"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "layer.list": {
+    "id": "layer.list",
+    "version": "1.0.0",
+    "title": "List layers",
+    "summary": "Lists the flattened layer tree for a map with stable handles and appearance state.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "browse",
+      "layer",
+      "map"
+    ],
+    "aliases": [
+      "table of contents",
+      "toc"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "layer.add",
+      "layer.set-appearance",
+      "layer.set-elevation",
+      "symbology.set-simple"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "Name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "IsVisible": {
+                "type": "boolean"
+              },
+              "Transparency": {
+                "type": "number"
+              },
+              "drawingOrder": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "isFeatureLayer": {
+                "type": "boolean"
+              },
+              "elevation": {
+                "description": "{ mode, offset, verticalExaggeration } for feature layers; null otherwise."
+              }
+            },
+            "required": [
+              "id",
+              "Name",
+              "type",
+              "IsVisible",
+              "Transparency",
+              "drawingOrder",
+              "isFeatureLayer",
+              "elevation"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "map",
+        "layers"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "layer.set-appearance": {
+    "id": "layer.set-appearance",
+    "version": "1.0.0",
+    "title": "Set layer appearance",
+    "summary": "Sets visibility and/or transparency for one layer. Transparency is a percentage from 0 to 100.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "appearance",
+      "layer",
+      "transparency",
+      "visibility"
+    ],
+    "aliases": [
+      "hide layer",
+      "show layer",
+      "fade layer"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "layer.list",
+      "symbology.set-simple"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "transparency": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "layer.set-elevation": {
+    "id": "layer.set-elevation",
+    "version": "1.0.0",
+    "title": "Set layer elevation",
+    "summary": "Sets how a feature layer is placed vertically in a scene, with optional cartographic offset and vertical exaggeration.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "3d",
+      "elevation",
+      "ground",
+      "layer",
+      "scene"
+    ],
+    "aliases": [
+      "put layer on ground",
+      "set height mode",
+      "place features relative to ground"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "layer.list",
+      "layer.set-appearance",
+      "layout.set-frame-extent"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "on-ground",
+            "relative-to-ground",
+            "relative-to-scene",
+            "absolute-height"
+          ]
+        },
+        "offset": {
+          "type": "number",
+          "minimum": -1000000,
+          "maximum": 1000000
+        },
+        "verticalExaggeration": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "layer",
+        "mode"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "layout.activate": {
+    "id": "layout.activate",
+    "version": "1.0.0",
+    "title": "Activate layout",
+    "summary": "Opens or activates a layout view.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISUiThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "layouts"
+    ],
+    "tags": [
+      "layout",
+      "open",
+      "switch",
+      "view"
+    ],
+    "aliases": [
+      "show layout",
+      "open layout"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "layout.list",
+      "view.capture"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "layout"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "layout.add-map-frame": {
+    "id": "layout.add-map-frame",
+    "version": "1.0.0",
+    "title": "Add map frame",
+    "summary": "Adds a map frame to a layout at page coordinates measured in inches.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "layouts",
+      "maps"
+    ],
+    "tags": [
+      "compose",
+      "layout",
+      "map frame",
+      "multi-map"
+    ],
+    "aliases": [
+      "place map on layout",
+      "multi map layout"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "layout.ensure",
+      "layout.inspect",
+      "layout.list"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "layout",
+        "map"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "layout.ensure": {
+    "id": "layout.ensure",
+    "version": "1.0.0",
+    "title": "Ensure layout exists",
+    "summary": "Returns an existing named layout or creates a page in inches using the requested dimensions.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "layouts"
+    ],
+    "tags": [
+      "create",
+      "layout",
+      "page"
+    ],
+    "aliases": [
+      "new layout",
+      "create layout"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "layout.inspect",
+      "layout.add-map-frame",
+      "layout.activate"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "layout.ensure-surround": {
+    "id": "layout.ensure-surround",
+    "version": "1.0.0",
+    "title": "Add a map surround",
+    "summary": "Adds or converges a named legend, north arrow, or scale bar linked to a map frame using ArcGIS default styling.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "layouts"
+    ],
+    "tags": [
+      "cartography",
+      "layout",
+      "legend",
+      "north arrow",
+      "scale bar"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": "string"
+        },
+        "frame": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "legend",
+            "north-arrow",
+            "scale-bar"
+          ]
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "layout",
+        "frame",
+        "name",
+        "kind",
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "layout.inspect": {
+    "id": "layout.inspect",
+    "version": "1.0.0",
+    "title": "Inspect layout",
+    "summary": "Returns a layout\u0027s page dimensions and flattened element geometry, including map-frame bindings and cameras.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "layouts"
+    ],
+    "tags": [
+      "camera",
+      "inspect",
+      "layout",
+      "map frame",
+      "verification"
+    ],
+    "aliases": [
+      "inspect layout elements",
+      "verify layout geometry",
+      "read map frames"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "layout.list",
+      "layout.add-map-frame",
+      "layout.set-frame-extent",
+      "view.capture"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "layout"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "page": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            },
+            "units": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "width",
+            "height",
+            "units"
+          ],
+          "additionalProperties": false
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "Name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "drawingOrder": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "bounds": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "width": {
+                    "type": "number"
+                  },
+                  "height": {
+                    "type": "number"
+                  },
+                  "xMax": {
+                    "type": "number"
+                  },
+                  "yMax": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y",
+                  "width",
+                  "height",
+                  "xMax",
+                  "yMax"
+                ],
+                "additionalProperties": false
+              },
+              "mapFrame": {
+                "description": "{ map, mapName, camera } for map frames; null otherwise."
+              }
+            },
+            "required": [
+              "Name",
+              "type",
+              "drawingOrder",
+              "bounds",
+              "mapFrame"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "Name",
+        "page",
+        "elements"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "layout.list": {
+    "id": "layout.list",
+    "version": "1.0.0",
+    "title": "List layouts",
+    "summary": "Lists project layouts and their map frames using stable handles.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "layouts"
+    ],
+    "tags": [
+      "browse",
+      "layout",
+      "map frame"
+    ],
+    "aliases": [
+      "layouts",
+      "print layouts"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "layout.inspect",
+      "layout.ensure",
+      "layout.add-map-frame",
+      "layout.activate"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "mapFrames": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "Name": {
+                  "type": "string"
+                },
+                "map": {
+                  "description": "Map handle; null when the frame has no map."
+                }
+              },
+              "required": [
+                "Name",
+                "map"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "Name",
+          "mapFrames"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "layout.set-frame-extent": {
+    "id": "layout.set-frame-extent",
+    "version": "1.0.0",
+    "title": "Frame a layer on a layout",
+    "summary": "Fits a named map frame to a feature layer with optional scale padding and camera heading/pitch overrides.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "layouts"
+    ],
+    "tags": [
+      "camera",
+      "extent",
+      "layout",
+      "zoom"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": "string"
+        },
+        "frame": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "padding": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "heading": {
+          "type": "number",
+          "minimum": -360,
+          "maximum": 360
+        },
+        "pitch": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        }
+      },
+      "required": [
+        "layout",
+        "frame",
+        "layer"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "layout.set-text": {
+    "id": "layout.set-text",
+    "version": "1.0.0",
+    "title": "Set layout text",
+    "summary": "Creates or updates a named point-text element on a layout, positioned in page inches with explicit typography and color.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "layouts"
+    ],
+    "tags": [
+      "annotation",
+      "layout",
+      "presentation",
+      "text",
+      "title",
+      "typography"
+    ],
+    "aliases": [
+      "add layout title",
+      "update layout text",
+      "place text"
+    ],
+    "examples": [
+      "Create a named title at x 0.5, y 8 with Aptos Display SemiBold at 24 points."
+    ],
+    "relatedOperations": [
+      "layout.ensure",
+      "layout.add-map-frame",
+      "layout.activate"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "fontFamily": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fontStyle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+        }
+      },
+      "required": [
+        "layout",
+        "name",
+        "text",
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "map.activate": {
+    "id": "map.activate",
+    "version": "1.0.0",
+    "title": "Activate map",
+    "summary": "Opens or activates a map view for a stable map handle or unambiguous name.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISUiThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "map",
+      "open",
+      "switch",
+      "view"
+    ],
+    "aliases": [
+      "switch map",
+      "open map",
+      "show map"
+    ],
+    "examples": [
+      "Activate the Transit map."
+    ],
+    "relatedOperations": [
+      "map.list",
+      "view.capture"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "map"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "map.clear-selection": {
+    "id": "map.clear-selection",
+    "version": "1.0.0",
+    "title": "Clear feature selection",
+    "summary": "Clears selected features in a map without editing feature data. Useful before a clean layout export.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "export",
+      "highlight",
+      "map",
+      "selection"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "map.ensure": {
+    "id": "map.ensure",
+    "version": "1.0.0",
+    "title": "Ensure map exists",
+    "summary": "Returns an existing named map or creates it with the requested 2D/3D type and basemap.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "create",
+      "map",
+      "scene"
+    ],
+    "aliases": [
+      "new map",
+      "create map",
+      "make map"
+    ],
+    "examples": [
+      "Ensure maps named Zoning, Transit, and Buildings exist."
+    ],
+    "relatedOperations": [
+      "map.activate",
+      "basemap.set",
+      "layer.add"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "map",
+            "scene",
+            "global-scene"
+          ]
+        },
+        "basemap": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "map.list": {
+    "id": "map.list",
+    "version": "1.0.0",
+    "title": "List maps",
+    "summary": "Lists every map and scene in the current project with stable handles, view state, type, and layer counts.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [],
+    "tags": [
+      "browse",
+      "map",
+      "project"
+    ],
+    "aliases": [
+      "maps",
+      "scenes",
+      "open maps"
+    ],
+    "examples": [
+      "List all maps before choosing which one to activate."
+    ],
+    "relatedOperations": [
+      "map.activate",
+      "map.ensure",
+      "layer.list"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "layerCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "Name",
+          "type",
+          "layerCount",
+          "isActive"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "metadata.get": {
+    "id": "metadata.get",
+    "version": "1.0.0",
+    "title": "Get feature-layer metadata",
+    "summary": "Reads title, summary, description, tags, credits, and use limitations from a feature layer. The response identifies whether metadata is stored by the map layer or supplied by its dataset source.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps",
+      "metadata"
+    ],
+    "tags": [
+      "dataset",
+      "feature",
+      "layer",
+      "metadata"
+    ],
+    "aliases": [
+      "inspect layer metadata",
+      "describe feature layer"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "metadata.update",
+      "layer.list"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "includeXml": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "layerName": {
+          "type": "string"
+        },
+        "layerType": {
+          "type": "string"
+        },
+        "isFeatureLayer": {
+          "type": "boolean"
+        },
+        "datasetPath": {
+          "description": "Dataset path; null when unavailable."
+        },
+        "metadataScope": {
+          "type": "string",
+          "enum": [
+            "dataset-source",
+            "map-layer"
+          ]
+        },
+        "dataset": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "description": "Dataset path; null when unavailable."
+            },
+            "directCatalogItemMetadata": {
+              "type": "boolean"
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "directCatalogItemMetadata",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "supportsMetadata": {
+          "type": "boolean"
+        },
+        "canEditMetadata": {
+          "type": "boolean"
+        },
+        "usesSourceMetadata": {
+          "type": "boolean"
+        },
+        "storage": {
+          "type": "string",
+          "enum": [
+            "dataset-source",
+            "map-layer"
+          ]
+        },
+        "persistence": {
+          "type": "string",
+          "enum": [
+            "read-only-through-layer-unless-the-source-item-is-edited-directly",
+            "project-aprx-layer-metadata"
+          ]
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "Title": {},
+            "Summary": {},
+            "Description": {},
+            "Tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "Credits": {},
+            "UseLimitations": {}
+          },
+          "required": [
+            "Title",
+            "Summary",
+            "Description",
+            "Tags",
+            "Credits",
+            "UseLimitations"
+          ],
+          "additionalProperties": false
+        },
+        "xmlLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "xml": {
+          "description": "Raw metadata XML when includeXml is true; null otherwise."
+        }
+      },
+      "required": [
+        "map",
+        "layer",
+        "layerName",
+        "layerType",
+        "isFeatureLayer",
+        "datasetPath",
+        "metadataScope",
+        "dataset",
+        "supportsMetadata",
+        "canEditMetadata",
+        "usesSourceMetadata",
+        "storage",
+        "persistence",
+        "metadata",
+        "xmlLength",
+        "xml"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "metadata.update": {
+    "id": "metadata.update",
+    "version": "1.0.0",
+    "title": "Update feature-layer metadata",
+    "summary": "Updates the supported common metadata fields while preserving unrelated metadata XML. If the layer is using dataset-source metadata, the source XML is copied to editable map-layer metadata in the APRX before applying the patch; the dataset item itself is not changed.",
+    "risk": "ExternalSideEffect",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": true,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps",
+      "metadata"
+    ],
+    "tags": [
+      "feature",
+      "layer",
+      "metadata",
+      "update"
+    ],
+    "aliases": [
+      "edit layer metadata",
+      "set feature layer description"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "metadata.get"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 32768
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 32768
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 32768
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "credits": {
+          "type": "string",
+          "maxLength": 32768
+        },
+        "useLimitations": {
+          "type": "string",
+          "maxLength": 32768
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "project.get": {
+    "id": "project.get",
+    "version": "1.0.0",
+    "title": "Get project",
+    "summary": "Returns the current ArcGIS Pro project identity, path, dirty state, and revision.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [],
+    "tags": [
+      "project",
+      "state",
+      "workspace"
+    ],
+    "aliases": [
+      "current project",
+      "workspace state"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "project.open",
+      "project.save",
+      "map.list"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "Project": {
+          "type": "object",
+          "properties": {
+            "Name": {
+              "description": "Project name; null when no project is open."
+            },
+            "Uri": {
+              "description": "Project path; null when no project is open."
+            },
+            "IsDirty": {
+              "type": "boolean"
+            },
+            "IsOpen": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "Name",
+            "Uri",
+            "IsDirty",
+            "IsOpen"
+          ],
+          "additionalProperties": false
+        },
+        "Revision": {
+          "type": "string"
+        },
+        "CapturedAt": {
+          "description": "ISO 8601 date-time.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "Project",
+        "Revision",
+        "CapturedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "project.open": {
+    "id": "project.open",
+    "version": "1.0.0",
+    "title": "Open project",
+    "summary": "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Unsaved changes are handled by ArcGIS Pro\u0027s normal project lifecycle.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISUiThread",
+    "requiresConfirmation": true,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [],
+    "tags": [
+      "open",
+      "project",
+      "workspace"
+    ],
+    "aliases": [
+      "open aprx",
+      "switch project"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "project.get",
+      "map.list"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "project.save": {
+    "id": "project.save",
+    "version": "1.0.0",
+    "title": "Save project",
+    "summary": "Saves the current ArcGIS Pro project to disk. Requires local approval because it persists every pending change in the .aprx.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISUiThread",
+    "requiresConfirmation": true,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [],
+    "tags": [
+      "project",
+      "save",
+      "workspace"
+    ],
+    "aliases": [
+      "save aprx",
+      "persist project"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "project.get"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "style.search": {
+    "id": "style.search",
+    "version": "1.0.0",
+    "title": "Search project styles",
+    "summary": "Searches symbols in referenced project styles without loading the full style catalog into model context.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "search",
+      "style",
+      "symbol"
+    ],
+    "aliases": [
+      "find symbol",
+      "search symbols"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "symbology.set-simple"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "point",
+            "line",
+            "polygon",
+            "text"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "symbology.set-simple": {
+    "id": "symbology.set-simple",
+    "version": "1.0.0",
+    "title": "Set simple symbology",
+    "summary": "Applies a single-symbol renderer appropriate to a point, line, or polygon feature layer.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": true,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "cartography",
+      "color",
+      "renderer",
+      "symbology"
+    ],
+    "aliases": [
+      "change color",
+      "simple renderer",
+      "restyle layer"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "style.search",
+      "layer.set-appearance",
+      "label.configure"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$"
+        },
+        "size": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "outlineColor": {
+          "type": "string"
+        },
+        "outlineWidth": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "layer",
+        "color"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "symbology.set-unique-values": {
+    "id": "symbology.set-unique-values",
+    "version": "1.0.0",
+    "title": "Style polygon categories",
+    "summary": "Applies explicitly specified colors and labels to values in one polygon-layer field.",
+    "risk": "SafeWrite",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "categories",
+      "land use",
+      "symbology",
+      "unique values",
+      "zoning"
+    ],
+    "aliases": [],
+    "examples": [],
+    "relatedOperations": [],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "classes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "color": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value",
+              "color"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "defaultColor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "layer",
+        "field",
+        "classes"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": null
+  },
+  "table.query": {
+    "id": "table.query",
+    "version": "1.0.0",
+    "title": "Query feature attributes",
+    "summary": "Runs a bounded read-only attribute query against a feature layer and returns plain JSON rows plus schema metadata.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "attributes",
+      "database",
+      "query",
+      "sql",
+      "table"
+    ],
+    "aliases": [
+      "query geodata",
+      "select rows",
+      "inspect attributes"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "table.statistics",
+      "gp.run"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "where": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        }
+      },
+      "required": [
+        "layer"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "where": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "returned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "description": "Field name to plain JSON value.",
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "map",
+        "layer",
+        "where",
+        "fields",
+        "returned",
+        "limit",
+        "rows"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "table.statistics": {
+    "id": "table.statistics",
+    "version": "1.0.0",
+    "title": "Summarize numeric field",
+    "summary": "Computes bounded read-only count, null count, minimum, maximum, sum, and mean statistics for one numeric feature-layer field.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISMainCimThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "maps"
+    ],
+    "tags": [
+      "analysis",
+      "database",
+      "statistics",
+      "table"
+    ],
+    "aliases": [
+      "field stats",
+      "average",
+      "min max",
+      "summarize values"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "table.query",
+      "gp.run"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "layer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "map": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "where": {
+          "type": "string"
+        },
+        "sampleLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        }
+      },
+      "required": [
+        "layer",
+        "field"
+      ],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "string"
+        },
+        "layer": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "fieldType": {
+          "type": "string"
+        },
+        "where": {
+          "type": "string"
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inspected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sampled": {
+          "type": "boolean"
+        },
+        "nullCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "valueCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimum": {
+          "description": "Number; null when no non-null value was inspected."
+        },
+        "maximum": {
+          "description": "Number; null when no non-null value was inspected."
+        },
+        "sum": {
+          "type": "number"
+        },
+        "mean": {
+          "description": "Number; null when no non-null value was inspected."
+        }
+      },
+      "required": [
+        "map",
+        "layer",
+        "field",
+        "fieldType",
+        "where",
+        "matched",
+        "inspected",
+        "sampled",
+        "nullCount",
+        "valueCount",
+        "minimum",
+        "maximum",
+        "sum",
+        "mean"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "view.capture": {
+    "id": "view.capture",
+    "version": "1.0.0",
+    "title": "Capture map or layout view",
+    "summary": "Captures the active map view or a named layout as PNG visual evidence and returns a resource handle plus semantic context.",
+    "risk": "ReadOnly",
+    "executionTarget": "ArcGISUiThread",
+    "requiresConfirmation": false,
+    "undoable": false,
+    "executesUserCode": false,
+    "typicalDuration": null,
+    "requiredCapabilities": [
+      "visual-observations"
+    ],
+    "tags": [
+      "capture",
+      "screenshot",
+      "view",
+      "visual evidence"
+    ],
+    "aliases": [
+      "see map",
+      "inspect map",
+      "take screenshot"
+    ],
+    "examples": [],
+    "relatedOperations": [
+      "map.activate",
+      "layout.activate"
+    ],
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "view": {
+          "type": "string",
+          "enum": [
+            "active-map",
+            "layout"
+          ]
+        },
+        "layout": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 4096
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 4096
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "outputSchema": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "description": "Resource URI of the stored PNG.",
+          "type": "string",
+          "minLength": 1
+        },
+        "width": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "sourceKind": {
+          "type": "string",
+          "enum": [
+            "map",
+            "layout"
+          ]
+        },
+        "sourceName": {
+          "type": "string"
+        },
+        "sourceUri": {
+          "type": "string"
+        },
+        "capturedAt": {
+          "description": "ISO 8601 date-time.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "resource",
+        "width",
+        "height",
+        "sourceKind",
+        "sourceName",
+        "sourceUri",
+        "capturedAt"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
