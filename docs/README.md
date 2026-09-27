@@ -33,7 +33,7 @@ flowchart LR
 - **[Architecture](architecture.md)**: process boundaries, the six-step operation lifecycle, threading rules, and how to add a new operation.
 
 ### Operate safely
-- **[Security and operational limits](security.md)**: the trust boundary, revision checks, approval tokens, autonomous mode, idempotency, pipe limits, and `outcome_unknown` semantics.
+- **[Security and operational limits](security.md)**: the trust boundary, revision checks, approval tokens, workflow operation allowlists, audit records, autonomous mode, idempotency, pipe limits, and `outcome_unknown` semantics.
 - **[ArcPy configuration](arcpy.md)**: turning on hash-pinned ArcPy scripts, with their script and working roots, limits, and trust boundary.
 
 ### Verify and release
@@ -48,7 +48,7 @@ The gateway exposes only 16 tools. The full catalog of GIS operations stays serv
 2. `registry_search` / `registry_browse`: find candidate operations by intent.
 3. `registry_describe`: load the schema for the few operations the task needs.
 4. `registry_validate`: check arguments against the schema and the current workspace revision without changing anything. It does not resolve layers or paths.
-5. `registry_invoke`: run the operation with the revision. Destructive and external-side-effect operations first need `approval_request`, a person approving in the panel, and `approval_status` to return a single-use token.
+5. `registry_invoke`: run the operation with the revision. Confirmation-gated operations (every destructive or external-side-effect operation, plus `project.open`, `project.save` and `feature.update`) first need `approval_request`, a person approving in the panel, and `approval_status` to return a single-use token.
 6. `resource_read`: fetch returned images and larger observations by `arcgis://` handle.
 
-Reusable multi-step recipes go through `workflow_list` → `workflow_get` → `workflow_run`, and `skill_search` / `skill_get` supply the guidance for them. In default mode a workflow cannot run confirmation-gated steps, because there is no per-step approval yet. See the [reference](reference.md) for every tool and operation.
+Reusable multi-step recipes go through `workflow_list` → `workflow_get` → `workflow_run`, and `skill_search` / `skill_get` supply the guidance for them. In default mode a workflow cannot run confirmation-gated steps, because there is no per-step approval yet. A workflow stops with `workspace_changed` if the project changes while it runs. See the [reference](reference.md) for every tool and operation.

@@ -185,7 +185,7 @@ internal sealed class FeatureUpdateOperation() : ProOperationBase(OperationDescr
     JsonSchemas.ObjectSchema(
         "\"layer\": {\"type\": \"string\", \"minLength\": 1}, \"map\": {\"type\": \"string\"}, \"target\": {\"type\": \"object\", \"properties\": {\"objectId\": {\"type\": \"integer\", \"minimum\": 0}, \"globalId\": {\"type\": \"string\", \"minLength\": 32, \"maxLength\": 38}}, \"minProperties\": 1, \"maxProperties\": 1, \"additionalProperties\": false}, \"attributes\": {\"type\": \"object\", \"additionalProperties\": true}, \"geometry\": {\"type\": \"object\", \"properties\": {\"type\": {\"type\": \"string\", \"enum\": [\"point\", \"polyline\", \"polygon\"]}, \"x\": {\"type\": \"number\"}, \"y\": {\"type\": \"number\"}, \"z\": {\"type\": \"number\"}, \"coordinates\": {\"type\": \"array\", \"minItems\": 2, \"items\": {\"type\": \"array\", \"minItems\": 2, \"maxItems\": 3, \"items\": {\"type\": \"number\"}}}}, \"required\": [\"type\"], \"additionalProperties\": false}",
         "layer", "target"),
-    risk: OperationRisk.SafeWrite, capabilities: ["maps"], tags: ["feature", "update", "edit", "geometry", "attributes"],
+    risk: OperationRisk.SafeWrite, requiresConfirmation: true, capabilities: ["maps"], tags: ["feature", "update", "edit", "geometry", "attributes"],
     related: ["feature.layer.describe", "feature.create", "feature.delete"], undoable: true))
 {
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)

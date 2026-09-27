@@ -103,12 +103,25 @@ public sealed class OperationRegistry : IOperationRegistry
         return new SearchHit(descriptor, score, matches.ToImmutable());
     }
 
-    private static string[] Tokenize(string? text) =>
-        string.IsNullOrWhiteSpace(text)
-            ? []
-            : text.Split([' ', '\t', '\r', '\n', '.', '_', '-'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+    // Articles and prepositions only. They substring-match almost every summary ("the", "a"),
+    // inflating scores and defeating the all-terms bonus. Domain words are never listed here.
+    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "a", "an", "the",
+        "about", "at", "by", "for", "from", "in", "into", "of", "on", "onto", "to", "with"
+    };
+
+    private static string[] Tokenize(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return [];
+        var tokens = text.Split([' ', '\t', '\r', '\n', '.', '_', '-'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var meaningful = tokens.Where(token => !StopWords.Contains(token)).ToArray();
+        // A query made only of stop words keeps its terms rather than silently matching everything.
+        return meaningful.Length == 0 ? tokens : meaningful;
+    }
 
     private static void Validate(OperationDescriptor descriptor)
     {

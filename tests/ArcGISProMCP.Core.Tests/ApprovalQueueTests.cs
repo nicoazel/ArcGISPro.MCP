@@ -103,6 +103,26 @@ public sealed class ApprovalServiceTests
         Assert.Equal("revision-1", pending.WorkspaceRevision);
     }
 
+    [Fact]
+    public void ExclusiveRequestNeverReusesAPendingEntry()
+    {
+        using var queue = new ApprovalService(lifetime: TimeSpan.FromMinutes(2));
+        var descriptor = Descriptor();
+        var workspace = Workspace("revision-1");
+        var arguments = Json("{\"path\":\"C:/projects/city.aprx\"}");
+
+        var remote = queue.Request(descriptor, arguments, workspace);
+        var reused = queue.Request(descriptor, arguments, workspace);
+        var exclusive = queue.Request(descriptor, arguments, workspace, reuseExisting: false);
+
+        Assert.Equal(remote.Id, reused.Id);
+        Assert.NotEqual(remote.Id, exclusive.Id);
+        Assert.True(queue.TryResolve(exclusive.Id, ApprovalResolution.ApproveOnce));
+        // Approving the exclusive entry leaves the remotely queued request pending for its own review.
+        Assert.Equal(ApprovalRequestState.Pending, queue.GetStatus(remote.Id)!.State);
+        Assert.Equal(remote.Id, Assert.Single(queue.GetPending()).Id);
+    }
+
     private static OperationDescriptor Descriptor() => OperationDescriptor.Create(
         "operation.test",
         "Test operation",

@@ -5,7 +5,7 @@ namespace ArcGISProMCP.AddIn.Operations;
 
 internal static class ProOperationCatalog
 {
-    public static IReadOnlyList<IOperation> Create(FileResourceStore resources)
+    public static IReadOnlyList<IOperation> Create(ProResourceStore resources)
     {
         var operations = new List<IOperation>
         {

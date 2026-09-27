@@ -103,7 +103,8 @@ internal sealed record ApprovalSnapshot(
     ApprovalRisk Risk,
     string RequestedAtText,
     string ExpiresAtText,
-    bool IsDeciding);
+    bool IsDeciding,
+    string? Warning = null);
 
 internal sealed record VisualEvidenceSnapshot(
     string? ImagePath,
@@ -135,7 +136,6 @@ internal sealed record PanelStateSnapshot(
     VisualEvidenceSnapshot VisualEvidence,
     IReadOnlyList<ActivitySnapshot> Activity,
     IReadOnlyList<WorkflowSnapshot> Workflows,
-    int SkillCount,
     string FooterStatus,
     bool CanCancelOperation)
 {
@@ -173,7 +173,6 @@ internal sealed record PanelStateSnapshot(
                 false)
         },
         Array.Empty<WorkflowSnapshot>(),
-        0,
         "Visual evidence on request",
         false);
 }

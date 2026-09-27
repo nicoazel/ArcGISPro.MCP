@@ -39,17 +39,7 @@ public sealed class SkillTools
         return JsonSerializer.Serialize(skill, JsonOptions);
     }
 
-    private static async Task<IReadOnlyList<SkillManifest>> LoadAsync(CancellationToken cancellationToken)
-    {
-        var root = Path.Combine(AppContext.BaseDirectory, "skills");
-        if (!Directory.Exists(root)) return [];
-        var skills = new List<SkillManifest>();
-        foreach (var path in Directory.EnumerateFiles(root, "*.skill.json").Take(100))
-        {
-            await using var stream = File.OpenRead(path);
-            var skill = await JsonSerializer.DeserializeAsync<SkillManifest>(stream, JsonOptions, cancellationToken).ConfigureAwait(false);
-            if (skill is not null) skills.Add(skill);
-        }
-        return skills;
-    }
+    // Manifests without a non-empty allowedOperations are skipped by the catalog.
+    private static Task<IReadOnlyList<SkillManifest>> LoadAsync(CancellationToken cancellationToken) =>
+        SkillCatalog.LoadAsync(Path.Combine(AppContext.BaseDirectory, "skills"), cancellationToken);
 }

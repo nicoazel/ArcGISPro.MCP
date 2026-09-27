@@ -73,6 +73,44 @@ public sealed partial class PanelBindingSafetyTests
             $"The approval card no longer exposes required immutable review fields: {string.Join(", ", missing)}");
     }
 
+    [Fact]
+    public void ApprovalCardShowsTheUserCodeWarningOnlyWhenPresent()
+    {
+        var document = LoadDockPaneXaml();
+        var warning = Assert.Single(
+            document.Descendants().Where(element => element.Name.LocalName == "TextBlock"),
+            element => element.Attribute("Text")?.Value is { } text && BindingPathPattern("Warning").IsMatch(text));
+
+        Assert.True(IsExplicitOneWay(warning.Attribute("Text")!.Value));
+        var container = warning.Parent!;
+        Assert.Equal("Border", container.Name.LocalName);
+        Assert.Matches(BindingPathPattern("HasWarning"), container.Attribute("Visibility")?.Value ?? string.Empty);
+        Assert.Contains("BooleanToVisibility", container.Attribute("Visibility")!.Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ApprovalWarningIsComputedFromTheCoreDetector()
+    {
+        var root = LocateRepositoryFile("src", "ArcGISProMCP.AddIn", "Services", "ProPanelStateSource.cs");
+        var source = File.ReadAllText(root);
+
+        Assert.Contains("UserCodeExecutionDetector.GetWarning(operation.Descriptor, approval.Arguments)", source, StringComparison.Ordinal);
+        Assert.Contains("UserCodeWarning(approval)", source, StringComparison.Ordinal);
+    }
+
+    private static string LocateRepositoryFile(params string[] segments)
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
+             directory is not null;
+             directory = directory.Parent)
+        {
+            var candidate = Path.Combine(new[] { directory.FullName }.Concat(segments).ToArray());
+            if (File.Exists(candidate)) return candidate;
+        }
+
+        throw new FileNotFoundException(Path.Combine(segments));
+    }
+
     private static bool IsExplicitOneWay(string binding) => OneWayModePattern().IsMatch(binding);
 
     private static XDocument LoadDockPaneXaml()

@@ -16,7 +16,7 @@ internal sealed class ProBridgeRequestHandler(
     IOperationRegistry registry,
     OperationContext baseContext,
     IWorkflowLibrary workflows,
-    FileResourceStore resources,
+    ProResourceStore resources,
     BridgeAccessState access) : IBridgeRequestHandler, IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -61,6 +61,12 @@ internal sealed class ProBridgeRequestHandler(
         {
             return Failure(request.RequestId, exception.Code, exception.Message, exception.Retryable);
         }
+        catch (OperationCanceledException) when (baseContext.ApplicationStopping.IsCancellationRequested)
+        {
+            // Checked before caller cancellation: the pipe server cancels in-flight requests with its own
+            // stopping token on shutdown, and keyed work runs under the host lifetime.
+            return Failure(request.RequestId, "host_stopping", "ArcGIS Pro is shutting down, so the request did not complete. A write may already have been accepted; check state on the next host before repeating it.", true);
+        }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             return Failure(request.RequestId, "request_cancelled", "The bridge request was cancelled.", true);
@@ -90,7 +96,9 @@ internal sealed class ProBridgeRequestHandler(
         var query = new OperationQuery(
             OptionalString(parameters, "query"),
             OptionalString(parameters, "domain"),
-            Limit: Integer(parameters, "limit", 12));
+            OptionalStringSet(parameters, "capabilities"),
+            OptionalRisk(parameters, "maxRisk"),
+            Integer(parameters, "limit", 12));
         var hits = registry.Search(query).Select(hit => new
         {
             operation = Compact(hit.Descriptor),
@@ -174,10 +182,13 @@ internal sealed class ProBridgeRequestHandler(
             if (idempotencyKey.Length > 128)
                 throw new BridgeException("invalid_idempotency_key", "Idempotency keys must be at most 128 characters.");
             var fingerprint = Fingerprint(operationId, arguments, expectedRevision);
+            // Keyed work is shared by every caller presenting the same key, so it must not be bound
+            // to whichever caller happened to arrive first. It runs under the host lifetime; each
+            // caller's own token only stops that caller from waiting.
             var candidate = new IdempotencyEntry(
                 fingerprint,
                 new Lazy<Task<OperationResult>>(
-                    () => ExecuteAsync(request, correlationId, cancellationToken),
+                    () => ExecuteAsync(request, correlationId, baseContext.ApplicationStopping),
                     LazyThreadSafetyMode.ExecutionAndPublication));
             IdempotencyEntry entry;
             lock (_idempotencyGate)
@@ -193,7 +204,7 @@ internal sealed class ProBridgeRequestHandler(
                 throw new BridgeException("idempotency_conflict", "The idempotency key was already used with a different operation, arguments, or workspace revision.");
             // Keep faulted executions cached too: an exception may follow an accepted write.
             // Eviction must not turn an uncertain outcome into an accidental duplicate mutation.
-            result = await entry.Result.Value.ConfigureAwait(false);
+            result = await entry.Result.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (result.ErrorCode == "confirmation_required")
                 _idempotency.TryRemove(new KeyValuePair<string, IdempotencyEntry>(idempotencyKey, entry));
         }
@@ -274,7 +285,14 @@ internal sealed class ProBridgeRequestHandler(
             throw new BridgeException("invalid_workflow", "workflow must be a JSON object.");
         var workflow = element.Deserialize<WorkflowDefinition>(JsonOptions)
             ?? throw new BridgeException("invalid_workflow", "Workflow definition could not be parsed.");
-        await workflows.SaveAsync(workflow, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await workflows.SaveAsync(workflow, cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new BridgeException("invalid_workflow", exception.Message);
+        }
         return JsonSerializer.SerializeToElement(new { saved = true, workflow.Id, workflow.Version }, JsonOptions);
     }
 
@@ -289,9 +307,9 @@ internal sealed class ProBridgeRequestHandler(
             throw new BridgeException("workflow_version_required", "Pin the immutable workflow version when using an idempotency key.");
         var workflow = await workflows.GetAsync(id, requestedVersion, cancellationToken).ConfigureAwait(false)
             ?? throw new BridgeException("workflow_not_found", $"Workflow '{id}' was not found.");
-        Task<JsonElement> Run() => WithExecutionGateAsync(
-            () => RunWorkflowCoreAsync(workflow, parameters, correlationId, cancellationToken), cancellationToken);
-        if (key is null) return await Run().ConfigureAwait(false);
+        Task<JsonElement> Run(CancellationToken token) => WithExecutionGateAsync(
+            () => RunWorkflowCoreAsync(workflow, parameters, correlationId, token), token);
+        if (key is null) return await Run(cancellationToken).ConfigureAwait(false);
         var fingerprint = Fingerprint(id + "@" + workflow.Version, RequiredObject(parameters, "parameters"), OptionalString(parameters, "expectedRevision"));
         WorkflowIdempotencyEntry entry;
         lock (_idempotencyGate)
@@ -300,19 +318,21 @@ internal sealed class ProBridgeRequestHandler(
             {
                 if (_workflowIdempotency.Count + _idempotency.Count >= 2048)
                     throw new BridgeException("idempotency_capacity", "This Pro session reached its 2048-key idempotency limit.");
-                _workflowIdempotency[key] = entry = new(fingerprint, new Lazy<Task<JsonElement>>(Run, LazyThreadSafetyMode.ExecutionAndPublication));
+                _workflowIdempotency[key] = entry = new(fingerprint, new Lazy<Task<JsonElement>>(
+                    // Shared keyed run: bound to the host lifetime, not the first caller's token.
+                    () => Run(baseContext.ApplicationStopping), LazyThreadSafetyMode.ExecutionAndPublication));
             }
         }
         if (entry.Fingerprint != fingerprint)
             throw new BridgeException("idempotency_conflict", "The workflow key is bound to different parameters, version or revision.");
-        return await entry.Result.Value.ConfigureAwait(false);
+        return await entry.Result.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<JsonElement> RunWorkflowCoreAsync(WorkflowDefinition workflow, JsonElement parameters, string correlationId, CancellationToken cancellationToken)
     {
         var validation = await workflows.ValidateAsync(workflow, cancellationToken).ConfigureAwait(false);
         if (!validation.IsValid)
-            throw new BridgeException("invalid_workflow", string.Join(" ", validation.Issues.Select(issue => issue.Message)));
+            throw new BridgeException("invalid_workflow", string.Join(" ", validation.Issues.Select(issue => $"{issue.Code}: {issue.Message}")));
         var suppliedParameters = RequiredObject(parameters, "parameters");
         IReadOnlyDictionary<string, JsonElement> boundParameters;
         try
@@ -345,8 +365,9 @@ internal sealed class ProBridgeRequestHandler(
         var failedCount = 0;
         string? historyWarning = null;
         var results = new List<object>();
-        foreach (var step in workflow.Steps)
+        for (var stepIndex = 0; stepIndex < workflow.Steps.Length; stepIndex++)
         {
+            var step = workflow.Steps[stepIndex];
             if (step.DependsOn.Any(dependency => !completed.Contains(dependency)))
                 throw new BridgeException("workflow_order_invalid", $"Step '{step.Id}' appears before one of its dependencies.");
             if (step.DependsOn.Any(failedSteps.Contains))
@@ -368,33 +389,40 @@ internal sealed class ProBridgeRequestHandler(
             }
             var result = await ExecuteCoreAsync(new OperationRequest(step.Operation, stepArguments, revision), $"{correlationId}:{step.Id}", cancellationToken).ConfigureAwait(false);
             if (!result.Success &&
-                string.Equals(result.ErrorCode, "workspace_revision_mismatch", StringComparison.Ordinal) &&
-                !string.IsNullOrWhiteSpace(result.WorkspaceRevision))
+                string.Equals(result.ErrorCode, "workspace_revision_mismatch", StringComparison.Ordinal))
             {
-                // The workflow's caller revision is validated before the batch begins. ArcGIS Pro
-                // can publish delayed map-member/layout notifications after a successful SDK write,
-                // advancing the revision between serialized steps. A mismatch is raised before the
-                // operation executes, so retrying once at the newly observed revision cannot repeat
-                // a mutation. Direct operation calls retain strict fail-closed concurrency behavior.
-                var rejectedRevision = revision;
-                revision = result.WorkspaceRevision;
-                result = await ExecuteCoreAsync(
-                    new OperationRequest(step.Operation, stepArguments, revision),
-                    $"{correlationId}:{step.Id}:revision-refresh",
-                    cancellationToken).ConfigureAwait(false);
-                if (result.Success)
+                // The workspace changed between serialized steps (a person edited the project, or
+                // ArcGIS Pro published a delayed notification). The mismatch is detected before the
+                // step executes, so nothing ran. Never silently adopt the newer revision: that would
+                // authorize the remaining writes against state nobody reviewed. Stop regardless of
+                // ContinueOnError and let the caller refresh state and decide how to proceed.
+                results.Add(new { step = step.Id, operation = step.Operation, result.Success, result.ErrorCode, result.Message, result.WorkspaceRevision, result.Data, result.Resources, result.Notices });
+                failedCount++;
+                await RecordRunAsync("failed", startedAt, succeededCount, failedCount).ConfigureAwait(false);
+                return JsonSerializer.SerializeToElement(new
                 {
-                    result = result with
-                    {
-                        Notices = result.Notices.Add(new OperationNotice(
-                            "workflow_revision_refreshed",
-                            $"ArcGIS Pro advanced the workspace revision from '{rejectedRevision}' to '{revision}' between serialized workflow steps; the rejected step was retried once before execution.",
-                            "info"))
-                    };
-                }
+                    success = false,
+                    errorCode = "workspace_changed",
+                    message = $"The workspace changed before step '{step.Id}' (index {stepIndex}) executed. Completed steps are not rolled back. Refresh state with system_get_state and review before continuing.",
+                    workflow.Id,
+                    workflow.Version,
+                    stoppedAtStep = step.Id,
+                    stepIndex,
+                    expectedRevision = revision,
+                    currentRevision = result.WorkspaceRevision,
+                    results,
+                    revision = result.WorkspaceRevision,
+                    historyWarning
+                }, JsonOptions);
             }
             results.Add(new { step = step.Id, operation = step.Operation, result.Success, result.ErrorCode, result.Message, result.WorkspaceRevision, result.Data, result.Resources, result.Notices });
-            revision = result.WorkspaceRevision;
+            // Only a successful write advances the expected revision, to the revision it produced.
+            // A read-only step or a failed (continueOnError) step reports whatever the workspace
+            // currently is; adopting that would launder an unreviewed mid-run change into
+            // authorization for the remaining writes.
+            if (result.Success && registry.TryGet(step.Operation, out var executed) &&
+                executed.Descriptor.Risk != OperationRisk.ReadOnly)
+                revision = result.WorkspaceRevision;
             if (result.Success) succeededCount++;
             else { failedCount++; failedSteps.Add(step.Id); }
             if (!result.Success && !step.ContinueOnError)
@@ -460,6 +488,7 @@ internal sealed class ProBridgeRequestHandler(
         descriptor.Tags,
         descriptor.RequiredCapabilities,
         descriptor.RequiresConfirmation,
+        descriptor.ExecutesUserCode,
         descriptor.TypicalDuration
     };
 
@@ -474,6 +503,39 @@ internal sealed class ProBridgeRequestHandler(
     private static string? OptionalString(JsonElement parameters, string name) =>
         parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString() : null;
+
+    private static ImmutableHashSet<string>? OptionalStringSet(JsonElement parameters, string name)
+    {
+        if (parameters.ValueKind != JsonValueKind.Object || !parameters.TryGetProperty(name, out var value) ||
+            value.ValueKind == JsonValueKind.Null)
+            return null;
+        if (value.ValueKind != JsonValueKind.Array)
+            throw new BridgeException("invalid_parameters", $"'{name}' must be an array of strings.");
+        var items = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(item.GetString()))
+                throw new BridgeException("invalid_parameters", $"'{name}' must be an array of non-empty strings.");
+            items.Add(item.GetString()!.Trim());
+        }
+        return items.Count == 0 ? null : items.ToImmutable();
+    }
+
+    private static OperationRisk? OptionalRisk(JsonElement parameters, string name)
+    {
+        var text = OptionalString(parameters, name);
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+        // Accept ReadOnly, readOnly, read_only, read-only; reject numeric aliases.
+        var normalized = text.Trim().Replace("_", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
+        foreach (var risk in Enum.GetValues<OperationRisk>())
+        {
+            if (string.Equals(risk.ToString(), normalized, StringComparison.OrdinalIgnoreCase))
+                return risk;
+        }
+        throw new BridgeException("invalid_parameters",
+            $"'{name}' must be one of {string.Join(", ", Enum.GetNames<OperationRisk>())}.");
+    }
 
     private static int Integer(JsonElement parameters, string name, int defaultValue) =>
         parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty(name, out var value) && value.TryGetInt32(out var parsed)

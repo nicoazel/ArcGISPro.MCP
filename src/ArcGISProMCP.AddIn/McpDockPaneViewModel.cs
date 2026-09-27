@@ -93,7 +93,6 @@ namespace ArcGISProMCP.AddIn
         public ICommand OpenSettingsCommand => _openSettingsCommand;
 
         public bool CanCancelOperation { get; private set; }
-        public int SkillCount { get; private set; }
         public string FooterStatus { get; private set; } = string.Empty;
         public string ErrorMessage
         {
@@ -162,10 +161,8 @@ namespace ArcGISProMCP.AddIn
             Workflows.Apply(snapshot.Workflows);
 
             CanCancelOperation = snapshot.CanCancelOperation;
-            SkillCount = snapshot.SkillCount;
             FooterStatus = snapshot.FooterStatus;
             NotifyPropertyChanged(nameof(CanCancelOperation));
-            NotifyPropertyChanged(nameof(SkillCount));
             NotifyPropertyChanged(nameof(FooterStatus));
             RaiseCommandStates();
         }
@@ -363,6 +360,7 @@ namespace ArcGISProMCP.AddIn.UI
             RequestedAtText = snapshot.RequestedAtText;
             ExpiresAtText = snapshot.ExpiresAtText;
             IsDeciding = snapshot.IsDeciding;
+            Warning = snapshot.Warning;
             ApproveCommand = new AsyncCommand(
                 token => resolve(Id, ApprovalDecision.ApproveOnce, token),
                 reportError,
@@ -384,6 +382,8 @@ namespace ArcGISProMCP.AddIn.UI
         public string RequestedAtText { get; }
         public string ExpiresAtText { get; }
         public bool IsDeciding { get; }
+        public string? Warning { get; }
+        public bool HasWarning => !string.IsNullOrWhiteSpace(Warning);
         public bool IsExpanded { get => _isExpanded; set => Set(ref _isExpanded, value); }
         public ICommand ApproveCommand { get; }
         public ICommand RejectCommand { get; }

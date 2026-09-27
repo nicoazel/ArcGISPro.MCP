@@ -67,6 +67,73 @@ public sealed class OperationExecutorTests
         Assert.Equal(0, fixture.Operation.CallCount);
     }
 
+    [Fact]
+    public async Task Unknown_operation_id_is_audited_as_operation_not_found()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
+
+        var result = await fixture.ExecuteAsync(expectedRevision: null, operationId: "does.not.exist");
+
+        Assert.False(result.Success);
+        Assert.Equal("operation_not_found", result.ErrorCode);
+        var auditEvent = Assert.Single(fixture.Audit.Events);
+        Assert.Equal("does.not.exist", auditEvent.OperationId);
+        Assert.Equal("unknown", auditEvent.OperationVersion);
+        Assert.Equal("operation_not_found", auditEvent.ErrorCode);
+        Assert.Equal(OperationAuditKinds.Operation, auditEvent.Kind);
+        Assert.False(auditEvent.Success);
+        Assert.False(auditEvent.AutonomousBypass);
+    }
+
+    [Fact]
+    public async Task Unknown_operation_id_audit_failure_adds_a_notice()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
+        fixture.Audit.Fail = true;
+
+        var result = await fixture.ExecuteAsync(expectedRevision: null, operationId: "does.not.exist");
+
+        Assert.Equal("operation_not_found", result.ErrorCode);
+        var notice = Assert.Single(result.Notices);
+        Assert.Equal("audit_write_failed", notice.Code);
+    }
+
+    [Fact]
+    public async Task Known_operation_audit_failure_adds_a_notice()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.SafeWrite);
+        fixture.Audit.Fail = true;
+
+        var result = await fixture.ExecuteAsync(expectedRevision: ExecutorFixture.Revision);
+
+        Assert.True(result.Success);
+        Assert.Equal("audit_write_failed", Assert.Single(result.Notices).Code);
+    }
+
+    [Fact]
+    public async Task Oversized_unknown_operation_id_is_truncated_in_the_audit_record()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
+
+        await fixture.ExecuteAsync(expectedRevision: null, operationId: new string('x', 5000));
+
+        var auditEvent = Assert.Single(fixture.Audit.Events);
+        Assert.True(auditEvent.OperationId.Length < 300);
+    }
+
+    [Fact]
+    public async Task Ordinary_operation_audit_records_default_kind_and_no_bypass()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.SafeWrite);
+
+        await fixture.ExecuteAsync(expectedRevision: ExecutorFixture.Revision);
+
+        var auditEvent = Assert.Single(fixture.Audit.Events);
+        Assert.Equal(OperationAuditKinds.Operation, auditEvent.Kind);
+        Assert.False(auditEvent.AutonomousBypass);
+        Assert.Null(auditEvent.Decision);
+    }
+
     private sealed class ExecutorFixture
     {
         internal const string Revision = "revision-1";
@@ -91,10 +158,10 @@ public sealed class OperationExecutorTests
             _executor = new OperationExecutor(registry, context);
         }
 
-        internal Task<OperationResult> ExecuteAsync(string? expectedRevision, bool dryRun = false) =>
+        internal Task<OperationResult> ExecuteAsync(string? expectedRevision, bool dryRun = false, string? operationId = null) =>
             _executor.ExecuteAsync(
                 new OperationRequest(
-                    Operation.Descriptor.Id,
+                    operationId ?? Operation.Descriptor.Id,
                     JsonSerializer.SerializeToElement(new { }),
                     expectedRevision,
                     DryRun: dryRun),
@@ -157,9 +224,11 @@ public sealed class OperationExecutorTests
     private sealed class CapturingAuditLog : IOperationAuditLog
     {
         internal List<OperationAuditEvent> Events { get; } = [];
+        internal bool Fail { get; set; }
 
         public ValueTask WriteAsync(OperationAuditEvent auditEvent, CancellationToken cancellationToken)
         {
+            if (Fail) return ValueTask.FromException(new IOException("audit sink unavailable"));
             Events.Add(auditEvent);
             return ValueTask.CompletedTask;
         }

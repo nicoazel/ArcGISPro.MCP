@@ -13,13 +13,26 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
         var startSnapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         var correlationId = context.CorrelationId;
         var descriptor = default(OperationDescriptor);
+        var autonomousBypass = false;
         OperationResult result;
 
         try
         {
             if (!registry.TryGet(request.OperationId, out var operation))
             {
-                return OperationResult.Fail("operation_not_found", $"Unknown operation '{request.OperationId}'.", startSnapshot.Revision);
+                result = OperationResult.Fail("operation_not_found", $"Unknown operation '{request.OperationId}'.", startSnapshot.Revision);
+                var unknownWritten = await WriteAuditAsync(new OperationAuditEvent(
+                    correlationId,
+                    AuditOperationId(request.OperationId),
+                    "unknown",
+                    start,
+                    DateTimeOffset.UtcNow,
+                    false,
+                    startSnapshot.Revision,
+                    startSnapshot.Revision,
+                    result.ErrorCode,
+                    Hash(request.Arguments))).ConfigureAwait(false);
+                return unknownWritten ? result : WithAuditFailureNotice(result);
             }
 
             descriptor = operation.Descriptor;
@@ -53,6 +66,7 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
                 if (context.Confirmation is IAutonomousExecutionPolicy { AllowsUnattendedRiskyOperations: true })
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    autonomousBypass = true;
                     result = await ExecuteOrDescribeAsync(operation, descriptor, request, startSnapshot.Revision, context, cancellationToken)
                         .ConfigureAwait(false);
                     result = result with
@@ -101,33 +115,50 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
 
         if (descriptor is not null)
         {
-            try
-            {
-                await context.Audit.WriteAsync(new OperationAuditEvent(
-                    correlationId,
-                    descriptor.Id,
-                    descriptor.Version,
-                    start,
-                    DateTimeOffset.UtcNow,
-                    result.Success,
-                    startSnapshot.Revision,
-                    result.WorkspaceRevision,
-                    result.ErrorCode,
-                    Hash(request.Arguments)), CancellationToken.None).ConfigureAwait(false);
-            }
-            catch (Exception exception)
-            {
-                // Observability failure must not hide the known outcome of an accepted mutation.
-                System.Diagnostics.Trace.TraceError("Operation audit write failed: {0}", exception);
-                result = result with
-                {
-                    Notices = result.Notices.Add(new OperationNotice(
-                    "audit_write_failed", "Operation result is known, but the audit record could not be persisted. Inspect host diagnostics before further work.", "warning"))
-                };
-            }
+            var written = await WriteAuditAsync(new OperationAuditEvent(
+                correlationId,
+                descriptor.Id,
+                descriptor.Version,
+                start,
+                DateTimeOffset.UtcNow,
+                result.Success,
+                startSnapshot.Revision,
+                result.WorkspaceRevision,
+                result.ErrorCode,
+                Hash(request.Arguments),
+                AutonomousBypass: autonomousBypass)).ConfigureAwait(false);
+            // Observability failure must not hide the known outcome of an accepted mutation.
+            if (!written) result = WithAuditFailureNotice(result);
         }
 
         return result;
+    }
+
+    private static OperationResult WithAuditFailureNotice(OperationResult result) => result with
+    {
+        Notices = result.Notices.Add(new OperationNotice(
+            "audit_write_failed", "Operation result is known, but the audit record could not be persisted. Inspect host diagnostics before further work.", "warning"))
+    };
+
+    private async Task<bool> WriteAuditAsync(OperationAuditEvent auditEvent)
+    {
+        try
+        {
+            await context.Audit.WriteAsync(auditEvent, CancellationToken.None).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception exception)
+        {
+            System.Diagnostics.Trace.TraceError("Operation audit write failed: {0}", exception);
+            return false;
+        }
+    }
+
+    /// <summary>Unknown ids are caller-controlled; bound what reaches the audit log.</summary>
+    private static string AuditOperationId(string? operationId)
+    {
+        if (string.IsNullOrEmpty(operationId)) return "(empty)";
+        return operationId.Length <= 256 ? operationId : operationId[..256] + "...";
     }
 
     private static async Task<OperationResult> ExecuteOrDescribeAsync(

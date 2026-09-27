@@ -10,7 +10,7 @@ using ArcGISProMCP.Core.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
 
-internal sealed class ViewCaptureOperation(FileResourceStore resources) : ProOperationBase(OperationDescriptor.Create(
+internal sealed class ViewCaptureOperation(ProResourceStore resources) : ProOperationBase(OperationDescriptor.Create(
     "view.capture", "Capture map or layout view",
     "Captures the active map view or a named layout as PNG visual evidence and returns a resource handle plus semantic context.",
     JsonSchemas.ObjectSchema(

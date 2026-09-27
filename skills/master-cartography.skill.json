@@ -7,7 +7,6 @@
   "requiredCapabilities": ["maps", "layouts", "visual-observations"],
   "allowedOperations": [
     "project.get",
-    "project.save",
     "map.ensure",
     "map.activate",
     "map.clear-selection",

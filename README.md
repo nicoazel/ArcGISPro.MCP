@@ -28,7 +28,8 @@ The **[documentation hub](docs/README.md)** is the starting point, with a readin
 - Layout creation, map frames and extents, named text, map surrounds, activation and PNG export; map-view PNG capture.
 - Immutable parameterized workflows, run history/ranking, and searchable bundled skill guidance.
 - Same-user concurrent named-pipe transport, bounded connection slots/framing timeouts, exclusive pipe ownership, serialized host operations, audit records and write revisions.
-- Expiring modeless local review, exact argument/version/revision binding, and single-use approval tokens. Default mode does not allow remote self-approval; an explicit host-startup autonomous mode can bypass review while retaining revision checks and warning notices.
+- Expiring modeless local review, exact argument/version/revision binding, and single-use approval tokens for every destructive or external-side-effect operation plus `project.open`, `project.save` and `feature.update`. Requests that run Python are flagged "Runs user code" on the approval card. Default mode does not allow remote self-approval; an explicit host-startup autonomous mode can bypass review while retaining revision checks, warning notices and audit records.
+- Workflow operation allowlists (`gp.run` and `arcpy.run-script` must be listed explicitly), and workflows that stop with `workspace_changed` instead of adopting a newer revision mid-run.
 
 **Status: development preview.** Supported: interactive same-user workstation with dockpane approvals. Autonomous mode is an opt-in expert setting, not recommended. The operation set is curated, not full coverage of the ArcGIS SDK. See the operation registry for the actual installed capability set. Advanced cartography, workspace connection management, PDF export, durable background jobs and complete cancellation are not release features.
 
@@ -79,6 +80,6 @@ ArcPy is an optional, explicitly enabled external-worker escape hatch; it is not
 
 Autonomous mode (`ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true` for the ArcGIS Pro process before startup) is an opt-in expert setting and is not recommended. It lets the connected same-user client run risky operations, including arbitrary Python through `gp.run` or ArcPy, without panel review. It is off by default, advertised in workspace capabilities and the panel, and does not bypass workspace revisions, schema validation, audit, idempotency, or operation-specific limits.
 
-In default mode, `workflow_run` cannot execute confirmation-gated steps such as `gp.run` or `metadata.update`; there is no per-step approval yet. Run those operations individually through local review.
+In default mode, `workflow_run` cannot execute confirmation-gated steps such as `gp.run`, `metadata.update` or `project.save`; there is no per-step approval yet. Run those operations individually through local review.
 
 Apache-2.0. Esri products require their own licenses.
