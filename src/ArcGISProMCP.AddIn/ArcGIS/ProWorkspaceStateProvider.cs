@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
 using ArcGIS.Desktop.Core;
+using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Layouts;
 using ArcGIS.Desktop.Mapping;
 using ArcGISProMCP.AddIn.Services;
@@ -29,23 +30,39 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
     public Task<WorkspaceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken) =>
         dispatcher.OnMainCimThreadAsync(CreateSnapshot, cancellationToken);
 
-    /// <summary>
-    /// Each sample first waits until the WPF dispatcher reaches application-idle and the main CIM
-    /// thread has drained, so host events queued by the write are published before the revision is read.
-    /// </summary>
-    public Task<WorkspaceSnapshot> GetSettledSnapshotAsync(CancellationToken cancellationToken) =>
-        WorkspaceSnapshotSettler.WaitForSettledSnapshotAsync(async token =>
-        {
-            await WaitForHostIdleAsync(token).ConfigureAwait(false);
-            return await GetSnapshotAsync(token).ConfigureAwait(false);
-        }, cancellationToken);
+    /// <summary>Upper bound for settling one write, drain included.</summary>
+    internal static readonly TimeSpan SettleBudget = TimeSpan.FromSeconds(3);
 
-    private static async Task WaitForHostIdleAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Drains the host once (main CIM thread, then WPF dispatcher application-idle, then the main CIM
+    /// thread again) so host events queued by the write are published, then samples until the
+    /// revision is quiet. The whole settle is bounded by <see cref="SettleBudget"/>; when it runs
+    /// out, a plain snapshot is returned and the revision log records it.
+    /// </summary>
+    public async Task<WorkspaceSnapshot> GetSettledSnapshotAsync(CancellationToken cancellationToken)
     {
+        var result = await WorkspaceSnapshotSettler.SettleWithinBudgetAsync(
+            DrainHostAsync, GetSnapshotAsync, SettleBudget, cancellationToken).ConfigureAwait(false);
+        if (result.TimedOut)
+            LogLine($"settle-timeout\t{Interlocked.Read(ref _mutationSequence)}\t{result.Snapshot.Revision}\tbudget {SettleBudget.TotalMilliseconds:0} ms elapsed; published a plain sample");
+        else if (!result.Settled)
+            LogLine($"settle-unsettled\t{Interlocked.Read(ref _mutationSequence)}\t{result.Snapshot.Revision}\t{result.Samples} samples without {WorkspaceSnapshotSettler.RequiredQuietSamples} quiet in a row");
+        return result.Snapshot;
+    }
+
+    private static async Task DrainHostAsync(CancellationToken cancellationToken)
+    {
+        // The write's own MCT work, then UI-thread event handlers (application-idle runs after every
+        // higher-priority dispatcher item), then MCT work those handlers queued.
+        await QueuedTask.Run(static () => { }).WaitAsync(cancellationToken).ConfigureAwait(false);
         var application = System.Windows.Application.Current;
         if (application is not null)
-            await application.Dispatcher.InvokeAsync(static () => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle, cancellationToken).Task.ConfigureAwait(false);
-        await global::ArcGIS.Desktop.Framework.Threading.Tasks.QueuedTask.Run(static () => { }).ConfigureAwait(false);
+        {
+            await application.Dispatcher
+                .InvokeAsync(static () => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle, cancellationToken)
+                .Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        await QueuedTask.Run(static () => { }).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Opt-in diagnostics: <c>ARCGIS_PRO_MCP_REVISION_LOG=1</c> records every revision change and the state behind it.</summary>
