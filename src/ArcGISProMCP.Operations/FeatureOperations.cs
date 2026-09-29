@@ -73,7 +73,7 @@ internal sealed class FeatureQueryOperation(IFeatureService features) : ProOpera
 
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
-            var layer = features.Describe(target);
+            var layer = features.Schema(target);
             var fields = FeatureOperationSupport.ResolveReadableFields(layer.Fields, requestedFields);
             var filter = FeatureOperationSupport.CreateFilter(arguments, where, layer, fields, relationship);
             var rows = FeatureOperationSupport.ToRows(features.Query(target, filter, limit), fields, limit);
@@ -114,7 +114,7 @@ internal sealed class FeatureSelectOperation(IFeatureService features) : ProOper
             throw new ArgumentException("mode must be 'new' or 'add'.", nameof(arguments));
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
-            var layer = features.Describe(target);
+            var layer = features.Schema(target);
             var filter = FeatureOperationSupport.CreateFilter(arguments, where, layer, [layer.ObjectIdField], relationship);
             var selection = features.Select(target, filter, limit, add: mode == "add");
             return new { map = layer.MapId, layer = layer.LayerId, mode, matched = selection.Matched, selectionCount = selection.SelectionCount, limit };
@@ -246,9 +246,11 @@ internal static class FeatureOperationSupport
             throw new InvalidOperationException($"Layer '{layer.Name}' is not editable. Check layer editability, data-source permissions, and active edit constraints.");
     }
 
-    public static void EnsureFeatureClass(FeatureLayerInfo layer)
+    public static void EnsureFeatureClass(FeatureLayerInfo layer) => EnsureFeatureClass(layer.IsFeatureClass);
+
+    private static void EnsureFeatureClass(bool isFeatureClass)
     {
-        if (!layer.IsFeatureClass)
+        if (!isFeatureClass)
             throw new InvalidOperationException("The layer does not expose a feature-class definition.");
     }
 
@@ -273,7 +275,7 @@ internal static class FeatureOperationSupport
             : throw new ArgumentException("spatialRelationship must be intersects, envelopeIntersects, contains, within, touches, crosses, or overlaps.", nameof(arguments));
     }
 
-    public static string[] ResolveReadableFields(IReadOnlyList<FeatureFieldInfo> fields, string[] requested)
+    public static string[] ResolveReadableFields(IReadOnlyList<FeatureSchemaField> fields, string[] requested)
     {
         var available = fields.Where(field => field.Type != FeatureFieldTypes.Geometry).ToArray();
         return requested.Length == 0
@@ -286,11 +288,11 @@ internal static class FeatureOperationSupport
     /// An attribute filter, or a spatial one (default relationship Intersects) when an envelope
     /// is given. Spatial filters need a feature class; that is checked before the envelope.
     /// </summary>
-    public static FeatureQueryFilter CreateFilter(JsonElement arguments, string where, FeatureLayerInfo layer, IReadOnlyList<string> fields, string? relationship)
+    public static FeatureQueryFilter CreateFilter(JsonElement arguments, string where, FeatureLayerSchema layer, IReadOnlyList<string> fields, string? relationship)
     {
         if (!arguments.TryGetProperty("envelope", out var envelopeElement) || envelopeElement.ValueKind != JsonValueKind.Object)
             return new FeatureQueryFilter(where, fields, null, null);
-        EnsureFeatureClass(layer);
+        EnsureFeatureClass(layer.IsFeatureClass);
         return new FeatureQueryFilter(where, fields, ReadEnvelope(envelopeElement), relationship ?? "Intersects");
     }
 

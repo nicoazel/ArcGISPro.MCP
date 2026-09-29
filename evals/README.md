@@ -16,23 +16,27 @@ run by hand.
 
 ## Current scorecard
 
-Retrieval suites, from [`results/2026-09-26-2290311`](results/2026-09-26-2290311/scorecard.md) (gp suites
-against ArcGIS Pro 3.7.1.1904, 2,210 system tools); these are also the values in `baseline.json`:
+Retrieval suites, from [`results/2026-09-28-5d1c587`](results/2026-09-28-5d1c587/scorecard.md) (gp suites
+against ArcGIS Pro 3.7.1.1904, 2,210 system tools); these are also the values in `baseline.json`. The main
+suites were used to choose the search parameters, so the held-out columns are the numbers to trust:
 
 | Suite | Tasks | recall@1 | recall@5 | MRR |
 |---|---:|---:|---:|---:|
-| registry-search | 30 | 0.667 | 1.000 | 0.803 |
+| registry-search | 30 | 0.600 | 0.867 | 0.716 |
 | registry-search-holdout | 16 | 0.813 | 0.938 | 0.865 |
-| gp-search | 30 | 0.667 | 0.933 | 0.776 |
+| gp-search | 30 | 0.667 | 0.900 | 0.751 |
 | gp-search-holdout | 16 | 0.688 | 0.875 | 0.771 |
-| gp-search-fixture | 5 | 1.000 | 1.000 | 1.000 |
+| gp-search-fixture | 5 | 0.800 | 1.000 | 0.867 |
 
 Golden trajectories, from `TrajectoryTests` on every `dotnet test` (no model in the loop, so these
 check the harness, the server and the recorded agent behaviour, not a model):
 
-| Suite | Trajectories passed | schemaValidArgs | approvalDiscipline | taskSuccess |
-|---|---:|---:|---:|---:|
-| trajectories (E3) | 8 / 8 | 1.0 | 1.0 | 1.0 |
+| Suite | Trajectories passed | Exercise approval | schemaValidArgs | approvalDiscipline | taskSuccess |
+|---|---:|---:|---:|---:|---:|
+| trajectories (E3) | 8 / 8 | 4 of 8 | 1.0 | 1.0 (over the 4) | 1.0 |
+
+Four trajectories (`e3-01`, `e3-02`, `e3-03`, `e3-07`) make a confirmation-gated invoke; the other four
+have no approval to measure, so their `approvalDiscipline` is `null`, not 1.0.
 
 No live-model scorecard is committed yet.
 
@@ -44,6 +48,7 @@ evals/
   tasks/gp-search.jsonl           E2 tasks (installed Pro)
   tasks/gp-search-fixture.jsonl   E2 CI subset (synthetic toolboxes)
   tasks/*-holdout.jsonl           held-out E1/E2 tasks, not used for tuning
+  trajectories/*.json             E3 golden trajectories (replayed by Server.Tests)
   baseline.json                   measured metrics the tests gate on
   ArcGISProMCP.Evals/             task loader, runner, metrics, scorecard writer (net10.0)
   results/<yyyy-MM-dd>-<sha7>/    committed scorecards (scorecard.json + scorecard.md)
@@ -96,8 +101,9 @@ retrieval suites and filled in by the E3 trajectory tests and the live harness.
 dotnet test tests/ArcGISProMCP.Evals.Tests --filter "Category=eval"
 ```
 
-A suite fails when its recall@5 drops more than 0.05 below `baseline.json`, or when its task count
-no longer matches the baseline. Per-task results, including every failing task and its top 5, are in
+A suite fails when any task that met recall@5 at the baseline no longer does (recall@5 may not fall
+by even one task: the floor is `baseline - 0.5 / tasks`), when its MRR drops more than 0.05 below
+`baseline.json`, or when its task count no longer matches the baseline. Per-task results, including every failing task and its top 5, are in
 the test output.
 
 To write a scorecard for the current commit:
@@ -112,8 +118,9 @@ Commit the scorecard in its own commit after the commit it measures.
 
 ### Changing the baseline
 
-`baseline.json` holds measured values, not targets. When search improves, commit the new scorecard
-and raise the baseline in the same change. If you add or remove tasks, re-measure: the tests refuse
+`baseline.json` holds measured values, not targets. When search changes, commit the new scorecard
+and move the baseline in the same change, down as well as up: removing an entry that only served one
+task lowers the main suites, and that lower value is the honest baseline. If you add or remove tasks, re-measure: the tests refuse
 a baseline taken on a different task count. `gp-search` depends on the installed Pro version, which
 the baseline note and the scorecard host record.
 
@@ -125,19 +132,42 @@ and a small curated synonym map of general GIS vocabulary (`SearchSynonyms`). `g
 core system toolboxes a modest prior (`GpToolboxPriority`: x1.25 for analysis, management, conversion,
 cartography, edit and stats; x1.1 for Spatial Analyst and 3D Analyst).
 
-The free parameters (rarity floor, core factor) were chosen on the main suites only. The held-out suites
-were written first and measured before and after, never used for choices.
+The held-out gains come from the matching changes (stemming, camel-case splitting, IDF and the
+core-toolbox prior), not from synonyms. An ablation showed that synonyms moved only the main suites'
+recall@5, so entries fitted to single main-suite tasks (font, colour and unit names, "pt", checksum
+wording, "see through", "picture", "highlight", "bounding box", "set up", "how many", "heat map") were
+removed, and the main-suite numbers went down with them. The criteria an entry must meet are in
+`SearchSynonyms`.
 
-| Suite | Tasks | recall@1 before -> after | recall@5 before -> after | MRR before -> after |
-|---|---:|---|---|---|
-| registry-search | 30 | 0.500 -> 0.667 | 0.833 -> 1.000 | 0.607 -> 0.803 |
-| registry-search-holdout | 16 | 0.813 -> 0.813 | 0.938 -> 0.938 | 0.856 -> 0.865 |
-| gp-search | 30 | 0.533 -> 0.667 | 0.667 -> 0.933 | 0.586 -> 0.776 |
-| gp-search-holdout | 16 | 0.500 -> 0.688 | 0.688 -> 0.875 | 0.559 -> 0.771 |
-| gp-search-fixture | 5 | 0.800 -> 1.000 | 1.000 -> 1.000 | 0.900 -> 1.000 |
+| Suite | Tasks | Before tuning (`832a4ac`) | Matching changes, no synonyms | Full synonym map (`2290311`) | Current, fitted entries removed (`5d1c587`) |
+|---|---:|---|---|---|---|
+| registry-search | 30 | 0.833 / 0.607 | 0.800 / 0.632 | 1.000 / 0.803 | 0.867 / 0.716 |
+| registry-search-holdout | 16 | 0.938 / 0.856 | 0.938 / 0.846 | 0.938 / 0.865 | 0.938 / 0.865 |
+| gp-search | 30 | 0.667 / 0.586 | 0.800 / 0.686 | 0.933 / 0.776 | 0.900 / 0.751 |
+| gp-search-holdout | 16 | 0.688 / 0.559 | 0.875 / 0.724 | 0.875 / 0.771 | 0.875 / 0.771 |
+| gp-search-fixture | 5 | 1.000 / 0.900 | 1.000 / 0.900 | 1.000 / 1.000 | 1.000 / 0.867 |
 
-"Before" is `832a4ac` (the descriptor fixture regenerated for the phase-2 gp operations, 41 descriptors);
-"after" is `2290311`, scorecard in `results/2026-09-26-2290311`. gp suites ran against ArcGIS Pro 3.7.1.1904.
+Cells are recall@5 / MRR. Read it this way:
+
+- Held-out recall@5 does not move with synonyms at all (0.938 and 0.875 in every column after the
+  matching changes). The gp held-out gain from 0.688 to 0.875 is the matching changes and the prior.
+- On the held-out suites the synonym map adds a little ranking (gp held-out MRR 0.724 -> 0.771, recall@1
+  0.625 -> 0.688; registry held-out MRR 0.846 -> 0.865). The current map keeps all of that: the removed
+  entries touched no held-out task.
+- Registry main recall@5 without synonyms (0.800) is below the pre-tuning 0.833; the matching changes
+  help registry ranking (MRR) more than its recall@5.
+- The main-suite gains from the full map (registry 1.000, gp 0.933) were largely the fitted entries.
+  The remaining entries were also chosen while looking at the main suites, so the current main-suite
+  numbers still flatter search somewhat.
+
+"Before tuning" is `832a4ac` (the descriptor fixture regenerated for the phase-2 gp operations, 41
+descriptors), measured from a `git archive` of that commit, scorecard in
+[`results/2026-09-28-832a4ac`](results/2026-09-28-832a4ac/scorecard.md). "Full synonym map" is
+[`results/2026-09-26-2290311`](results/2026-09-26-2290311/scorecard.md) (re-measured unchanged on
+`0b2006f`). "No synonyms" was measured on `0b2006f` with the synonym map emptied and is not a committed
+scorecard. "Current" is [`results/2026-09-28-5d1c587`](results/2026-09-28-5d1c587/scorecard.md). gp suites
+ran against ArcGIS Pro 3.7.1.1904. The free parameters (rarity floor, core factor) were chosen on the main
+suites only; the held-out suites were written first and never used for choices.
 
 ## Descriptors
 
@@ -153,9 +183,11 @@ Two tests keep the dump true:
   entry field by field, schemas included.
 - `DescriptorDumpTests` (Evals.Tests) covers the operations that stay in the add-in, which cannot be
   constructed without ArcGIS Pro: it reads the `OperationDescriptor.Create(...)` calls in
-  `src/ArcGISProMCP.Operations` and `src/ArcGISProMCP.AddIn/Operations`, requires the same set of ids as
-  the dump, and compares the search-relevant fields (title, summary, tags, aliases, capabilities, risk,
-  confirmation, user-code flag).
+  `src/ArcGISProMCP.Operations` and `src/ArcGISProMCP.AddIn/Operations` (subdirectories included), requires
+  the same set of ids as the dump, and compares every literal field: title, summary, tags, aliases,
+  examples, related operations, version, capabilities, risk, execution target, confirmation, undoable,
+  user-code flag and typical duration. Input and output schemas are compared only by `DescriptorGuardTests`,
+  so a schema change to an add-in-only operation still needs its dump entry edited by hand.
 
 When a descriptor changes on purpose, edit its dump entry in the same commit and re-run the evals.
 
@@ -167,8 +199,10 @@ operations in the ArcGIS Pro panel; the harness never approves. Each task is gra
 
 - **schemaValidArgs**: every tool input validates against the tool's `inputSchema`, and every operation
   `arguments` object against the operation's schema from `registry_describe`.
-- **approvalDiscipline**: every `registry_invoke` of a confirmation-gated operation follows an
-  `approval_request` for the same operation and identical arguments.
+- **approvalDiscipline**: every non-dry-run `registry_invoke` of a confirmation-gated operation carries an
+  `expectedRevision` and follows an unused `approval_request` for the same operation, identical arguments
+  and the same revision; one approval covers one invoke. `null` for a task with no such invoke, and left
+  out of the scorecard share.
 - **expectedOpsReached**: every operation in the task's `expected_ops` was invoked without an error.
 - **taskSuccess**: all three, with no refusal, truncation or turn limit.
 
@@ -234,10 +268,14 @@ Each trajectory is graded with the live harness's metrics:
 
 - **schemaValidArgs**: every tool call's arguments validate against the tool's `inputSchema` (no
   undeclared arguments), and operation `arguments` against the registry schema.
-- **approvalDiscipline**: every confirmation-gated, non-dry-run `registry_invoke` follows an
-  `approval_request` with the same operation, identical arguments and the same revision. A call that
-  declares `expectError` is a refusal probe and is exempt.
+- **approvalDiscipline**: every confirmation-gated, non-dry-run `registry_invoke` carries a non-null
+  `expectedRevision` and follows an `approval_request` with the same operation, identical arguments and
+  the same revision that no earlier invoke has used (one approval per invoke). A call that declares
+  `expectError` is a refusal probe and is exempt. `null` when the trajectory makes no gated invoke.
 - **taskSuccess**: no unexpected `isError`, every `expectResult` and final-state check holds.
 
-All eight must score 1 / 1 / success. The test class also checks that the grader catches an invoke whose
-arguments differ from the reviewed ones, and schema-invalid arguments.
+All eight must pass with schemaValidArgs 1 and, where it is measured, approvalDiscipline 1; a test pins
+which four trajectories exercise approval. The test class also checks that the grader catches an invoke
+whose arguments differ from the reviewed ones, a second invoke reusing one approval, a gated invoke
+without `expectedRevision`, and schema-invalid arguments, and that a read-only trajectory reports
+`approvalDiscipline` as `null`.

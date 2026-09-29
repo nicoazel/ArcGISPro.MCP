@@ -97,7 +97,7 @@ public sealed class EvalRunnerTests
     }
 
     [Fact]
-    public void Baseline_allows_a_small_recall_drop_only()
+    public void Baseline_allows_no_additional_failing_task()
     {
         var baseline = new EvalBaseline("n", new Dictionary<string, BaselineMetrics> { ["s"] = new(0.5, 0.8, 0.6, 10) });
         EvalSuiteResult WithRecallAt5(double recall) =>
@@ -105,9 +105,36 @@ public sealed class EvalRunnerTests
         EvalSuiteResult WithTasks(int tasks) =>
             new("s", "h", [], new EvalMetrics(tasks, 0.5, 0.8, 0.6, 0.8, 1, 0));
 
-        Assert.Null(baseline.CheckRegression(WithRecallAt5(0.75)));
+        Assert.Null(baseline.CheckRegression(WithRecallAt5(0.8)));
+        Assert.Null(baseline.CheckRegression(WithRecallAt5(0.9)));
+        // One more task out of the top 5 (8 of 10 -> 7 of 10) is a regression.
         Assert.NotNull(baseline.CheckRegression(WithRecallAt5(0.7)));
         Assert.NotNull(baseline.CheckRegression(WithTasks(11)));
         Assert.NotNull(baseline.CheckRegression(new EvalSuiteResult("unknown", "h", [], new EvalMetrics(0, 0, 0, 0, 0, null, 0))));
+    }
+
+    [Fact]
+    public void Baseline_gates_on_one_extra_failing_task_in_a_large_suite()
+    {
+        // 30 tasks: 26 -> 25 hits is a drop of 0.033, inside the old 0.05 tolerance but still one more failure.
+        var baseline = new EvalBaseline("n", new Dictionary<string, BaselineMetrics> { ["s"] = new(0.6, 26 / 30.0, 0.7, 30) });
+
+        var result = baseline.CheckRegression(new EvalSuiteResult("s", "h", [], new EvalMetrics(30, 0.6, 25 / 30.0, 0.7, 25 / 30.0, 1, 0)));
+
+        Assert.NotNull(result);
+        Assert.Contains("recall@5", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Baseline_gates_on_mrr()
+    {
+        var baseline = new EvalBaseline("n", new Dictionary<string, BaselineMetrics> { ["s"] = new(0.5, 0.8, 0.6, 10) });
+        EvalSuiteResult WithMrr(double mrr) => new("s", "h", [], new EvalMetrics(10, 0.5, 0.8, mrr, 0.8, 1, 0));
+
+        Assert.Null(baseline.CheckRegression(WithMrr(0.56)));
+        var result = baseline.CheckRegression(WithMrr(0.54));
+        Assert.NotNull(result);
+        Assert.Contains("MRR", result, StringComparison.Ordinal);
+        Assert.DoesNotContain("recall@5", result, StringComparison.Ordinal);
     }
 }

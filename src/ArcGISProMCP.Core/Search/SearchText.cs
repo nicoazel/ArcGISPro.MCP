@@ -5,7 +5,7 @@ namespace ArcGISProMCP.Core.Search;
 
 /// <summary>
 /// One query term. <see cref="Text"/> is what the caller typed (a word, or a phrase such as
-/// "bounding box" that has a synonym entry); <see cref="Stems"/> must all appear in one field for a
+/// "shaded relief" that has a synonym entry); <see cref="Stems"/> must all appear in one field for a
 /// direct match; each <see cref="Synonyms"/> entry is an alternative stem sequence scored lower.
 /// </summary>
 public sealed record QueryTerm(string Text, ImmutableArray<string> Stems, ImmutableArray<ImmutableArray<string>> Synonyms);
@@ -129,7 +129,7 @@ public static class SearchText
     }
 
     /// <summary>
-    /// Splits a query into terms. Phrases with a synonym entry ("bounding box", "how many") become one
+    /// Splits a query into terms. Phrases with a synonym entry ("shaded relief", "print layout") become one
     /// term; stop words, bare numbers and single letters are dropped. A query made only of dropped words
     /// keeps its words as plain terms rather than silently matching everything.
     /// </summary>

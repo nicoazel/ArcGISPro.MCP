@@ -1,0 +1,258 @@
+{
+  "schema": 1,
+  "sha": "5d1c587",
+  "dirty": false,
+  "date": "2026-09-28",
+  "model": null,
+  "suites": [
+    {
+      "suite": "gp-search",
+      "host": "ArcGIS Pro 3.7.1.1904 system toolboxes (2210 tools)",
+      "tasks": 30,
+      "metrics": {
+        "recall@1": 0.6667,
+        "recall@5": 0.9,
+        "mrr": 0.7511,
+        "taskPassRate": 0.9,
+        "meanFirstHitRank": 1.5556,
+        "misses": 3,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "gp-03",
+          "task": "keep only the areas where two polygon layers overlap",
+          "expected": [
+            "analysis.Intersect",
+            "analysis.PairwiseIntersect"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "ga.ArealInterpolationLayerToPolygons",
+            "cartography.IntersectingLayersMasks",
+            "na.MakeServiceAreaAnalysisLayer",
+            "analysis.ApportionPolygon",
+            "management.PolygonToLine"
+          ]
+        },
+        {
+          "id": "gp-12",
+          "task": "how many rows are in this table",
+          "expected": [
+            "management.GetCount"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "conversion.TableToGeodatabase",
+            "management.PivotTable",
+            "management.TableToRelationshipClass",
+            "conversion.TableToDBASE",
+            "management.MatchPhotosToRowsByTime"
+          ]
+        },
+        {
+          "id": "gp-15",
+          "task": "compute the area of each polygon in acres",
+          "expected": [
+            "management.CalculateGeometryAttributes"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "management.ComputeDirtyArea",
+            "management.PolygonToLine",
+            "ga.ArealInterpolationLayerToPolygons",
+            "3d.PolygonVolume",
+            "management.ComputeMosaicCandidates"
+          ]
+        }
+      ]
+    },
+    {
+      "suite": "gp-search-fixture",
+      "host": "synthetic fixture toolboxes (13 tools)",
+      "tasks": 5,
+      "metrics": {
+        "recall@1": 0.8,
+        "recall@5": 1,
+        "mrr": 0.8667,
+        "taskPassRate": 1,
+        "meanFirstHitRank": 1.4,
+        "misses": 0,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": []
+    },
+    {
+      "suite": "gp-search-holdout",
+      "host": "ArcGIS Pro 3.7.1.1904 system toolboxes (2210 tools)",
+      "tasks": 16,
+      "metrics": {
+        "recall@1": 0.6875,
+        "recall@5": 0.875,
+        "mrr": 0.7708,
+        "taskPassRate": 0.875,
+        "meanFirstHitRank": 1.2857,
+        "misses": 2,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "gph-03",
+          "task": "stitch adjacent polygons together into one outline",
+          "expected": [
+            "management.Dissolve",
+            "analysis.PairwiseDissolve",
+            "cartography.AggregatePolygons"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "management.Mosaic",
+            "management.MosaicToNewRaster",
+            "management.PolygonToLine",
+            "analysis.PolygonNeighbors",
+            "analysis.CreateThiessenPolygons"
+          ]
+        },
+        {
+          "id": "gph-05",
+          "task": "pull out the roads whose type is highway into a new feature class",
+          "expected": [
+            "analysis.Select",
+            "conversion.ExportFeatures"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "cartography.ResolveRoadConflicts",
+            "cartography.MergeDividedRoads",
+            "locref.ConfigureAddressFeatureClasses",
+            "management.AppendAnnotation",
+            "management.CreateFeatureclass"
+          ]
+        }
+      ]
+    },
+    {
+      "suite": "registry-search",
+      "host": "OperationRegistry over 41 add-in descriptors (descriptor dump)",
+      "tasks": 30,
+      "metrics": {
+        "recall@1": 0.6,
+        "recall@5": 0.8667,
+        "mrr": 0.7157,
+        "taskPassRate": 0.8667,
+        "meanFirstHitRank": 2.2414,
+        "misses": 1,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "rs-13",
+          "task": "Show street names on the roads using the NAME field in 10 pt Arial",
+          "expected": [
+            "label.configure"
+          ],
+          "k": 5,
+          "firstHitRank": 9,
+          "top": [
+            "map.activate",
+            "layer.set-appearance",
+            "layout.activate",
+            "table.statistics",
+            "basemap.set"
+          ]
+        },
+        {
+          "id": "rs-16",
+          "task": "Highlight every fire hydrant within the study area",
+          "expected": [
+            "feature.select"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "map.clear-selection"
+          ]
+        },
+        {
+          "id": "rs-28",
+          "task": "Show me a picture of what the map looks like now",
+          "expected": [
+            "view.capture"
+          ],
+          "k": 5,
+          "firstHitRank": 9,
+          "top": [
+            "map.activate",
+            "layer.set-appearance",
+            "layout.activate",
+            "layout.add-map-frame",
+            "map.clear-selection"
+          ]
+        },
+        {
+          "id": "rs-30",
+          "task": "Get the checksum of analysis.py so I can ask for approval to run it",
+          "expected": [
+            "arcpy.inspect-script"
+          ],
+          "k": 5,
+          "firstHitRank": 6,
+          "top": [
+            "arcpy.run-script",
+            "gp.run",
+            "gp.query",
+            "metadata.get",
+            "project.get"
+          ]
+        }
+      ]
+    },
+    {
+      "suite": "registry-search-holdout",
+      "host": "OperationRegistry over 41 add-in descriptors (descriptor dump)",
+      "tasks": 16,
+      "metrics": {
+        "recall@1": 0.8125,
+        "recall@5": 0.9375,
+        "mrr": 0.8646,
+        "taskPassRate": 0.9375,
+        "meanFirstHitRank": 1.2,
+        "misses": 1,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "rsh-11",
+          "task": "Move this manhole to a new location",
+          "expected": [
+            "feature.update"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "layout.ensure",
+            "map.ensure",
+            "feature.create",
+            "layer.add",
+            "layout.set-text"
+          ]
+        }
+      ]
+    }
+  ]
+}
