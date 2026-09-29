@@ -47,16 +47,16 @@ Decisions already taken:
 
 ## Phase 4: behavioral tests and evaluations
 
-- 4.1 An ArcGIS service seam (geoprocessing, editing, map and layout services) with plain DTOs.
-- 4.2 Replace source-text tests with behavior tests against fakes.
-- 4.3 In-process MCP contract tests and a `tools/list` snapshot. Partly done in Phase 2: `tests/ArcGISProMCP.Server.Tests` runs tools, resources and prompts in process against a fake bridge, with `tools/list`, `resources/list` and `prompts/list` snapshots.
-- 4.4 An agent evaluation suite of 20 to 30 tasks with a scorecard.
-- 4.5 Use or remove the unused test data.
+- **Done** 4.1 An ArcGIS service seam with plain DTOs, by extraction: the Esri-free `ArcGISProMCP.Operations` project holds the operation base, every schema and 21 of the 41 operations (project, map, `layer.list`, view capture, features, geoprocessing, ArcPy) behind project, map, layer, view-capture, feature and geoprocessing services. Layout, symbology, table, metadata and the remaining layer operations stay in the add-in; moving `metadata.*` behind a metadata service is the next candidate.
+- **Partly done** 4.2 Replace source-text tests with behavior tests against fakes. The moved operations are tested through a fake ArcGIS Pro (real descriptors, registry and executor, fake services), and schema and descriptor checks compare against a dump of every descriptor the add-in registers. Source-text tests remain for code that still needs ArcGIS Pro (layout convergence, layer elevation, metadata rollback, ArcPy process handling, catalog wiring) or the WPF panel.
+- **Done** 4.3 In-process MCP contract tests: `initialize`, `tools/list`, `resources/list` and `prompts/list` snapshots, the bridge method and parameters of every tool, and success, error and malformed-argument envelopes of every tool validated against its `outputSchema`. End-to-end tests against the add-in's request handler over fake services are in progress.
+- **Partly done** 4.4 An agent evaluation suite with a scorecard: registry and geoprocessing search suites (30 tasks each, plus held-out sets) run in every `dotnet test` and gate on a measured baseline; scorecards are committed under `evals/results`. A live harness exists but is run by hand. Golden tool-call trajectories replayed against the in-process server are in progress.
+- **Done** 4.5 The test data is kept and documented (`tests/data/README.md`), with a check that each shapefile set is complete.
 
 ## Phase 5: evidence and release
 
-- 5.1 A live acceptance script that records the commit, ArcGIS Pro version and DLL hashes into committed, reviewable evidence.
-- 5.2 Pin GitHub Actions to commit SHAs, enable Dependabot, and add PSScriptAnalyzer and ruff.
-- 5.3 0.3.0 release notes and checksums.
-- 5.4 An MCP registry listing.
+- **Tooling done, evidence pending** 5.1 A live acceptance script that records the commit, ArcGIS Pro version and DLL hashes into committed, reviewable evidence. `tools/run-acceptance.ps1`, the evidence folder contract and the manifest test are in place; the first committed evidence needs a maintainer run against live ArcGIS Pro.
+- **Done** 5.2 Pin GitHub Actions to commit SHAs, enable Dependabot, and add PSScriptAnalyzer and ruff.
+- 5.3 0.3.0 release notes and checksums. Pending the maintainer's release, after 5.1 evidence.
+- **Draft** 5.4 An MCP registry listing. The gateway packs as an `McpServer` NuGet tool with `server.json` (`tools/pack-gateway.ps1`); publishing needs the maintainer's NuGet and registry accounts and has not happened.
 - 5.5 README additions: comparison with alternatives, architecture diagram, security model, and the evaluation scorecard.

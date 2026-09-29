@@ -1,23 +1,34 @@
 using System.Collections.Immutable;
 using System.Text;
-using ArcGISProMCP.Evals;
-
 namespace ArcGISProMCP.Evals.Tests;
 
+/// <summary>The search-relevant arguments of one <c>OperationDescriptor.Create(...)</c> call in source.</summary>
+internal sealed record SourceDescriptor(
+    string Id,
+    string Title,
+    string Summary,
+    ImmutableArray<string> Tags,
+    ImmutableArray<string> Aliases,
+    ImmutableArray<string> Capabilities,
+    string Risk,
+    bool RequiresConfirmation,
+    bool ExecutesUserCode,
+    string Source);
+
 /// <summary>
-/// Interim: reads the search-relevant arguments of every <c>OperationDescriptor.Create(...)</c> call in the
-/// add-in's operation sources. The add-in references Esri assemblies that cannot load in tests, so until
-/// the Phase 4 operations seam this is the only way to evaluate search against the real descriptor text.
+/// Reads the search-relevant arguments of every <c>OperationDescriptor.Create(...)</c> call in a directory
+/// of operation sources. The operations that stay in the add-in reference Esri assemblies that cannot load
+/// in tests, so this is the only check that their descriptors still match the descriptor dump.
 /// Handles the forms the sources use: string literals (optionally concatenated with <c>+</c>),
-/// collection expressions of string literals, enum members and booleans. Anything else is skipped.
+/// collection expressions of string literals, enum members and booleans.
 /// </summary>
 internal static class DescriptorSourceExtractor
 {
     private const string Marker = "OperationDescriptor.Create(";
 
-    public static ImmutableArray<DescriptorFixtureEntry> Extract(string operationsDirectory, string repositoryRoot)
+    public static ImmutableArray<SourceDescriptor> Extract(string operationsDirectory, string repositoryRoot)
     {
-        var entries = ImmutableArray.CreateBuilder<DescriptorFixtureEntry>();
+        var entries = ImmutableArray.CreateBuilder<SourceDescriptor>();
         foreach (var file in Directory.EnumerateFiles(operationsDirectory, "*.cs").Order(StringComparer.Ordinal))
         {
             var source = File.ReadAllText(file);
@@ -34,7 +45,7 @@ internal static class DescriptorSourceExtractor
         return entries.OrderBy(entry => entry.Id, StringComparer.Ordinal).ToImmutableArray();
     }
 
-    private static DescriptorFixtureEntry ToEntry(List<string> arguments, string source)
+    private static SourceDescriptor ToEntry(List<string> arguments, string source)
     {
         var positional = new List<string>();
         var named = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -50,7 +61,7 @@ internal static class DescriptorSourceExtractor
 
         var id = StringValue(positional[0]);
         var risk = named.TryGetValue("risk", out var riskText) ? riskText.Split('.')[^1] : "ReadOnly";
-        return new DescriptorFixtureEntry(
+        return new SourceDescriptor(
             id,
             StringValue(positional[1]),
             StringValue(positional[2]),
@@ -58,7 +69,6 @@ internal static class DescriptorSourceExtractor
             ListValue(named.GetValueOrDefault("aliases")),
             ListValue(named.GetValueOrDefault("capabilities")),
             risk,
-            id.Split('.')[0],
             named.GetValueOrDefault("requiresConfirmation") == "true",
             named.GetValueOrDefault("executesUserCode") == "true",
             source);

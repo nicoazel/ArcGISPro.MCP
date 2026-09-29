@@ -39,7 +39,8 @@ Every tool returns the same envelope as `structuredContent`, and the same JSON a
 - `ok: false` always comes with `isError: true` and an `error` (`code`, `message`, `retryable`, `revision`). `retryable` means the same call may succeed later, for example once ArcGIS Pro is running.
 - `registry_invoke` and `workflow_run` keep `result` on failure: the operation or workflow ran (or was refused) and reported `success: false`. `error.code` repeats its `errorCode` and `error.revision` is the workspace revision it reported.
 - Field names are camelCase and null members are written. `risk` and `executionTarget` are numbers: risk `0` ReadOnly, `1` SafeWrite, `2` Destructive, `3` ExternalSideEffect.
-- Exceptions that are not ArcGIS bridge errors are reported by the MCP SDK as a plain error result without an envelope.
+- Tool arguments that do not bind (a missing required argument, or a value of the wrong JSON type) return the envelope with `error.code` `invalid_arguments`, a message naming the argument, and `retryable: false`; nothing reaches ArcGIS Pro. An unknown tool name is a JSON-RPC `invalid params` error, not a tool result.
+- Any other unexpected gateway exception is reported by the MCP SDK as a plain error result without an envelope.
 
 ## Operations
 

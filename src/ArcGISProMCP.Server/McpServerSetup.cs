@@ -39,6 +39,8 @@ public static class McpServerSetup
         ArgumentNullException.ThrowIfNull(builder);
         return builder
             .WithTools(Tools.Value)
+            // Argument binding failures answer with the standard error envelope, not SDK text.
+            .WithRequestFilters(filters => filters.AddCallToolFilter(ToolArgumentErrors.Filter))
             .WithResources(Resources.Value)
             .WithListPromptsHandler(ArcGisPrompts.ListAsync)
             .WithGetPromptHandler(ArcGisPrompts.GetAsync);
