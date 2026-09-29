@@ -71,7 +71,7 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 | Id | Risk | Does |
 | --- | --- | --- |
 | `layer.list` | ReadOnly | Flattened layer tree with handles and appearance state. |
-| `layer.add` | SafeWrite | Adds a dataset, layer file, or service URL. |
+| `layer.add` | SafeWrite | Adds a dataset, layer file, or service URL. With `name`, a same-named layer is reused only when its data connection is healthy and it reads the requested source; otherwise it is repaired in place (feature class swapped, symbology kept; `Repaired: true`) or removed and re-added at the same position (`Replaced: true`, symbology not kept), with a `layer_repaired` notice. `Source` is what the layer actually reads and `RequestedSource` echoes the request. A same-named group layer is never replaced. |
 | `layer.set-appearance` | SafeWrite | Visibility and transparency (0–100 %). |
 | `layer.set-elevation` | SafeWrite | Scene elevation mode, offset, and vertical exaggeration. |
 | `symbology.set-simple` | SafeWrite | Single-symbol renderer for a point, line, or polygon layer. |
@@ -206,6 +206,7 @@ Codes a client should handle. The message carries the details.
 | `bridge_contract_mismatch` | gateway | The add-in returned a result this gateway cannot read. Install matching add-in and gateway versions. |
 | `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped). |
 | `skill_not_found` | skill get | Unknown bundled skill id. |
+| `layer_data_source_unavailable` | invoke, workflow step | The target layer's data source is broken or cannot be opened (for example relative paths after a project was copied). The message names the layer; repair its data source in ArcGIS Pro, or re-add it with `layer.add` using the same name and a valid source. |
 
 ## Scripts
 
