@@ -487,6 +487,29 @@ public sealed class FeatureOperationTests
         Assert.Equal("rev-0", pro.Workspace.Revision);
     }
 
+    [Theory]
+    [InlineData("feature.layer.describe", """{"layer": "Parcels"}""")]
+    [InlineData("feature.query", """{"layer": "Parcels"}""")]
+    [InlineData("feature.select", """{"layer": "Parcels"}""")]
+    [InlineData("feature.create", """{"layer": "Parcels", "geometry": {"type": "point", "x": 1, "y": 1}}""")]
+    [InlineData("feature.update", """{"layer": "Parcels", "target": {"objectId": 1}, "attributes": {"ZONE": "C1"}}""")]
+    [InlineData("feature.delete", """{"layer": "Parcels", "target": {"objectId": 1}}""")]
+    public async Task A_broken_data_source_reports_layer_data_source_unavailable(string id, string argumentsJson)
+    {
+        using var pro = Parcels(out _, out _, out var table);
+        table.AddRow(1, 1, "R1");
+        table.DataSourceBroken = true;
+
+        var result = await pro.InvokeAsync(id, argumentsJson);
+
+        Assert.False(result.Success);
+        Assert.Equal(OperationErrorCodes.LayerDataSourceUnavailable, result.ErrorCode);
+        Assert.Equal("layer_data_source_unavailable", result.ErrorCode);
+        Assert.Contains("'Parcels'", result.Message, StringComparison.Ordinal);
+        Assert.Contains("layer.add", result.Message, StringComparison.Ordinal);
+        Assert.Equal("R1", Assert.Single(table.Rows).Values["ZONE"]);
+    }
+
     private static FakePro Parcels(out FakeMap map, out FakeLayer layer, out FakeFeatureTable table)
     {
         var pro = new FakePro();

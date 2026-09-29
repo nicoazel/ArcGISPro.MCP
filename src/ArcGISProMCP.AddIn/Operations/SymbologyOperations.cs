@@ -31,7 +31,7 @@ internal sealed class SymbologySetSimpleOperation() : ProOperationBase(Operation
             var map = ProHandles.ResolveMap(mapReference);
             var featureLayer = ProHandles.ResolveLayer(map, layerReference) as FeatureLayer
                 ?? throw new InvalidOperationException("Simple symbology requires a feature layer.");
-            using var featureClass = featureLayer.GetFeatureClass();
+            using var featureClass = LayerData.OpenFeatureClass(featureLayer);
             var shapeType = featureClass.GetDefinition().GetShapeType();
             var fillColor = ToCim(color);
             var strokeColor = ToCim(outline);

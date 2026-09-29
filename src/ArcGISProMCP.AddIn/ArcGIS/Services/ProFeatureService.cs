@@ -11,7 +11,7 @@ internal sealed class ProFeatureService : IFeatureService
     public FeatureLayerInfo Describe(FeatureLayerTarget target)
     {
         var (map, layer) = Resolve(target);
-        using var table = layer.GetTable();
+        using var table = LayerData.OpenTable(layer);
         var definition = table.GetDefinition();
         using var featureClassDefinition = definition as FeatureClassDefinition;
         var spatialReference = featureClassDefinition?.GetSpatialReference();
@@ -38,7 +38,7 @@ internal sealed class ProFeatureService : IFeatureService
     public FeatureLayerSchema Schema(FeatureLayerTarget target)
     {
         var (map, layer) = Resolve(target);
-        using var table = layer.GetTable();
+        using var table = LayerData.OpenTable(layer);
         using var definition = table.GetDefinition();
         return new FeatureLayerSchema(
             ProHandles.ForMap(map),
@@ -53,7 +53,7 @@ internal sealed class ProFeatureService : IFeatureService
     public IReadOnlyList<FeatureRow> Query(FeatureLayerTarget target, FeatureQueryFilter filter, int limit)
     {
         var (_, layer) = Resolve(target);
-        using var table = layer.GetTable();
+        using var table = LayerData.OpenTable(layer);
         using var definition = table.GetDefinition();
         var hasGlobalId = definition.HasGlobalID();
         var rows = new List<FeatureRow>();
@@ -72,7 +72,7 @@ internal sealed class ProFeatureService : IFeatureService
     public FeatureSelectionResult Select(FeatureLayerTarget target, FeatureQueryFilter filter, int limit, bool add)
     {
         var (_, layer) = Resolve(target);
-        using var table = layer.GetTable();
+        using var table = LayerData.OpenTable(layer);
         var ids = new List<long>();
         using (var cursor = table.Search(CreateFilter(layer, filter), false))
         {
@@ -91,7 +91,7 @@ internal sealed class ProFeatureService : IFeatureService
     public IReadOnlyList<long> FindObjectIdsByGlobalId(FeatureLayerTarget target, Guid globalId, int maximum)
     {
         var (_, layer) = Resolve(target);
-        using var table = layer.GetTable();
+        using var table = LayerData.OpenTable(layer);
         var definition = table.GetDefinition();
         var filter = new QueryFilter { WhereClause = $"{definition.GetGlobalIDField()} = '{globalId:B}'", SubFields = definition.GetObjectIDField() };
         var ids = new List<long>();
@@ -107,7 +107,7 @@ internal sealed class ProFeatureService : IFeatureService
     public FeatureCreateResult Create(FeatureLayerTarget target, FeatureGeometry geometry, IReadOnlyDictionary<string, object> attributes)
     {
         var (_, layer) = Resolve(target);
-        using var table = layer.GetTable();
+        using var table = LayerData.OpenTable(layer);
         using var featureClassDefinition = FeatureClass(table);
         var edit = new EditOperation { Name = "MCP create feature", SelectNewFeatures = false };
         var token = edit.Create(layer, ToGeometry(geometry, featureClassDefinition.GetSpatialReference()), Values(attributes));
@@ -121,7 +121,7 @@ internal sealed class ProFeatureService : IFeatureService
         var edit = new EditOperation { Name = "MCP update feature", SelectModifiedFeatures = false };
         if (geometry is not null)
         {
-            using var table = layer.GetTable();
+            using var table = LayerData.OpenTable(layer);
             using var featureClassDefinition = FeatureClass(table);
             edit.Modify(layer, objectId, ToGeometry(geometry, featureClassDefinition.GetSpatialReference()), Values(attributes));
         }
@@ -142,6 +142,7 @@ internal sealed class ProFeatureService : IFeatureService
         var map = ProHandles.ResolveMap(target.Map);
         var layer = ProHandles.ResolveLayer(map, target.Layer) as BasicFeatureLayer
             ?? throw new InvalidOperationException("Feature operations require a feature layer.");
+        LayerData.EnsureAvailable(layer);
         return (map, layer);
     }
 
@@ -154,7 +155,7 @@ internal sealed class ProFeatureService : IFeatureService
         var subFields = string.Join(",", filter.SubFields);
         if (filter.Envelope is not { } envelope)
             return new QueryFilter { WhereClause = filter.Where, SubFields = subFields };
-        using var table = layer.GetTable();
+        using var table = LayerData.OpenTable(layer);
         using var definition = FeatureClass(table);
         return new SpatialQueryFilter
         {

@@ -34,7 +34,7 @@ internal sealed class TableQueryOperation() : ProOperationBase(OperationDescript
             var map = ProHandles.ResolveMap(mapReference);
             var layer = ProHandles.ResolveLayer(map, layerReference) as BasicFeatureLayer
                 ?? throw new InvalidOperationException("Attribute queries require a feature layer.");
-            using var table = layer.GetTable();
+            using var table = LayerData.OpenTable(layer);
             var definition = table.GetDefinition();
             var available = definition.GetFields().Where(field => field.FieldType != FieldType.Geometry).ToArray();
             var selected = requestedFields.Length == 0
@@ -103,7 +103,7 @@ internal sealed class TableStatisticsOperation() : ProOperationBase(OperationDes
             var map = ProHandles.ResolveMap(mapReference);
             var layer = ProHandles.ResolveLayer(map, layerReference) as BasicFeatureLayer
                 ?? throw new InvalidOperationException("Statistics require a feature layer.");
-            using var table = layer.GetTable();
+            using var table = LayerData.OpenTable(layer);
             var field = table.GetDefinition().GetFields().FirstOrDefault(candidate =>
                 string.Equals(candidate.Name, requestedField, StringComparison.OrdinalIgnoreCase))
                 ?? throw new ArgumentException($"Unknown field '{requestedField}'.", nameof(arguments));
