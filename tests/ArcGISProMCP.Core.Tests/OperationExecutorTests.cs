@@ -225,6 +225,25 @@ public sealed class OperationExecutorTests
         Assert.Equal("some_code", exception.Code);
     }
 
+    [Theory]
+    [InlineData("confirmation_required")]
+    [InlineData("workspace_revision_mismatch")]
+    [InlineData("workspace_revision_required")]
+    [InlineData("workspace_changed")]
+    [InlineData("invalid_arguments")]
+    [InlineData("operation_not_found")]
+    [InlineData("operation_failed")]
+    [InlineData("outcome_unknown")]
+    public void Operation_exception_rejects_codes_reserved_for_the_executor(string code)
+    {
+        var error = Assert.Throws<ArgumentException>(() => new OperationException(code, "message"));
+        Assert.Contains(code, error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Stable_operation_codes_are_not_reserved() =>
+        Assert.DoesNotContain(OperationErrorCodes.LayerDataSourceUnavailable, OperationErrorCodes.Reserved);
+
     private sealed class ExecutorFixture
     {
         internal const string Revision = "revision-1";
