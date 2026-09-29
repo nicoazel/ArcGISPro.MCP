@@ -14,12 +14,39 @@ namespace ArcGISProMCP.AddIn.ArcGIS;
 internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher) : IRevisionPublishingWorkspace
 {
     private long _mutationSequence;
-    public void AdvanceRevision() => Interlocked.Increment(ref _mutationSequence);
+    public void AdvanceRevision() => AdvanceRevision("operation");
+
+    /// <summary>Advances the revision; <paramref name="reason"/> is recorded when revision logging is on.</summary>
+    public void AdvanceRevision(string reason)
+    {
+        var sequence = Interlocked.Increment(ref _mutationSequence);
+        LogLine($"advance	{sequence}	{reason}");
+    }
+
+    /// <summary>Records a host event that deliberately does not advance the revision.</summary>
+    public void NoteIgnoredEvent(string reason) => LogLine($"ignored	{Interlocked.Read(ref _mutationSequence)}	{reason}");
+
     public Task<WorkspaceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken) =>
         dispatcher.OnMainCimThreadAsync(CreateSnapshot, cancellationToken);
 
+    /// <summary>
+    /// Each sample first waits until the WPF dispatcher reaches application-idle and the main CIM
+    /// thread has drained, so host events queued by the write are published before the revision is read.
+    /// </summary>
     public Task<WorkspaceSnapshot> GetSettledSnapshotAsync(CancellationToken cancellationToken) =>
-        WorkspaceSnapshotSettler.WaitForSettledSnapshotAsync(GetSnapshotAsync, cancellationToken);
+        WorkspaceSnapshotSettler.WaitForSettledSnapshotAsync(async token =>
+        {
+            await WaitForHostIdleAsync(token).ConfigureAwait(false);
+            return await GetSnapshotAsync(token).ConfigureAwait(false);
+        }, cancellationToken);
+
+    private static async Task WaitForHostIdleAsync(CancellationToken cancellationToken)
+    {
+        var application = System.Windows.Application.Current;
+        if (application is not null)
+            await application.Dispatcher.InvokeAsync(static () => { }, System.Windows.Threading.DispatcherPriority.ApplicationIdle, cancellationToken).Task.ConfigureAwait(false);
+        await global::ArcGIS.Desktop.Framework.Threading.Tasks.QueuedTask.Run(static () => { }).ConfigureAwait(false);
+    }
 
     /// <summary>Opt-in diagnostics: <c>ARCGIS_PRO_MCP_REVISION_LOG=1</c> records every revision change and the state behind it.</summary>
     private static readonly bool RevisionLogEnabled =
@@ -27,6 +54,23 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
         string.Equals(Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_REVISION_LOG")?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
 
     private string? _lastLoggedRevision;
+
+    private static void LogLine(string line)
+    {
+        if (!RevisionLogEnabled) return;
+        try
+        {
+            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ArcGISProMCP", "diagnostics");
+            Directory.CreateDirectory(directory);
+            File.AppendAllText(Path.Combine(directory, $"revisions-{Environment.ProcessId}.log"), $"{DateTimeOffset.UtcNow:O}	{line}{Environment.NewLine}");
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
 
     private void LogRevisionChange(string revision, string material)
     {
