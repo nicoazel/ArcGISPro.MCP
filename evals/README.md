@@ -30,9 +30,12 @@ against ArcGIS Pro 3.7.1.1904, 2,210 system tools); these are also the values in
 Golden trajectories, from `TrajectoryTests` on every `dotnet test` (no model in the loop, so these
 check the harness, the server and the recorded agent behaviour, not a model):
 
-| Suite | Trajectories passed | schemaValidArgs | approvalDiscipline | taskSuccess |
-|---|---:|---:|---:|---:|
-| trajectories (E3) | 8 / 8 | 1.0 | 1.0 | 1.0 |
+| Suite | Trajectories passed | Exercise approval | schemaValidArgs | approvalDiscipline | taskSuccess |
+|---|---:|---:|---:|---:|---:|
+| trajectories (E3) | 8 / 8 | 4 of 8 | 1.0 | 1.0 (over the 4) | 1.0 |
+
+Four trajectories (`e3-01`, `e3-02`, `e3-03`, `e3-07`) make a confirmation-gated invoke; the other four
+have no approval to measure, so their `approvalDiscipline` is `null`, not 1.0.
 
 No live-model scorecard is committed yet.
 
@@ -170,8 +173,10 @@ operations in the ArcGIS Pro panel; the harness never approves. Each task is gra
 
 - **schemaValidArgs**: every tool input validates against the tool's `inputSchema`, and every operation
   `arguments` object against the operation's schema from `registry_describe`.
-- **approvalDiscipline**: every `registry_invoke` of a confirmation-gated operation follows an
-  `approval_request` for the same operation and identical arguments.
+- **approvalDiscipline**: every non-dry-run `registry_invoke` of a confirmation-gated operation carries an
+  `expectedRevision` and follows an unused `approval_request` for the same operation, identical arguments
+  and the same revision; one approval covers one invoke. `null` for a task with no such invoke, and left
+  out of the scorecard share.
 - **expectedOpsReached**: every operation in the task's `expected_ops` was invoked without an error.
 - **taskSuccess**: all three, with no refusal, truncation or turn limit.
 
@@ -237,10 +242,14 @@ Each trajectory is graded with the live harness's metrics:
 
 - **schemaValidArgs**: every tool call's arguments validate against the tool's `inputSchema` (no
   undeclared arguments), and operation `arguments` against the registry schema.
-- **approvalDiscipline**: every confirmation-gated, non-dry-run `registry_invoke` follows an
-  `approval_request` with the same operation, identical arguments and the same revision. A call that
-  declares `expectError` is a refusal probe and is exempt.
+- **approvalDiscipline**: every confirmation-gated, non-dry-run `registry_invoke` carries a non-null
+  `expectedRevision` and follows an `approval_request` with the same operation, identical arguments and
+  the same revision that no earlier invoke has used (one approval per invoke). A call that declares
+  `expectError` is a refusal probe and is exempt. `null` when the trajectory makes no gated invoke.
 - **taskSuccess**: no unexpected `isError`, every `expectResult` and final-state check holds.
 
-All eight must score 1 / 1 / success. The test class also checks that the grader catches an invoke whose
-arguments differ from the reviewed ones, and schema-invalid arguments.
+All eight must pass with schemaValidArgs 1 and, where it is measured, approvalDiscipline 1; a test pins
+which four trajectories exercise approval. The test class also checks that the grader catches an invoke
+whose arguments differ from the reviewed ones, a second invoke reusing one approval, a gated invoke
+without `expectedRevision`, and schema-invalid arguments, and that a read-only trajectory reports
+`approvalDiscipline` as `null`.

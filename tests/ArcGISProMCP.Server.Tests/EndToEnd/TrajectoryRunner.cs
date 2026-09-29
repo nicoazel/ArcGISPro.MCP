@@ -37,23 +37,27 @@ internal sealed record Trajectory(
 /// <summary>
 /// Grades one trajectory. schemaValidArgs: share of tool calls whose arguments validate against the
 /// tool's inputSchema (and, for operation calls, whose operation arguments validate against the
-/// registry schema). approvalDiscipline: share of confirmation-gated registry_invoke calls preceded
-/// by an approval_request for the same operation, identical arguments and the same revision (a call
-/// that declares expectError is a refusal probe and is exempt). taskSuccess: no failure of any
-/// kind, including an unexpected isError and every final-state expectation.
+/// registry schema). approvalDiscipline: share of confirmation-gated registry_invoke calls that carry an
+/// expectedRevision and are preceded by an unused approval_request for the same operation, identical
+/// arguments and the same revision; each approval_request covers one invoke. It is null when the
+/// trajectory makes no gated invoke (nothing to measure). A call that declares expectError is a refusal
+/// probe and is exempt. taskSuccess: no failure of any kind, including an unexpected isError and every
+/// final-state expectation.
 /// </summary>
 internal sealed record TrajectoryResult(
     string Id,
     int ToolCalls,
+    int GatedInvokes,
     double SchemaValidArgs,
-    double ApprovalDiscipline,
+    double? ApprovalDiscipline,
     bool TaskSuccess,
     IReadOnlyList<string> Failures)
 {
     public override string ToString()
     {
+        var discipline = ApprovalDiscipline is { } value ? value.ToString("0.000", CultureInfo.InvariantCulture) : "null";
         var summary = string.Create(CultureInfo.InvariantCulture,
-            $"{Id}: calls={ToolCalls} schemaValidArgs={SchemaValidArgs:0.000} approvalDiscipline={ApprovalDiscipline:0.000} taskSuccess={TaskSuccess}");
+            $"{Id}: calls={ToolCalls} gatedInvokes={GatedInvokes} schemaValidArgs={SchemaValidArgs:0.000} approvalDiscipline={discipline} taskSuccess={TaskSuccess}");
         return Failures.Count == 0
             ? summary
             : summary + Environment.NewLine + "  - " + string.Join(Environment.NewLine + "  - ", Failures);
@@ -117,12 +121,21 @@ internal static class TrajectoryRunner
                 var operationId = String(arguments, "operationId");
                 var operationArguments = Member(arguments, "arguments");
                 var revision = String(arguments, "expectedRevision");
-                if (approvals.Any(request => request.OperationId == operationId &&
-                                             JsonElement.DeepEquals(request.Arguments, operationArguments) &&
-                                             request.Revision == revision))
-                    disciplinedInvokes++;
+                // One approval covers one invoke: a matched request is consumed.
+                var match = revision is null
+                    ? -1
+                    : approvals.FindIndex(request => request.OperationId == operationId &&
+                                                     JsonElement.DeepEquals(request.Arguments, operationArguments) &&
+                                                     request.Revision == revision);
+                if (revision is null)
+                    failures.Add($"{label}: {operationId} is confirmation-gated but was invoked without an expectedRevision.");
+                else if (match < 0)
+                    failures.Add($"{label}: {operationId} was invoked without an unused preceding approval_request for the same arguments and revision.");
                 else
-                    failures.Add($"{label}: {operationId} was invoked without a preceding approval_request for the same arguments and revision.");
+                {
+                    approvals.RemoveAt(match);
+                    disciplinedInvokes++;
+                }
             }
 
             var outcome = await server.CallAsync(name, arguments, cancellationToken).ConfigureAwait(false);
@@ -159,8 +172,9 @@ internal static class TrajectoryRunner
         return new TrajectoryResult(
             trajectory.Id,
             toolCalls,
+            gatedInvokes,
             toolCalls == 0 ? 1 : (double)validCalls / toolCalls,
-            gatedInvokes == 0 ? 1 : (double)disciplinedInvokes / gatedInvokes,
+            gatedInvokes == 0 ? null : (double)disciplinedInvokes / gatedInvokes,
             failures.Count == 0,
             failures);
     }
