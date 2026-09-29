@@ -1,89 +1,143 @@
 # ArcGIS Pro MCP Studio
 
-A C# ArcGIS Pro 3.7 add-in with a small MCP gateway, searchable operation registry, thin WPF/MVVM panel, visual observations, and versioned workflows.
+<!-- mcp-name: io.github.nicoazel/arcgis-pro-mcp -->
 
-The model searches the registry, reads the few relevant schemas, and invokes operations by stable id. The gateway exposes 16 entry points rather than the entire operation catalog, including a three-tool local-review lifecycle.
+An ArcGIS Pro 3.7 add-in and a small stdio MCP gateway that let an MCP client (Claude Desktop, Claude Code or any other) work inside the ArcGIS Pro session you already have open. The model sees 16 gateway tools, searches a registry of 41 typed, schema-validated operations and the 2,200+ installed geoprocessing tools, and invokes them by stable id. Every write is checked against the current workspace revision, every risky write waits for a person to approve those exact arguments in an ArcGIS Pro dockpane, and every invocation is audited.
+
+**Status: development preview (0.2.0, unsigned).** Supported: an interactive, same-user Windows workstation with dockpane approvals. Autonomous mode is an opt-in expert setting and is not recommended. Live acceptance evidence for the current build is pending (see [Verification](#verification-and-acceptance-evidence)).
+
+## Why this design
+
+Most ArcGIS MCP servers take one of two approaches. This project trades some breadth for control over what runs in the user's live session.
+
+| | This project | arcpy-subprocess MCP servers | Generic code-execution servers |
+| --- | --- | --- | --- |
+| Live Pro session state (open project, maps, selection, layouts) | Yes, in-process add-in | Usually no; works on files on disk | Only what the executed code can reach |
+| Typed, schema-validated operations | 41 operations with input and result schemas | Per-tool, varies | No; the model writes code |
+| Geoprocessing gateway | `gp.search` / `gp.describe` / `gp.run` over 2,200+ installed tools, with risk tiers | Usually a hand-picked subset | Anything, unclassified |
+| Local-review approvals bound to exact arguments and revision | Yes, single-use tokens from the dockpane | Rarely | Rarely |
+| Optimistic revision concurrency | Every write names the revision it read | No | No |
+| Audit log | JSON lines: invocations, approvals, bypasses | Varies | Varies |
+| MCP structured output, resources and prompts | Output schemas, `arcgis://` resources, prompts from skills and workflows | Varies | Varies |
+| Evaluation suite | Retrieval evals, golden trajectories, live harness | Rare | Rare |
+
+The rows for other approaches describe typical designs, not any particular project.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    client["MCP client<br/>Claude Desktop / Claude Code"] -->|stdio| gateway["arcgis-pro-mcp.exe<br/>gateway, 16 tools"]
+    gateway -->|"same-user named pipe<br/>per-PID discovery"| handler
+    subgraph host["ArcGIS Pro add-in host"]
+        handler["Bridge request handler"] --> registry["Operation registry<br/>41 operations"]
+        registry --> executor["Executor<br/>schema, revision, approval, audit"]
+        executor --- approvals["Approval queue"]
+        approvals --- dockpane["MCP Studio dockpane<br/>a person approves"]
+    end
+    executor --> sdk["ArcGIS Pro SDK<br/>MCT / UI thread"]
+    fake["FakeHost and test runtime<br/>same handler, fake ArcGIS services"] -.->|"tests and evals"| handler
+```
+
+The gateway holds no GIS logic; the add-in owns the registry, the executor and the approval queue, and only the dockpane can resolve an approval. FakeHost runs the add-in's real handler, registry and executor over fake ArcGIS services, so the end-to-end tests and evals exercise production code without ArcGIS Pro. Details: [architecture](docs/architecture.md).
+
+## Quick start
+
+Requirements: Windows x64, a licensed ArcGIS Pro 3.7.1, and the .NET 10 x64 runtime.
+
+1. Get the bundle `ArcGISProMCP-<version>-win-x64-development-preview.zip` from GitHub Releases, or build it with `./tools/package-release.ps1` (see [deployment](docs/deployment.md#build-the-bundle)). Check `checksums.sha256`, then extract it, for example to `C:\ArcGISProMCP\0.2.0`.
+2. Close ArcGIS Pro and install `ArcGISProMCP.AddIn.esriAddinX` (double-click it). The add-in is unsigned; your organization's add-in policy may block it.
+3. Start ArcGIS Pro, open a **disposable copy** of a project, and open **Add-In > ArcGIS MCP > MCP Studio**.
+4. Point your MCP client at the gateway. Claude Desktop (`claude_desktop_config.json`):
+
+   ```json
+   {
+     "mcpServers": {
+       "arcgis-pro": {
+         "command": "C:\\ArcGISProMCP\\0.2.0\\server\\arcgis-pro-mcp.exe"
+       }
+     }
+   }
+   ```
+
+   Claude Code:
+
+   ```powershell
+   claude mcp add arcgis-pro -- C:\ArcGISProMCP\0.2.0\server\arcgis-pro-mcp.exe
+   ```
+
+5. Try a first prompt: *"Read the ArcGIS Pro project state and list the layers in the active map."* Then ask for an edit, such as updating one attribute, and approve the card that appears in the dockpane.
+
+With several ArcGIS Pro processes open, set `ARCGIS_PRO_MCP_HOST_PID` for the gateway; ambiguous selection fails closed. All settings are in the [reference](docs/reference.md#environment-variables).
+
+## Security model
+
+| Control | Behaviour |
+| --- | --- |
+| Risk tiers | ReadOnly runs freely. SafeWrite needs the current workspace revision. Destructive and ExternalSideEffect operations, plus `project.open`, `project.save` and `feature.update`, also need a local-review token. |
+| Confirmation | `approval_request` queues a card in the dockpane; a person approves or denies it; `approval_status` returns a short-lived, single-use token bound to the operation, its version, the exact arguments and the revision. The gateway has no way to approve its own request. |
+| `gp.run` tiers | Read-only allowlisted tools run through `gp.query` without review. Every `gp.run` is reviewed, and the card warns when a tool modifies input in place, consumes credits or runs user code (Python toolboxes, expressions). |
+| Dry run | `registry_invoke` with `dryRun` validates statically (for `gp.run`, against toolbox metadata) and never executes or consumes a token. |
+| Autonomous mode | `ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true`, opt-in and **not recommended**: it bypasses review for most risky operations. It still refuses Destructive, UserCode and unclassified `gp.run` requests unless they carry a person-issued token; revisions, schemas and audit still apply. |
+| Audit | Every invocation, approval decision and autonomous bypass is appended to `%LOCALAPPDATA%\ArcGISProMCP\audit\operations.jsonl` (rotated at 16 MiB). |
+| Transport | Same-user named pipe per ArcGIS Pro process, with bounded connection slots and framing timeouts. |
+
+`gp.run` can execute arbitrary Python through Python toolboxes, script tools and expressions, with your GIS authority. Read [security and limits](docs/security.md) before connecting a client you do not fully trust. Vulnerabilities: [SECURITY.md](SECURITY.md).
+
+## Quality
+
+Build: .NET 10 with `TreatWarningsAsErrors`; 0 warnings. Tests (xUnit v3), all passing at the time of writing:
+
+| Project | Tests | What it covers |
+| --- | ---: | --- |
+| `ArcGISProMCP.Core.Tests` | 432 | Executor policy, approvals, schemas, search, toolbox catalog and risk tiers, workflows, audit, acceptance manifests |
+| `ArcGISProMCP.Operations.Tests` | 129 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
+| `ArcGISProMCP.Server.Tests` | 119 | MCP contract snapshots, envelopes against output schemas, end-to-end runs through the real bridge handler, E3 trajectories |
+| `ArcGISProMCP.Bridge.Tests` | 54 | Pipe framing, discovery, host scheduling and the request handler |
+| `ArcGISProMCP.Evals.Tests` | 17 | Retrieval suites gated on a measured baseline, scorecard writing, descriptor dump checks |
+| **Total** | **751** | |
+
+Eval scorecard ([evals/README.md](evals/README.md); gp suites measured against ArcGIS Pro 3.7.1, 2,210 system tools):
+
+| Suite | Tasks | recall@5 | Held-out tasks | Held-out recall@5 |
+| --- | ---: | ---: | ---: | ---: |
+| Registry search (E1) | 30 | 1.000 | 16 | 0.938 |
+| Geoprocessing search (E2) | 30 | 0.933 | 16 | 0.875 |
+| Golden trajectories (E3) | 8 / 8 passed | schemaValidArgs 1.0 | approvalDiscipline 1.0 | taskSuccess 1.0 |
+
+Held-out tasks were written before search tuning and never tuned against. No live-model scorecard is committed yet; the live harness in `evals/live` runs by hand against ArcGIS Pro or FakeHost.
+
+CI (GitHub Actions, pinned to commit SHAs, read-only permissions): a Windows build-and-test job over every test project (the installed-Pro gp suites are skipped there, the synthetic-toolbox subset runs), a packaging job that builds the preview bundle and fails if development-only hosts or test support reach it, and a lint job (PSScriptAnalyzer, ruff). Dependabot updates NuGet packages and Actions weekly.
+
+## Verification and acceptance evidence
+
+Portable tests are not host acceptance. The live acceptance tooling exists: `tools/run-acceptance.ps1` records the commit, ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into `docs/acceptance/<date>-<sha7>/`, and a Core test validates every committed folder against the [evidence contract](docs/acceptance/README.md). **No evidence folder is committed yet**: it requires a maintainer run against live ArcGIS Pro. An earlier live pass on the maintainer's workstation was not committed and cannot be verified from the repository. Until evidence lands, run the [manual acceptance](docs/manual-acceptance.md) checklist on your own installation and read the [known limits](docs/deployment.md#known-limits).
+
+## Build from source
+
+```powershell
+dotnet build ArcGISPro.MCP.slnx -c Release
+dotnet test ArcGISPro.MCP.slnx -c Release --no-build
+./tools/pack-addin.ps1 -Configuration Release -Install   # restart ArcGIS Pro afterwards
+./tools/package-release.ps1                              # the full CI gate and preview bundle
+```
+
+The build uses the `Esri.ArcGISPro.Extensions30` NuGet package, so it and the portable tests do not need ArcGIS Pro. To run an agent without ArcGIS Pro, use [FakeHost](evals/README.md#against-fakehost---host-fakehost).
 
 ## Documentation
 
-The **[documentation hub](docs/README.md)** is the starting point, with a reading path for each task.
-
-| | |
+| Topic | Read |
 | --- | --- |
-| **Set up** | [Deployment, status and rollback](docs/deployment.md) · [Architecture](docs/architecture.md) |
-| **Look up** | [Reference](docs/reference.md): 16 gateway tools, 41 operations (39 without the opt-in ArcPy pair) with risk levels, MCP resources and prompts, environment variables, workflows, scripts |
-| **Stay safe** | [Security and limits](docs/security.md) · [ArcPy configuration](docs/arcpy.md) |
-| **Release** | [Status and known limits](docs/deployment.md#status) · [Manual acceptance](docs/manual-acceptance.md) · [Changelog](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md) · [Roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md) |
-| **Contribute** | [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) |
+| Start here | [Documentation hub](docs/README.md) |
+| Install, status, rollback, registry package | [Deployment](docs/deployment.md) |
+| Processes, operation lifecycle, threading | [Architecture](docs/architecture.md) |
+| Tools, operations, resources, prompts, errors, environment | [Reference](docs/reference.md) |
+| Trust boundary, approvals, risk tiers, autonomous mode | [Security and limits](docs/security.md) · [ArcPy configuration](docs/arcpy.md) |
+| Evidence and live checks | [Acceptance evidence](docs/acceptance/README.md) · [Manual acceptance](docs/manual-acceptance.md) |
+| Evaluations | [evals/README.md](evals/README.md) |
+| Demos, showcase and fixtures | [Demos](docs/demos.md) |
+| Plans and history | [Roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md) · [Changelog](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md) |
 
-## Implemented
+## Contributing, security and license
 
-- Project inspection, open/save; map/scene creation and activation; basemap selection.
-- Layer loading, visibility/transparency, simple and categorical polygon symbology, label expressions and fonts, style search, and selection clearing.
-- Scene-layer elevation placement with managed mode, offset and unit metadata, including ground-relative design geometry.
-- Bounded feature-table queries and numeric statistics.
-- Typed feature-layer inspection, bounded attribute/spatial query and selection, and SDK-native create/update/single-feature delete operations.
-- Feature-layer metadata read/update for title, summary, description, tags, credits, and use limitations.
-- SDK geoprocessing execution with bounded ordered parameters, explicit environments and overwrite behavior, complete messages, warnings, derived values and timing.
-- Geoprocessing discovery from installed toolbox metadata (`gp.search`, `gp.describe`), review-free allowlisted read-only queries (`gp.query`), per-tool risk tiers, and static `gp.run` dry runs.
-- Layout creation, map frames and extents, named text, map surrounds, activation and PNG export; map-view PNG capture.
-- Immutable parameterized workflows, run history/ranking, and searchable bundled skill guidance.
-- MCP protocol surface: explicit tool annotations, typed `{ ok, result, error }` structured results with output schemas and `isError`, per-operation `resultSchema` in `registry_describe`, `dryRun` on `registry_invoke`, read-only `arcgis://` resources, and prompts generated from skills and workflows.
-- Same-user concurrent named-pipe transport, bounded connection slots/framing timeouts, exclusive pipe ownership, serialized host operations, audit records and write revisions.
-- Expiring modeless local review, exact argument/version/revision binding, and single-use approval tokens for every destructive or external-side-effect operation plus `project.open`, `project.save` and `feature.update`. Requests that run Python are flagged "Runs user code" on the approval card. Default mode does not allow remote self-approval; an explicit host-startup autonomous mode can bypass review while retaining revision checks, warning notices and audit records.
-- Workflow operation allowlists (`gp.run` and `arcpy.run-script` must be listed explicitly), and workflows that stop with `workspace_changed` instead of adopting a newer revision mid-run.
-
-**Status: development preview.** Supported: interactive same-user workstation with dockpane approvals. Autonomous mode is an opt-in expert setting, not recommended. The operation set is curated, not full coverage of the ArcGIS SDK. See the operation registry for the actual installed capability set. Advanced cartography, workspace connection management, PDF export, durable background jobs and complete cancellation are not release features.
-
-## Build and install
-
-Requires Windows, a licensed ArcGIS Pro 3.7.1 installation, and .NET SDK 10. This repository has no Rhino dependency.
-
-```powershell
-dotnet build ArcGISPro.MCP.slnx -c Debug
-dotnet test tests/ArcGISProMCP.Core.Tests
-dotnet test tests/ArcGISProMCP.Operations.Tests
-dotnet test tests/ArcGISProMCP.Bridge.Tests
-dotnet test tests/ArcGISProMCP.Server.Tests
-./tools/pack-addin.ps1 -Configuration Debug -Install
-```
-
-Restart ArcGIS Pro after installing an updated add-in. Launch the gateway with:
-
-```powershell
-dotnet run --project src/ArcGISProMCP.Server --no-build
-```
-
-The MCP transport is stdio; diagnostic logging goes to stderr. The gateway uses the official ModelContextProtocol C# SDK 2.2.0, and the add-in compiles against Esri.ArcGISPro.Extensions30 3.7.0.1901.
-
-Each ArcGIS Pro process publishes a per-process pipe and lightweight local discovery record. With one Pro host, the gateway selects it automatically. With several, start the gateway with `ARCGIS_PRO_MCP_HOST_PID=<pid>`; `ARCGIS_PRO_MCP_PIPE` remains the explicit override. Ambiguous selection fails closed and reports the available PID/project choices.
-
-## Live verification
-
-To build the complete unsigned preview bundle (add-in, Windows x64 gateway, skills, workflows, documentation and checksums), run `./tools/package-release.ps1`. It smoke-tests the published gateway's MCP handshake and skill lookup without Pro. See [deployment](docs/deployment.md). The bundle is unsigned. A live acceptance pass was run on the maintainer's workstation, but its evidence is local and not committed; run [manual acceptance](docs/manual-acceptance.md) on your own installation and read the [known limits](docs/deployment.md#known-limits) first.
-
-For a fail-fast Release build, both portable suites, whitespace checks and package-content inspection, run `./tools/verify-release.ps1`. Add `-Live` for actual MCP discovery/state and a pending/cancelled local-review probe (it never approves or runs a geoprocessing tool). Pass `-ImageUri` to verify native image content. This does not replace feature, metadata, geoprocessing, ArcPy, or local-review acceptance in ArcGIS Pro.
-
-```powershell
-./tools/test-mcp.ps1
-```
-
-This performs a real MCP handshake, tool discovery, live state request, registry search and skill read. Pass an observation URI using `-ImageUri` to verify native MCP image content.
-
-`tools/ArcGISProMCP.DemoRunner` runs the three-map workflow against supplied local fixtures and saves structured results and a PNG. It also supports `--call request.json result.json` for focused bridge diagnostics.
-
-The local demonstration artifacts are in `artifacts/demo` (git-ignored). Its land-use parcels and street centerlines are test fixtures, not authoritative zoning designations or transit-service data. The proposed development is illustrative.
-
-The final standalone showcase is `workflows/pittsburgh-block-mixed-use-showcase.workflow.json`. It composes a plausible Pittsburgh mixed-use block concept into 3D massing, program and public-realm maps with live layout surrounds and dynamic text. Generated evidence is under `artifacts/pittsburgh-showcase`.
-
-## Design and limits
-
-See [architecture](docs/architecture.md), [security](docs/security.md), [ArcPy configuration](docs/arcpy.md), and the [reference](docs/reference.md).
-
-ArcPy is an optional, explicitly enabled external-worker escape hatch; it is not a core dependency. Normal geoprocessing continues through the ArcGIS Pro SDK.
-
-Autonomous mode (`ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true` for the ArcGIS Pro process before startup) is an opt-in expert setting and is not recommended. It lets the connected same-user client run risky operations, including arbitrary Python through `gp.run` or ArcPy, without panel review. It is off by default, advertised in workspace capabilities and the panel, and does not bypass workspace revisions, schema validation, audit, idempotency, or operation-specific limits.
-
-In default mode, `workflow_run` cannot execute confirmation-gated steps such as `gp.run`, `metadata.update` or `project.save`; there is no per-step approval yet. Run those operations individually through local review.
-
-Apache-2.0. Esri products require their own licenses.
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md). Licensed under [Apache-2.0](LICENSE). ArcGIS Pro and other Esri products require their own licenses.

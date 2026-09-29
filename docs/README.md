@@ -18,13 +18,15 @@ flowchart LR
 
 | I want to... | Read |
 | --- | --- |
-| Build, install, and connect a client | [Main README](../README.md#build-and-install), then [deployment and rollback](deployment.md) |
+| Build, install, and connect a client | [Main README quick start](../README.md#quick-start), then [deployment and rollback](deployment.md) |
 | Understand how requests flow and where code lives | [Architecture](architecture.md) |
 | Look up a tool, operation, environment variable, or workflow | [Reference](reference.md) |
 | Decide whether it is safe to run on a workstation | [Security and operational limits](security.md) |
 | Enable the optional Python escape hatch | [ArcPy configuration](arcpy.md) |
 | Check release status, evidence, and known limits | [Deployment: status and known limits](deployment.md#status) |
-| Sign off a build on a live ArcGIS Pro install | [Manual acceptance](manual-acceptance.md) |
+| Sign off a build on a live ArcGIS Pro install | [Manual acceptance](manual-acceptance.md), then record it as [acceptance evidence](acceptance/README.md) |
+| Measure how well an agent finds and uses operations | [Evaluations](../evals/README.md) |
+| Try the demos or run an agent without ArcGIS Pro | [Demos and fixtures](demos.md), [FakeHost](../evals/README.md#against-fakehost---host-fakehost) |
 
 ## Guides
 
@@ -38,6 +40,9 @@ flowchart LR
 
 ### Verify and release
 - **[Manual acceptance](manual-acceptance.md)**: the live checklist for feature data, metadata, geoprocessing, ArcPy, and stability on a disposable project.
+- **[Acceptance evidence](acceptance/README.md)**: the committed evidence folder contract, how `tools/run-acceptance.ps1` produces an entry, and what the manifest test checks. No entry is committed yet.
+- **[Evaluations](../evals/README.md)**: retrieval suites (E1 registry search, E2 geoprocessing search), golden trajectories (E3), the current scorecard, and the live harness against ArcGIS Pro or FakeHost.
+- **[Demos and fixtures](demos.md)**: the demo runner, the Pittsburgh showcase workflow, fixture generators, and the live probe scripts.
 - **[Roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md)**: planned work, in priority order. Released changes are in the [changelog](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md).
 
 ## How a model uses the gateway
