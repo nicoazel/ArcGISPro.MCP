@@ -36,9 +36,10 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
     }
 
     /// <summary>
-    /// Adds the layer, or reuses a same-named layer only when its data connection is healthy and it
-    /// reads the requested source. Otherwise the existing layer is repaired in place (keeping its
-    /// symbology) when ArcGIS can swap the dataset, or replaced by a new layer at the same position.
+    /// Adds the layer, or resolves a same-named layer by the rules in <see cref="LayerSources.DecideExisting"/>:
+    /// a healthy layer is reused when it reads the requested data (or ArcGIS reports no path to compare),
+    /// and is otherwise only ever repaired in place. Only a layer whose data connection is broken may be
+    /// removed and re-added, as a last resort when an in-place repair is not possible.
     /// </summary>
     private static (LayerMutationResult Result, OperationNotice? Notice) Ensure(Map map, Uri uri, string requestedSource, string? name)
     {
@@ -46,14 +47,14 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
             ? null
             : map.GetLayersAsFlattenedList().FirstOrDefault(layer =>
                 string.Equals(layer.Name, name, StringComparison.OrdinalIgnoreCase));
+        var requestIsLayerFile = IsLayerFile(uri);
         if (existing is null)
         {
             var created = LayerFactory.Instance.CreateLayer(uri, map, 0, name ?? string.Empty)
                 ?? throw new InvalidOperationException($"ArcGIS could not create a layer from '{requestedSource}'.");
-            return (Result(created, map, requestedSource, created: true), null);
+            return (Result(created, map, uri, requestedSource, requestIsLayerFile, created: true), null);
         }
 
-        var requestIsLayerFile = IsLayerFile(uri);
         if (existing is ILayerContainer)
         {
             // Never delete a group layer to satisfy a same-named data request.
@@ -62,74 +63,119 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
                 throw new InvalidOperationException(
                     $"Layer '{existing.Name}' in map '{map.Name}' is a group layer, not a data layer; choose a different layer name.");
             }
-            return (Result(existing, map, requestedSource, created: false), null);
+            return (Result(existing, map, uri, requestedSource, requestIsLayerFile, created: false), null);
         }
 
         var broken = LayerData.IsBroken(existing);
         var actual = LayerData.TryGetPath(existing);
-        // A layer file's own path is never the layer's data path, so only health can be checked.
-        if (!broken && (requestIsLayerFile || LayerData.SameSource(actual, uri)))
-            return (Result(existing, map, requestedSource, created: false), null);
-
+        var action = LayerSources.DecideExisting(broken, requestIsLayerFile, actual, uri, () => SameDataset(existing, uri));
         var previous = LayerData.Display(actual);
-        var reason = broken
-            ? previous is null ? "its data source was broken" : $"its data source '{previous}' was broken"
-            : $"it read '{previous ?? "an unknown source"}' instead of the requested source";
-        if (!requestIsLayerFile && TryReplaceDataSource(existing, uri))
+        switch (action)
         {
-            return (Result(existing, map, requestedSource, created: false, repaired: true), new OperationNotice(
-                "layer_repaired",
-                $"Layer '{existing.Name}' already existed but {reason}; its data source was replaced with '{requestedSource}' and its symbology was kept.",
-                "info"));
-        }
+            case ExistingLayerAction.Reuse:
+                return (Result(existing, map, uri, requestedSource, requestIsLayerFile, created: false), null);
 
-        var replacement = Replace(map, existing, uri, requestedSource);
-        return (Result(replacement, map, requestedSource, created: true, replaced: true), new OperationNotice(
-            "layer_repaired",
-            $"Layer '{replacement.Name}' already existed but {reason}; it was removed and re-added from '{requestedSource}' at the same position. " +
-            "Its previous symbology and layer properties were not kept, so reapply them.",
-            "info"));
+            case ExistingLayerAction.ReuseUnverified:
+                return (Result(existing, map, uri, requestedSource, requestIsLayerFile, created: false), new OperationNotice(
+                    "source_unverified",
+                    $"Layer '{existing.Name}' already existed and its data source is healthy, but ArcGIS reports no dataset path for it, " +
+                    $"so it could not be confirmed to read '{requestedSource}'. It was reused unchanged; use a different name to add the requested source as a new layer.",
+                    "warning"));
+
+            case ExistingLayerAction.RepairInPlaceOnly:
+            {
+                var reason = $"it read '{previous}' instead of the requested source";
+                if (TryReplaceDataSource(existing, uri))
+                    return Repaired(existing, map, uri, requestedSource, requestIsLayerFile, reason);
+                // A healthy layer is never removed: it may carry symbology, labels or joins the caller wants.
+                return (Result(existing, map, uri, requestedSource, requestIsLayerFile, created: false), new OperationNotice(
+                    "layer_source_mismatch",
+                    $"Layer '{existing.Name}' already existed with a healthy data source '{previous}', not the requested '{requestedSource}'. " +
+                    "ArcGIS could not swap its data source in place, so it was left unchanged (DataSourceStatus 'mismatch'); " +
+                    "use a different name, or remove the layer first, to add the requested source.",
+                    "warning"));
+            }
+
+            default:
+            {
+                var reason = previous is null ? "its data source was broken" : $"its data source '{previous}' was broken";
+                if (!requestIsLayerFile && TryReplaceDataSource(existing, uri))
+                    return Repaired(existing, map, uri, requestedSource, requestIsLayerFile, reason);
+
+                // Last resort, and only for a broken layer: nothing usable is lost by replacing it.
+                var replacement = Replace(map, existing, uri, requestedSource);
+                return (Result(replacement, map, uri, requestedSource, requestIsLayerFile, created: true, replaced: true), new OperationNotice(
+                    "layer_repaired",
+                    $"Layer '{replacement.Name}' already existed but {reason}; it was removed and re-added from '{requestedSource}' at the same position. " +
+                    "Its previous symbology and layer properties were not kept, so reapply them.",
+                    "info"));
+            }
+        }
     }
 
-    /// <summary>Swaps the dataset of a feature layer in place; false when that is not possible for this source.</summary>
+    private static (LayerMutationResult Result, OperationNotice? Notice) Repaired(
+        Layer layer, Map map, Uri uri, string requestedSource, bool requestIsLayerFile, string reason)
+    {
+        var result = Result(layer, map, uri, requestedSource, requestIsLayerFile, created: false, repaired: true);
+        var message = $"Layer '{layer.Name}' already existed but {reason}; its data source was replaced and its symbology was kept.";
+        // Report what the layer reads after the swap rather than assuming it is the request.
+        var ok = string.Equals(result.DataSourceStatus, "ok", StringComparison.Ordinal);
+        if (!ok)
+            message += $" ArcGIS now reports its source as '{result.Source ?? "unknown"}' (DataSourceStatus '{result.DataSourceStatus}').";
+        return (result, new OperationNotice("layer_repaired", message, ok ? "info" : "warning"));
+    }
+
+    /// <summary>Whether the layer's opened feature class is the requested local dataset (workspace plus name).</summary>
+    private static bool SameDataset(Layer layer, Uri uri)
+    {
+        if (!uri.IsFile || !LayerSources.TrySplitLocalDataset(uri.LocalPath, out var workspace, out var dataset, out _)) return false;
+        var (actualWorkspace, actualName) = LayerData.TryGetDatasetLocation(layer);
+        return LayerSources.SameDataset(actualWorkspace, actualName, workspace, dataset);
+    }
+
+    /// <summary>
+    /// Swaps the dataset of a feature layer in place, keeping its symbology. True when ArcGIS accepted
+    /// the swap and the layer's connection is not broken afterwards; whether it now reads the requested
+    /// path is reported separately in <c>Source</c> and <c>DataSourceStatus</c>.
+    /// </summary>
     private static bool TryReplaceDataSource(Layer layer, Uri uri)
     {
         if (layer is not FeatureLayer || !uri.IsFile) return false;
+        bool swapped;
         try
         {
-            using var dataset = OpenFeatureClass(uri.LocalPath);
-            if (dataset is null || !layer.CanReplaceDataSource(dataset)) return false;
-            layer.ReplaceDataSource(dataset);
+            swapped = WithLocalFeatureClass(uri.LocalPath, dataset =>
+            {
+                if (!layer.CanReplaceDataSource(dataset)) return false;
+                layer.ReplaceDataSource(dataset);
+                return true;
+            });
         }
         catch (Exception exception) when (exception is not (CalledOnWrongThreadException or OperationCanceledException))
         {
-            // Opening or swapping failed; the caller falls back to removing and re-adding the layer.
+            // Opening or swapping failed; only a broken layer falls back to removing and re-adding it.
             return false;
         }
-        return !LayerData.IsBroken(layer) && LayerData.SameSource(LayerData.TryGetPath(layer), uri);
+        return swapped && !LayerData.IsBroken(layer);
     }
 
-    /// <summary>Opens a shapefile or file-geodatabase feature class; null for other sources.</summary>
-    private static FeatureClass? OpenFeatureClass(string path)
+    /// <summary>
+    /// Opens a shapefile or file-geodatabase feature class and runs <paramref name="use"/> while its
+    /// datastore is still open (the datastore must outlive the swap); false for other sources.
+    /// </summary>
+    private static bool WithLocalFeatureClass(string path, Func<FeatureClass, bool> use)
     {
-        if (string.Equals(Path.GetExtension(path), ".shp", StringComparison.OrdinalIgnoreCase))
+        if (!LayerSources.TrySplitLocalDataset(path, out var workspace, out var datasetName, out var isShapefile)) return false;
+        if (isShapefile)
         {
-            var folder = Path.GetDirectoryName(path);
-            if (string.IsNullOrEmpty(folder)) return null;
-            using var shapefiles = new FileSystemDatastore(new FileSystemConnectionPath(new Uri(folder), FileSystemDatastoreType.Shapefile));
-            return shapefiles.OpenDataset<FeatureClass>(Path.GetFileNameWithoutExtension(path));
+            using var shapefiles = new FileSystemDatastore(new FileSystemConnectionPath(new Uri(workspace), FileSystemDatastoreType.Shapefile));
+            using var shapefile = shapefiles.OpenDataset<FeatureClass>(datasetName);
+            return use(shapefile);
         }
 
-        const string GeodatabaseMarker = ".gdb" + "\\";
-        var marker = path.IndexOf(GeodatabaseMarker, StringComparison.OrdinalIgnoreCase);
-        if (marker < 0) return null;
-        var geodatabasePath = path[..(marker + 4)];
-        var datasetName = path[(marker + GeodatabaseMarker.Length)..]
-            .Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)
-            .LastOrDefault();
-        if (string.IsNullOrEmpty(datasetName)) return null;
-        using var geodatabase = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(geodatabasePath)));
-        return geodatabase.OpenDataset<FeatureClass>(datasetName);
+        using var geodatabase = new Geodatabase(new FileGeodatabaseConnectionPath(new Uri(workspace)));
+        using var featureClass = geodatabase.OpenDataset<FeatureClass>(datasetName);
+        return use(featureClass);
     }
 
     /// <summary>Adds a new layer at the old layer's position in the same container, then removes the old one.</summary>
@@ -148,7 +194,7 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
     }
 
     private static LayerMutationResult Result(
-        Layer layer, Map map, string requestedSource, bool created, bool repaired = false, bool replaced = false)
+        Layer layer, Map map, Uri uri, string requestedSource, bool requestIsLayerFile, bool created, bool repaired = false, bool replaced = false)
     {
         var actual = LayerData.TryGetPath(layer);
         return new LayerMutationResult(
@@ -162,7 +208,8 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
             created,
             repaired,
             replaced,
-            LayerData.IsBroken(layer) ? "broken" : "ok");
+            LayerSources.DataSourceStatus(
+                LayerData.IsBroken(layer), requestIsLayerFile, created, actual, uri, () => SameDataset(layer, uri)));
     }
 
     private static bool IsLayerFile(Uri uri) =>
@@ -171,7 +218,11 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
     /// <param name="Source">The source the layer actually reads; null when ArcGIS reports none for a reused layer.</param>
     /// <param name="Created">A new layer object was added (a new handle).</param>
     /// <param name="Repaired">An existing layer's data source was swapped in place; its symbology was kept.</param>
-    /// <param name="Replaced">An existing layer was removed and re-added at the same position.</param>
+    /// <param name="Replaced">An existing broken layer was removed and re-added at the same position.</param>
+    /// <param name="DataSourceStatus">
+    /// <c>ok</c>, <c>broken</c>, <c>unverified</c> (ArcGIS reports no dataset path to compare) or
+    /// <c>mismatch</c> (the layer reads something other than the request).
+    /// </param>
     private sealed record LayerMutationResult(
         string Id,
         string Name,

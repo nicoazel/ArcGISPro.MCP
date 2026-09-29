@@ -1,4 +1,3 @@
-using System.IO;
 using ArcGIS.Core;
 using ArcGIS.Core.Data;
 using ArcGIS.Desktop.Mapping;
@@ -70,31 +69,26 @@ internal static class LayerData
     public static string? Display(Uri? path) => path is null ? null : path.IsFile ? path.LocalPath : path.ToString();
 
     /// <summary>
-    /// Whether two dataset paths name the same data. File paths are compared case-insensitively after
-    /// normalization, and a shapefile's ".shp" extension is optional (ArcGIS may report either form).
+    /// The workspace path and dataset name of a feature layer's opened feature class, or nulls when
+    /// the layer is not a feature layer or its data cannot be opened. Unlike
+    /// <see cref="MapMember.GetPath"/>, this names a file geodatabase feature class without its
+    /// feature dataset, so it can match a request spelled either way.
     /// </summary>
-    public static bool SameSource(Uri? actual, Uri requested)
+    public static (string? Workspace, string? Name) TryGetDatasetLocation(MapMember member)
     {
-        if (actual is null || !actual.IsAbsoluteUri) return false;
-        if (actual.IsFile != requested.IsFile) return false;
-        if (actual.IsFile)
-            return string.Equals(NormalizeFile(actual.LocalPath), NormalizeFile(requested.LocalPath), StringComparison.OrdinalIgnoreCase);
-        return string.Equals(actual.AbsoluteUri.TrimEnd('/'), requested.AbsoluteUri.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string NormalizeFile(string path)
-    {
-        string full;
+        if (member is not FeatureLayer layer || IsBroken(layer)) return (null, null);
         try
         {
-            full = Path.GetFullPath(path);
+            using var featureClass = OpenFeatureClass(layer);
+            using var datastore = featureClass.GetDatastore();
+            var workspace = datastore.GetPath();
+            return (workspace is { IsAbsoluteUri: true, IsFile: true } ? workspace.LocalPath : null, featureClass.GetName());
         }
-        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        catch (Exception exception) when (exception is not (CalledOnWrongThreadException or OperationCanceledException))
         {
-            full = path;
+            // Only a comparison hint: failing to read it means "not known to be the same dataset".
+            return (null, null);
         }
-        full = full.Replace('/', '\\').TrimEnd('\\');
-        return full.EndsWith(".shp", StringComparison.OrdinalIgnoreCase) ? full[..^4] : full;
     }
 
     private static T Open<T>(MapMember member, Func<T?> open) where T : class
