@@ -11,10 +11,30 @@ run by hand.
 | `registry-search-holdout` (E1) | as `registry-search`; held out from tuning | 16 | always |
 | `gp-search-holdout` (E2) | as `gp-search`; held out from tuning | 16 | when Pro is installed |
 | `gp-search-fixture` (E2 subset) | `ToolboxCatalog.Search` over the synthetic toolboxes in `tests/ArcGISProMCP.Core.Tests/Fixtures/toolboxes` | 5 | always |
-| `live` | Claude choosing MCP tool calls against a running gateway | see `live/live-tasks.jsonl` | by hand |
+| `trajectories` (E3) | ordered MCP tool calls replayed against the in-process end-to-end server (see [below](#golden-trajectories-e3)) | 8 | always |
+| `live` | Claude choosing MCP tool calls against a running gateway or FakeHost | see `live/live-tasks.jsonl` | by hand |
 
-Golden trajectories (E3: ordered tool calls replayed against the in-process server) wait for the
-Phase 4 operations seam and FakeHost.
+## Current scorecard
+
+Retrieval suites, from [`results/2026-09-26-2290311`](results/2026-09-26-2290311/scorecard.md) (gp suites
+against ArcGIS Pro 3.7.1.1904, 2,210 system tools); these are also the values in `baseline.json`:
+
+| Suite | Tasks | recall@1 | recall@5 | MRR |
+|---|---:|---:|---:|---:|
+| registry-search | 30 | 0.667 | 1.000 | 0.803 |
+| registry-search-holdout | 16 | 0.813 | 0.938 | 0.865 |
+| gp-search | 30 | 0.667 | 0.933 | 0.776 |
+| gp-search-holdout | 16 | 0.688 | 0.875 | 0.771 |
+| gp-search-fixture | 5 | 1.000 | 1.000 | 1.000 |
+
+Golden trajectories, from `TrajectoryTests` on every `dotnet test` (no model in the loop, so these
+check the harness, the server and the recorded agent behaviour, not a model):
+
+| Suite | Trajectories passed | schemaValidArgs | approvalDiscipline | taskSuccess |
+|---|---:|---:|---:|---:|
+| trajectories (E3) | 8 / 8 | 1.0 | 1.0 | 1.0 |
+
+No live-model scorecard is committed yet.
 
 ## Layout
 
@@ -68,7 +88,7 @@ Each search is asked for 20 results.
 - **misses**: tasks with no expected id in the top 20.
 
 `schemaValidArgs`, `approvalDiscipline` and `taskSuccess` are trajectory metrics; they are `null` for
-retrieval suites and filled in by the live harness.
+retrieval suites and filled in by the E3 trajectory tests and the live harness.
 
 ## Running
 
