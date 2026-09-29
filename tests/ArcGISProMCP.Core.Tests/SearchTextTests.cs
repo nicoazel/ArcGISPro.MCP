@@ -80,22 +80,22 @@ public sealed class SearchTextTests
     [Fact]
     public void Synonym_phrases_become_one_term()
     {
-        var terms = SearchText.ParseQuery("how many rows are in the bounding box");
+        var terms = SearchText.ParseQuery("shaded relief rows print layout");
 
-        Assert.Equal(["how many", "rows", "bounding box"], terms.Select(term => term.Text));
-        Assert.Contains(terms[0].Synonyms, synonym => synonym.SequenceEqual(["count"]));
-        Assert.Contains(terms[2].Synonyms, synonym => synonym.SequenceEqual(["extent"]));
+        Assert.Equal(["shaded relief", "rows", "print layout"], terms.Select(term => term.Text));
+        Assert.Contains(terms[0].Synonyms, synonym => synonym.SequenceEqual(["hillshad"]));
+        Assert.Contains(terms[2].Synonyms, synonym => synonym.SequenceEqual(["layout"]));
     }
 
     [Theory]
     [InlineData("colour", "symbology")]
-    [InlineData("highlight", "select")]
-    [InlineData("picture", "captur")]
+    [InlineData("voronoi", "thiessen")]
+    [InlineData("snapshot", "captur")]
     [InlineData("reproject", "project")]
     [InlineData("overlap", "intersect")]
     [InlineData("combine", "merg")]
     [InlineData("fix", "repair")]
-    [InlineData("acres", "area")]
+    [InlineData("nearest", "near")]
     [InlineData("column", "field")]
     public void Everyday_words_map_to_product_vocabulary(string word, string target)
     {
@@ -170,12 +170,12 @@ public sealed class SearchIndexTests
     {
         var index = Index();
 
-        var direct = index.Score(3, SearchText.ParseQuery("count")).Score;
-        var synonym = index.Score(3, SearchText.ParseQuery("how many")).Score;
+        var direct = index.Score(0, SearchText.ParseQuery("transparency")).Score;
+        var synonym = index.Score(0, SearchText.ParseQuery("opacity")).Score;
 
         Assert.True(synonym > 0);
         Assert.True(direct > synonym);
-        Assert.Equal(["how many"], index.Score(3, SearchText.ParseQuery("how many")).MatchedTerms);
+        Assert.Equal(["opacity"], index.Score(0, SearchText.ParseQuery("opacity")).MatchedTerms);
     }
 
     [Fact]

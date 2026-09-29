@@ -9,10 +9,21 @@ namespace ArcGISProMCP.Core.Search;
 /// (<see cref="SearchIndex{T}.SynonymFactor"/>), so a descriptor that uses the caller's own word still wins.
 /// </summary>
 /// <remarks>
-/// Entries must be general vocabulary that any GIS user or glossary would recognise. Do not add an
-/// entry because one eval task phrases something oddly: the held-out eval sets exist to catch that.
-/// This map is also the only place search-side aliases live; operation descriptors are not edited
-/// for search tuning.
+/// <para>An entry belongs here only when all of these hold:</para>
+/// <list type="bullet">
+/// <item>It is general vocabulary that a GIS glossary or any GIS user would recognise as meaning the
+/// target (reproject/project, DEM/elevation, voronoi/thiessen), or a plain-English verb for a product verb
+/// (remove/delete).</item>
+/// <item>It is not a brand, font, colour or unit name, and not a phrase specific to one request.</item>
+/// <item>Its justification does not depend on an eval task. An entry whose only reason to exist is that one
+/// task in <c>evals/tasks</c> phrases something that way is fitting the suite, not improving search; the
+/// held-out suites exist to catch that.</item>
+/// </list>
+/// <para>An ablation (see <c>evals/README.md</c>, "Search tuning") showed that synonyms moved only the main
+/// eval suites' recall@5, so entries that met none of the rules above (font names, colour names, units,
+/// checksum wording, "see through", "picture", "highlight", "bounding box", "set up", "how many",
+/// "heat map") were removed. This map is also the only place search-side aliases live; operation
+/// descriptors are not edited for search tuning.</para>
 /// </remarks>
 public static class SearchSynonyms
 {
@@ -21,20 +32,18 @@ public static class SearchSynonyms
     [
         // Cartography and symbology.
         (["color", "colour", "colors", "colours", "fill", "restyle", "styling"], ["symbology", "symbol", "renderer", "color"]),
-        (["red", "green", "blue", "yellow", "orange", "purple", "brown", "pink"], ["color"]),
-        (["see through", "transparent", "translucent", "opacity", "opaque", "fade"], ["transparency"]),
+        (["transparent", "translucent", "opacity", "opaque", "fade"], ["transparency"]),
         (["hide", "hidden", "visible", "invisible", "turn off"], ["visibility"]),
         (["heading", "headline", "caption"], ["title", "text"]),
-        (["typeface", "pt", "point size", "font size", "bold", "italic", "arial", "helvetica", "verdana", "times new roman"], ["font", "text"]),
+        (["typeface", "point size", "font size", "bold", "italic"], ["font", "text"]),
         (["page", "sheet", "printout", "print layout"], ["layout"]),
         (["background map", "background", "reference map"], ["basemap"]),
         (["satellite", "aerial", "orthophoto", "orthoimagery"], ["imagery"]),
         (["scene", "globe"], ["map", "scene"]),
-        (["zoom", "pan", "fit", "bounding box", "bbox", "envelope", "area of interest", "aoi", "map window"], ["extent", "envelope"]),
-        (["picture", "snapshot", "screengrab", "screen capture", "screen shot"], ["capture", "screenshot"]),
+        (["zoom", "pan", "fit", "envelope", "area of interest", "aoi", "map window"], ["extent", "envelope"]),
+        (["snapshot", "screengrab", "screen capture", "screen shot"], ["capture", "screenshot"]),
 
         // Selection and querying.
-        (["highlight", "pick"], ["select", "selection"]),
         (["deselect", "unselect"], ["clear selection"]),
         (["find", "look up", "lookup", "look for", "filter"], ["query", "search", "select"]),
         (["where clause", "sql", "definition query"], ["where", "query", "attribute"]),
@@ -43,14 +52,13 @@ public static class SearchSynonyms
         (["record", "entry", "entries"], ["row", "record"]),
         (["row"], ["record", "row"]),
         (["column", "attribute"], ["field"]),
-        (["how many", "number of", "tally"], ["count"]),
         (["average", "mean", "median", "sum", "total", "minimum", "maximum", "min", "max", "stats", "summarize", "summarise"], ["statistics", "summary"]),
         (["spreadsheet", "xlsx", "xls", "workbook"], ["excel"]),
         (["csv", "delimited", "text file"], ["table", "delimited"]),
         (["latitude", "longitude", "lat", "lon", "x y"], ["xy"]),
 
         // Generic verbs.
-        (["add", "insert", "new", "make", "generate", "build", "set up"], ["create"]),
+        (["add", "insert", "new", "make", "generate", "build"], ["create"]),
         (["remove", "drop", "discard", "purge"], ["delete", "remove"]),
         (["change", "modify", "edit", "alter"], ["update", "set", "alter"]),
         (["load", "import", "bring in"], ["add", "import"]),
@@ -62,8 +70,7 @@ public static class SearchSynonyms
         (["enumerate", "inventory"], ["list"]),
         (["info", "information", "properties", "schema", "structure"], ["describe", "schema", "properties"]),
         (["execute", "invoke"], ["run", "execute"]),
-        (["python", "py"], ["script", "python", "arcpy"]),
-        (["checksum", "fingerprint", "sha"], ["hash"]),
+        (["python"], ["script", "python", "arcpy"]),
 
         // Geometry, overlay and proximity.
         (["overlap", "overlapping", "in common", "common area", "intersection"], ["intersect"]),
@@ -74,15 +81,12 @@ public static class SearchSynonyms
         (["reproject", "re project", "transform coordinates", "change projection", "change coordinate system"], ["project", "projection"]),
         (["coordinate system", "spatial reference", "crs", "srs", "epsg", "datum"], ["coordinate system", "spatial reference", "projection"]),
         (["fix", "repair", "correct", "heal", "clean up"], ["repair", "check"]),
-        (["acres", "acre", "acreage", "hectares", "hectare", "perimeter", "square miles", "square kilometers", "square feet", "square meters"],
-            ["area", "geometry"]),
         (["nearest", "closest", "nearby", "proximity"], ["near", "distance", "proximity"]),
 
         // Surfaces, rasters and statistics.
         (["dem", "dtm", "elevation model", "terrain model"], ["elevation", "surface", "dem"]),
         (["gradient", "steepness"], ["slope"]),
         (["shaded relief", "relief shading"], ["hillshade"]),
-        (["heat map", "heatmap"], ["density", "kernel"]),
         (["hotspot", "hotspots"], ["hot spot"]),
         (["voronoi", "proximity polygons"], ["thiessen"]),
         (["grid cells", "hexagon", "hexagons", "hexbin", "hex grid", "square grid"], ["fishnet", "tessellation"]),
