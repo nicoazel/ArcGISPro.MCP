@@ -1,0 +1,589 @@
+{
+  "name": "riverton",
+  "description": "A small synthetic city project: eight zoned parcels, five roads, one imagery layer and a plan layout. Values are illustrative, not real data.",
+  "project": {
+    "name": "Riverton",
+    "uri": "C:\\FakeHost\\Riverton\\Riverton.aprx",
+    "isDirty": false
+  },
+  "activeMap": "City",
+  "maps": [
+    {
+      "name": "City",
+      "layers": [
+        {
+          "name": "Parcels",
+          "geometryType": "Polygon",
+          "spatialReference": {
+            "wkid": 2272,
+            "name": "NAD_1983_StatePlane_Pennsylvania_South_FIPS_3702_Feet"
+          },
+          "fields": [
+            {
+              "name": "OBJECTID",
+              "alias": "Object ID",
+              "type": "OID",
+              "nullable": false,
+              "editable": false,
+              "length": 4
+            },
+            {
+              "name": "GlobalID",
+              "type": "GlobalID",
+              "nullable": false,
+              "editable": false,
+              "length": 38
+            },
+            {
+              "name": "Shape",
+              "type": "Geometry",
+              "length": 0
+            },
+            {
+              "name": "PARCEL_ID",
+              "alias": "Parcel ID",
+              "type": "String",
+              "nullable": false,
+              "editable": false,
+              "length": 16
+            },
+            {
+              "name": "ZONE",
+              "alias": "Zone",
+              "type": "String",
+              "length": 8
+            },
+            {
+              "name": "OWNER",
+              "alias": "Owner",
+              "type": "String",
+              "length": 64
+            },
+            {
+              "name": "LAND_USE",
+              "alias": "Land use",
+              "type": "String",
+              "length": 32
+            },
+            {
+              "name": "FLOORS",
+              "alias": "Floors",
+              "type": "SmallInteger",
+              "length": 2
+            },
+            {
+              "name": "ASSESSED",
+              "alias": "Assessed value",
+              "type": "Double",
+              "length": 8
+            },
+            {
+              "name": "UPDATED",
+              "alias": "Last updated",
+              "type": "Date",
+              "length": 8
+            }
+          ],
+          "rows": [
+            {
+              "objectId": 1,
+              "geometry": {
+                "type": "polygon",
+                "points": [
+                  [
+                    1340000,
+                    410000
+                  ],
+                  [
+                    1340100,
+                    410000
+                  ],
+                  [
+                    1340100,
+                    410100
+                  ],
+                  [
+                    1340000,
+                    410100
+                  ]
+                ]
+              },
+              "attributes": {
+                "PARCEL_ID": "P-101",
+                "ZONE": "R1",
+                "OWNER": "Alder Holdings",
+                "LAND_USE": "residential",
+                "FLOORS": 2,
+                "ASSESSED": 245000.0,
+                "UPDATED": "2026-03-15T00:00:00Z"
+              }
+            },
+            {
+              "objectId": 2,
+              "geometry": {
+                "type": "polygon",
+                "points": [
+                  [
+                    1340120,
+                    410000
+                  ],
+                  [
+                    1340220,
+                    410000
+                  ],
+                  [
+                    1340220,
+                    410100
+                  ],
+                  [
+                    1340120,
+                    410100
+                  ]
+                ]
+              },
+              "attributes": {
+                "PARCEL_ID": "P-102",
+                "ZONE": "R1",
+                "OWNER": "M. Okafor",
+                "LAND_USE": "residential",
+                "FLOORS": 1,
+                "ASSESSED": 198500.0,
+                "UPDATED": "2026-03-15T00:00:00Z"
+              }
+            },
+            {
+              "objectId": 3,
+              "geometry": {
+                "type": "polygon",
+                "points": [
+                  [
+                    1340240,
+                    410000
+                  ],
+                  [
+                    1340340,
+                    410000
+                  ],
+                  [
+                    1340340,
+                    410100
+                  ],
+                  [
+                    1340240,
+                    410100
+                  ]
+                ]
+              },
+              "attributes": {
+                "PARCEL_ID": "P-103",
+                "ZONE": "R2",
+                "OWNER": "Birch Lane LLC",
+                "LAND_USE": "residential",
+                "FLOORS": 3,
+                "ASSESSED": 410000.0,
+                "UPDATED": "2026-03-15T00:00:00Z"
+              }
+            },
+            {
+              "objectId": 4,
+              "geometry": {
+                "type": "polygon",
+                "points": [
+                  [
+                    1340360,
+                    410000
+                  ],
+                  [
+                    1340460,
+                    410000
+                  ],
+                  [
+                    1340460,
+                    410100
+                  ],
+                  [
+                    1340360,
+                    410100
+                  ]
+                ]
+              },
+              "attributes": {
+                "PARCEL_ID": "P-104",
+                "ZONE": "C1",
+                "OWNER": "Riverton Market Co",
+                "LAND_USE": "commercial",
+                "FLOORS": 2,
+                "ASSESSED": 890000.0,
+                "UPDATED": "2026-03-15T00:00:00Z"
+              }
+            },
+            {
+              "objectId": 5,
+              "geometry": {
+                "type": "polygon",
+                "points": [
+                  [
+                    1340000,
+                    410120
+                  ],
+                  [
+                    1340100,
+                    410120
+                  ],
+                  [
+                    1340100,
+                    410220
+                  ],
+                  [
+                    1340000,
+                    410220
+                  ]
+                ]
+              },
+              "attributes": {
+                "PARCEL_ID": "P-105",
+                "ZONE": "C1",
+                "OWNER": "Harbor Partners",
+                "LAND_USE": "commercial",
+                "FLOORS": 4,
+                "ASSESSED": 1250000.0,
+                "UPDATED": "2026-03-15T00:00:00Z"
+              }
+            },
+            {
+              "objectId": 6,
+              "geometry": {
+                "type": "polygon",
+                "points": [
+                  [
+                    1340120,
+                    410120
+                  ],
+                  [
+                    1340220,
+                    410120
+                  ],
+                  [
+                    1340220,
+                    410220
+                  ],
+                  [
+                    1340120,
+                    410220
+                  ]
+                ]
+              },
+              "attributes": {
+                "PARCEL_ID": "P-106",
+                "ZONE": "I1",
+                "OWNER": "Riverton Works",
+                "LAND_USE": "industrial",
+                "FLOORS": 1,
+                "ASSESSED": 675000.0,
+                "UPDATED": "2026-03-15T00:00:00Z"
+              }
+            },
+            {
+              "objectId": 7,
+              "geometry": {
+                "type": "polygon",
+                "points": [
+                  [
+                    1340240,
+                    410120
+                  ],
+                  [
+                    1340340,
+                    410120
+                  ],
+                  [
+                    1340340,
+                    410220
+                  ],
+                  [
+                    1340240,
+                    410220
+                  ]
+                ]
+              },
+              "attributes": {
+                "PARCEL_ID": "P-107",
+                "ZONE": "OS",
+                "OWNER": "City of Riverton",
+                "LAND_USE": "open-space",
+                "FLOORS": 0,
+                "ASSESSED": null,
+                "UPDATED": "2026-03-15T00:00:00Z"
+              }
+            },
+            {
+              "objectId": 8,
+              "geometry": {
+                "type": "polygon",
+                "points": [
+                  [
+                    1340360,
+                    410120
+                  ],
+                  [
+                    1340460,
+                    410120
+                  ],
+                  [
+                    1340460,
+                    410220
+                  ],
+                  [
+                    1340360,
+                    410220
+                  ]
+                ]
+              },
+              "attributes": {
+                "PARCEL_ID": "P-108",
+                "ZONE": "R2",
+                "OWNER": "J. Lindqvist",
+                "LAND_USE": "residential",
+                "FLOORS": 2,
+                "ASSESSED": 305000.0,
+                "UPDATED": "2026-03-15T00:00:00Z"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Roads",
+          "geometryType": "Polyline",
+          "spatialReference": {
+            "wkid": 2272,
+            "name": "NAD_1983_StatePlane_Pennsylvania_South_FIPS_3702_Feet"
+          },
+          "fields": [
+            {
+              "name": "OBJECTID",
+              "alias": "Object ID",
+              "type": "OID",
+              "nullable": false,
+              "editable": false,
+              "length": 4
+            },
+            {
+              "name": "Shape",
+              "type": "Geometry",
+              "length": 0
+            },
+            {
+              "name": "NAME",
+              "alias": "Street name",
+              "type": "String",
+              "length": 64
+            },
+            {
+              "name": "CLASS",
+              "alias": "Road class",
+              "type": "String",
+              "length": 16
+            },
+            {
+              "name": "LANES",
+              "alias": "Lanes",
+              "type": "SmallInteger",
+              "length": 2
+            }
+          ],
+          "rows": [
+            {
+              "geometry": {
+                "type": "polyline",
+                "points": [
+                  [
+                    1339950,
+                    410110
+                  ],
+                  [
+                    1340530,
+                    410110
+                  ]
+                ]
+              },
+              "attributes": {
+                "NAME": "Main St",
+                "CLASS": "arterial",
+                "LANES": 4
+              }
+            },
+            {
+              "geometry": {
+                "type": "polyline",
+                "points": [
+                  [
+                    1339950,
+                    409950
+                  ],
+                  [
+                    1340530,
+                    409950
+                  ]
+                ]
+              },
+              "attributes": {
+                "NAME": "River Rd",
+                "CLASS": "collector",
+                "LANES": 2
+              }
+            },
+            {
+              "geometry": {
+                "type": "polyline",
+                "points": [
+                  [
+                    1340110,
+                    409950
+                  ],
+                  [
+                    1340110,
+                    410280
+                  ]
+                ]
+              },
+              "attributes": {
+                "NAME": "Mill Ave",
+                "CLASS": "local",
+                "LANES": 2
+              }
+            },
+            {
+              "geometry": {
+                "type": "polyline",
+                "points": [
+                  [
+                    1340350,
+                    409950
+                  ],
+                  [
+                    1340350,
+                    410280
+                  ]
+                ]
+              },
+              "attributes": {
+                "NAME": "Harbor Way",
+                "CLASS": "collector",
+                "LANES": 2
+              }
+            },
+            {
+              "geometry": {
+                "type": "polyline",
+                "points": [
+                  [
+                    1340470,
+                    410230
+                  ],
+                  [
+                    1340530,
+                    410280
+                  ]
+                ]
+              },
+              "attributes": {
+                "NAME": "Oak Ct",
+                "CLASS": "local",
+                "LANES": 1
+              }
+            }
+          ]
+        },
+        {
+          "name": "Riverton Imagery",
+          "type": "RasterLayer"
+        }
+      ]
+    },
+    {
+      "name": "Zoning Review",
+      "layers": []
+    }
+  ],
+  "layouts": [
+    {
+      "name": "City Plan",
+      "pageWidthInches": 17,
+      "pageHeightInches": 11
+    }
+  ],
+  "activeLayout": "City Plan",
+  "workflows": [
+    {
+      "id": "riverton.parcel-review",
+      "version": "1.0.0",
+      "title": "Riverton parcel review",
+      "summary": "Queries parcels matching a where clause, selects them in the City map and captures the map for review.",
+      "tags": [
+        "parcels",
+        "review",
+        "selection"
+      ],
+      "requiredCapabilities": [],
+      "parameters": [
+        {
+          "name": "where",
+          "type": "string",
+          "required": false,
+          "defaultValue": "1=1",
+          "description": "Attribute filter, for example ZONE = 'C1'."
+        }
+      ],
+      "steps": [
+        {
+          "id": "inspect",
+          "operation": "project.get",
+          "arguments": {},
+          "dependsOn": []
+        },
+        {
+          "id": "query",
+          "operation": "feature.query",
+          "arguments": {
+            "layer": "Parcels",
+            "where": "${parameters.where}",
+            "fields": [
+              "PARCEL_ID",
+              "ZONE",
+              "OWNER"
+            ],
+            "limit": 50
+          },
+          "dependsOn": [
+            "inspect"
+          ]
+        },
+        {
+          "id": "select",
+          "operation": "feature.select",
+          "arguments": {
+            "layer": "Parcels",
+            "where": "${parameters.where}",
+            "mode": "new"
+          },
+          "dependsOn": [
+            "query"
+          ]
+        },
+        {
+          "id": "capture",
+          "operation": "view.capture",
+          "arguments": {
+            "view": "active-map",
+            "width": 800,
+            "height": 600
+          },
+          "dependsOn": [
+            "select"
+          ],
+          "expectedObservation": "selected-parcels-map-png"
+        }
+      ]
+    }
+  ]
+}

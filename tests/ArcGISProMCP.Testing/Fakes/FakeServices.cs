@@ -20,6 +20,7 @@ internal sealed class FakeProjectService(FakeProState state) : IProjectService
         FakeDispatcher.Require(FakeThread.Ui, nameof(SaveAsync));
         if (!state.IsOpen) throw new InvalidOperationException("No ArcGIS Pro project is open.");
         state.Calls.Add("project.save");
+        if (state.TrackDirty) state.IsDirty = false;
         return Task.CompletedTask;
     }
 }

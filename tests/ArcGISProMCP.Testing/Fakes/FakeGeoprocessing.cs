@@ -9,12 +9,17 @@ internal sealed record FakeGeoprocessingCall(
     IReadOnlyList<KeyValuePair<string, string>> Environments,
     GeoprocessingExecutionFlags Flags);
 
-/// <summary>Records every tool execution and answers with <see cref="NextResult"/>.</summary>
+/// <summary>
+/// Records every tool execution and answers with <see cref="Responder"/>'s result, or
+/// <see cref="NextResult"/> when there is no responder or it returns null.
+/// </summary>
 internal sealed class FakeGeoprocessingService : IGeoprocessingService
 {
     public List<FakeGeoprocessingCall> Calls { get; } = [];
 
     public GeoprocessingExecutionResult NextResult { get; set; } = Succeeded();
+
+    public Func<FakeGeoprocessingCall, GeoprocessingExecutionResult?>? Responder { get; set; }
 
     public Task<GeoprocessingExecutionResult> ExecuteAsync(
         string tool,
@@ -24,8 +29,9 @@ internal sealed class FakeGeoprocessingService : IGeoprocessingService
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Calls.Add(new FakeGeoprocessingCall(tool, parameters.ToArray(), environments.ToArray(), flags));
-        return Task.FromResult(NextResult);
+        var call = new FakeGeoprocessingCall(tool, parameters.ToArray(), environments.ToArray(), flags);
+        Calls.Add(call);
+        return Task.FromResult(Responder?.Invoke(call) ?? NextResult);
     }
 
     public static GeoprocessingExecutionResult Succeeded(params GeoprocessingMessage[] messages) =>

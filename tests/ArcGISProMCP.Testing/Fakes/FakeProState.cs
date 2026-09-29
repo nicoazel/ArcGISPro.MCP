@@ -11,6 +11,12 @@ internal sealed class FakeProState
 
     public bool IsDirty { get; set; }
 
+    /// <summary>
+    /// When set, feature edits mark the project dirty and a save cleans it, as ArcGIS Pro does.
+    /// Off by default so operation tests control <see cref="IsDirty"/> explicitly.
+    /// </summary>
+    public bool TrackDirty { get; set; }
+
     /// <summary>Values IsDirty takes on successive snapshots; empty means use <see cref="IsDirty"/>.</summary>
     public Queue<bool> DirtySamples { get; } = new();
 
