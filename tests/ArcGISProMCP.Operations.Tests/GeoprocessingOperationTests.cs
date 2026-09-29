@@ -205,17 +205,25 @@ public sealed class GeoprocessingOperationTests
     }
 
     [Fact]
-    public async Task Autonomous_mode_refuses_destructive_tools_before_they_run()
+    public async Task Autonomous_mode_refuses_unreviewed_destructive_tools_before_they_run()
     {
         using var pro = new FakePro(autonomous: true);
+        var token = TestContext.Current.CancellationToken;
+        const string Erase = """{"tool": "fixture.EraseRows", "parameters": ["parcels"]}""";
 
-        var destructive = await pro.InvokeAsync("gp.run", """{"tool": "fixture.EraseRows", "parameters": ["parcels"]}""");
-        var standard = await pro.InvokeAsync("gp.run", $$"""{"tool": "fixture.BufferZones", "parameters": {{BufferParameters}}}""");
+        var destructive = await pro.InvokeUnattendedAsync("gp.run", Erase, token);
+        var standard = await pro.InvokeUnattendedAsync("gp.run", $$"""{"tool": "fixture.BufferZones", "parameters": {{BufferParameters}}}""", token);
 
         Assert.False(destructive.Success);
         Assert.Equal(GeoprocessingRunPolicy.DestructiveToolRequiresReviewCode, destructive.ErrorCode);
+        Assert.Contains("approval_request", destructive.Message, StringComparison.Ordinal);
         Assert.True(standard.Success, standard.Message);
         Assert.Equal("fixture.BufferZones", Assert.Single(pro.Geoprocessing.Calls).Tool);
+
+        // A person-issued token still lets the reviewed request run in autonomous mode.
+        var reviewed = await pro.InvokeAsync("gp.run", Erase);
+        Assert.True(reviewed.Success, reviewed.Message);
+        Assert.Equal("fixture.EraseRows", pro.Geoprocessing.Calls[^1].Tool);
     }
 
     [Fact]

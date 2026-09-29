@@ -61,6 +61,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Fixed
 
+- In autonomous mode a Destructive, UserCode or unclassified `gp.run` request was refused with `destructive_tool_requires_review` even when it carried a valid person-issued approval token, so a reviewed request could never run. A request with a token now takes the normal confirmation path in autonomous mode: a valid token runs it (audited with `autonomousBypass: false`), an invalid one fails with `confirmation_required` without falling back to the bypass, and only token-less requests hit the unattended refusal, whose message now says to request local review with `approval_request` and retry with the token.
 - Malformed tool arguments (a missing required argument or a value of the wrong JSON type) return the standard envelope with `error.code` `invalid_arguments`, a message naming the argument and `retryable: false`, instead of the SDK's generic error text without `structuredContent`. Unknown tool names remain a JSON-RPC error.
 - In-process hosts built concurrently could intermittently publish the injected bridge client as a required `bridge` tool argument (a race on the reflection `ParameterInfo` cache that the MCP SDK relies on). Tools and resources are now built once per process, and the server tests run in parallel again.
 - The dockpane no longer shows a hard-coded "Skills 1" count. Skills are loaded by the MCP gateway process, which the add-in cannot see, so the expander header now shows only the workflow count.

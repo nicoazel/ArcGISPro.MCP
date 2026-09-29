@@ -25,7 +25,7 @@ public sealed record GpRunDryRunReport(
     /// <summary>The risk tier, or null when the tool is not in the catalog (risk unknown).</summary>
     public GpRiskTier? RiskTier => Risk?.Tier;
 
-    /// <summary>True when autonomous mode is on and would refuse this request.</summary>
+    /// <summary>True when autonomous mode is on and would refuse this request without a confirmation token.</summary>
     public bool WouldBeRefused => AutonomousMode && UnattendedRefusal is not null;
 
     /// <summary>No static error was found and the request would not be refused. The tool can still reject it at run time.</summary>
@@ -88,16 +88,16 @@ public static partial class GeoprocessingRunPolicy
         {
             null when !userCodeDetected => new OperationRefusal(DestructiveToolRequiresReviewCode,
                 $"'{tool}' could not be classified: it is not in the toolbox catalog, so its risk tier is unknown and review is required. " +
-                "Autonomous mode only runs tools it can classify; use gp.search to find the execution name, or run it with local review in the ArcGIS Pro dockpane."),
+                "Autonomous mode only runs tools it can classify; use gp.search to find the execution name, or request local review with approval_request and retry with the token."),
             GpRiskTier.Destructive => new OperationRefusal(DestructiveToolRequiresReviewCode,
                 $"'{tool}' is a Destructive geoprocessing tool: it modifies/deletes input data in place{reasons}. " +
-                "Autonomous mode does not run Destructive or UserCode tools; run it with local review in the ArcGIS Pro dockpane."),
+                "Autonomous mode does not run Destructive or UserCode tools without review; request local review with approval_request and retry with the token."),
             GpRiskTier.UserCode => new OperationRefusal(DestructiveToolRequiresReviewCode,
                 $"'{tool}' runs user-authored code{reasons}. " +
-                "Autonomous mode does not run Destructive or UserCode tools; run it with local review in the ArcGIS Pro dockpane."),
+                "Autonomous mode does not run Destructive or UserCode tools without review; request local review with approval_request and retry with the token."),
             _ when userCodeDetected => new OperationRefusal(DestructiveToolRequiresReviewCode,
                 $"This '{tool}' request runs user code (a custom toolbox, a Python expression, or arcpy). " +
-                "Autonomous mode does not run Destructive or UserCode tools; run it with local review in the ArcGIS Pro dockpane."),
+                "Autonomous mode does not run Destructive or UserCode tools without review; request local review with approval_request and retry with the token."),
             _ => null
         };
     }

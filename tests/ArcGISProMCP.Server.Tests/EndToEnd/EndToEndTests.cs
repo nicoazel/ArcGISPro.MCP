@@ -156,6 +156,32 @@ public sealed class EndToEndTests
     }
 
     [Fact]
+    public async Task Autonomous_mode_runs_a_destructive_geoprocessing_tool_once_a_person_approves_it()
+    {
+        await using var server = await EndToEndServer.StartAsync(new FakeHostOptions(Autonomous: true), cancellationToken: Token);
+        var revision = Revision(await server.CallOkAsync("system_get_state", new { }, Token));
+        var erase = new { tool = "fixture.EraseRows", parameters = new[] { "Parcels" } };
+
+        // Without a token the unattended gate refuses and points the caller at local review.
+        var refused = await server.CallAsync("registry_invoke", new { operationId = "gp.run", arguments = erase, expectedRevision = revision }, Token);
+        Assert.Equal(GeoprocessingRunPolicy.DestructiveToolRequiresReviewCode, refused.ErrorCode);
+        Assert.Contains("approval_request", refused.Envelope.GetProperty("error").GetProperty("message").GetString(), StringComparison.Ordinal);
+
+        // A forged token is rejected outright; it never falls back to the autonomous bypass.
+        var forged = await server.CallAsync("registry_invoke", new { operationId = "gp.run", arguments = erase, expectedRevision = revision, confirmationToken = "forged" }, Token);
+        Assert.Equal("confirmation_required", forged.ErrorCode);
+        Assert.Empty(server.Runtime.Pro.Geoprocessing.Calls);
+
+        // The dockpane queue still works in autonomous mode: request, the person approves, retry with the token.
+        var result = await InvokeWithApprovalAsync(server, "gp.run", erase, revision, waitForDecision: false);
+        Assert.DoesNotContain(result.GetProperty("notices").EnumerateArray(), notice => notice.GetProperty("code").GetString() == "autonomous_control");
+        var call = Assert.Single(server.Runtime.Pro.Geoprocessing.Calls);
+        Assert.Equal("fixture.EraseRows", call.Tool);
+        var audit = server.Runtime.Pro.Audit.Events.Where(entry => entry.OperationId == "gp.run" && entry.Success).ToArray();
+        Assert.False(Assert.Single(audit).AutonomousBypass);
+    }
+
+    [Fact]
     public async Task A_concurrent_edit_after_approval_invalidates_the_reviewed_revision()
     {
         await using var server = await EndToEndServer.StartAsync(cancellationToken: Token);

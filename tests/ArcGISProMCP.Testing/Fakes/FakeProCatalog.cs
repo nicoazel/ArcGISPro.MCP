@@ -97,6 +97,13 @@ internal sealed class FakePro : IDisposable
             cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Runs one operation through the real executor with the current revision and no approval token.</summary>
+    public async Task<OperationResult> InvokeUnattendedAsync(string id, string argumentsJson, CancellationToken cancellationToken)
+    {
+        var revision = (await Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false)).Revision;
+        return await Executor.ExecuteAsync(new OperationRequest(id, Arguments(argumentsJson), revision), cancellationToken).ConfigureAwait(false);
+    }
+
     public static JsonElement Arguments(string json)
     {
         using var document = JsonDocument.Parse(json);

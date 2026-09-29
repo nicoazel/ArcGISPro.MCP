@@ -48,7 +48,7 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 
 - **ReadOnly**: runs freely.
 - **SafeWrite**: requires the current workspace revision.
-- **Destructive** and **ExternalSideEffect**: require the current revision *and* a local-review token, unless the host was started in [autonomous mode](security.md).
+- **Destructive** and **ExternalSideEffect**: require the current revision *and* a local-review token, unless the host was started in [autonomous mode](security.md). A token sent to an autonomous host is still validated, and an invalid one fails with `confirmation_required` instead of falling back to the bypass.
 - **SafeWrite + approval**: `project.open`, `project.save` and `feature.update` are SafeWrite but also require a local-review token.
 
 `gp.run` and `arcpy.run-script` execute user code (`executesUserCode: true` in search, browse and describe results). A saved workflow may use them only when its `allowedOperations` lists them explicitly (see [security](security.md)). Allowlist entries are operation ids only; they do not pin an operation version.
@@ -115,7 +115,7 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 | `gp.search` | ReadOnly | Searches installed system toolbox metadata; returns `alias.ToolName` execution names with risk tiers. Never runs a tool. |
 | `gp.describe` | ReadOnly | One tool's parameters (types, required/optional/derived, defaults, coded values, ranges), positional `signature`, environments and risk tier with reasons. |
 | `gp.query` | ReadOnly | Runs one allowlisted read-only system tool (`management.GetCount`, `management.GetRasterProperties`, `management.GetCellValue`) without review; no map outputs, overwrite or history. |
-| `gp.run` | **ExternalSideEffect** | Runs a toolbox-qualified GP tool with bounded positional parameters, explicit environments, and overwrite behavior. Always reviewed; autonomous mode refuses Destructive and UserCode tools. Supports a static dry run. |
+| `gp.run` | **ExternalSideEffect** | Runs a toolbox-qualified GP tool with bounded positional parameters, explicit environments, and overwrite behavior. Always reviewed; autonomous mode refuses Destructive and UserCode tools unless the request carries a local-review token. Supports a static dry run. |
 | `arcpy.inspect-script` | ReadOnly | Size and SHA-256 of a script in the configured root, without running it. *Opt-in.* |
 | `arcpy.run-script` | **ExternalSideEffect** | Runs a hash-pinned script in ArcGIS Pro's Python environment. *Opt-in.* |
 
@@ -192,7 +192,7 @@ Codes a client should handle. The message carries the details.
 | `operation_not_found` | describe, invoke | Unknown operation id. Invocations with unknown ids are audited. |
 | `idempotency_conflict` | invoke, workflow run | The `idempotencyKey` was already used with a different operation, arguments or revision in this Pro session. |
 | `dry_run_idempotency_conflict` | invoke | `dryRun` was combined with `idempotencyKey`. Nothing ran and the key was not recorded. |
-| `destructive_tool_requires_review` | `gp.run` result | Autonomous mode refused a Destructive or UserCode geoprocessing tool; it needs local review. |
+| `destructive_tool_requires_review` | `gp.run` result | Autonomous mode refused a Destructive, UserCode or unclassified geoprocessing tool sent without a token. Request local review with `approval_request` and retry with the token. |
 | `tool_not_found`, `tool_not_query_allowed`, `invalid_tool_name` | `gp.describe`, `gp.query` results | Unknown tool, a tool outside the `gp.query` allowlist, or a malformed `alias.ToolName`. |
 | `geoprocessing_failed`, `geoprocessing_cancelled` | `gp.run`, `gp.query` results | ArcGIS Pro reported a failed or cancelled tool run; its messages are in the result. |
 | `request_cancelled` | any bridge call | The caller cancelled the request before it completed. A write may already have been accepted; check state. |

@@ -33,7 +33,9 @@ public sealed record OperationRefusal(string Code, string Message);
 /// <summary>
 /// An operation that must not run some requests without local human review. When autonomous
 /// mode would skip review, the executor asks the gate first and fails with the refusal instead
-/// of executing. Interactive mode is unaffected: a person already reviews every request.
+/// of executing. A request that carries a confirmation token skips the gate and is validated like
+/// an interactive request, so a person can still approve it locally. Interactive mode is unaffected:
+/// a person already reviews every request.
 /// </summary>
 public interface IUnattendedExecutionGate
 {

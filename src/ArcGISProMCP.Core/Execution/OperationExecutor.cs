@@ -64,14 +64,17 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
             else if (!request.DryRun && (descriptor.RequiresConfirmation ||
                 descriptor.Risk is OperationRisk.Destructive or OperationRisk.ExternalSideEffect))
             {
-                if (context.Confirmation is IAutonomousExecutionPolicy { AllowsUnattendedRiskyOperations: true } &&
+                // A person-issued token always takes the reviewed path, even in autonomous mode: it is
+                // validated like any interactive request and never falls back to the autonomous bypass.
+                var autonomous = context.Confirmation is IAutonomousExecutionPolicy { AllowsUnattendedRiskyOperations: true };
+                if (autonomous && string.IsNullOrWhiteSpace(request.ConfirmationToken) &&
                     operation is IUnattendedExecutionGate gate &&
                     await gate.CheckUnattendedAsync(request.Arguments, cancellationToken).ConfigureAwait(false) is { } refusal)
                 {
                     // Autonomous mode skips review, so requests the operation reserves for a person are refused.
                     result = OperationResult.Fail(refusal.Code, refusal.Message, startSnapshot.Revision);
                 }
-                else if (context.Confirmation is IAutonomousExecutionPolicy { AllowsUnattendedRiskyOperations: true })
+                else if (autonomous && string.IsNullOrWhiteSpace(request.ConfirmationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     autonomousBypass = true;

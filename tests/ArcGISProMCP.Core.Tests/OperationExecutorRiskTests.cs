@@ -133,6 +133,59 @@ public sealed class OperationExecutorRiskTests
         Assert.Equal(0, operation.GateCalls);
     }
 
+    [Fact]
+    public async Task Autonomous_mode_runs_a_gated_request_that_carries_a_valid_local_review_token()
+    {
+        var operation = new GatedOperation(refuse: true);
+        var audit = new CapturingAudit();
+        var confirmation = new AutonomousTokenConfirmation("reviewed");
+        var executor = AutonomousWith(operation, audit, confirmation);
+
+        var result = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), Revision, "reviewed"),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, operation.CallCount);
+        Assert.Equal(0, operation.GateCalls);
+        Assert.Equal(1, confirmation.Validations);
+        Assert.DoesNotContain(result.Notices, notice => notice.Code == "autonomous_control");
+        var auditEvent = Assert.Single(audit.Events);
+        Assert.False(auditEvent.AutonomousBypass);
+        Assert.True(auditEvent.Success);
+    }
+
+    [Fact]
+    public async Task Autonomous_mode_rejects_an_invalid_token_instead_of_falling_back_to_the_gate_or_bypass()
+    {
+        var gated = new GatedOperation(refuse: true);
+        var gatedAudit = new CapturingAudit();
+        var gatedResult = await AutonomousWith(gated, gatedAudit, new AutonomousTokenConfirmation("reviewed")).ExecuteAsync(
+            new OperationRequest(gated.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), Revision, "forged"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("confirmation_required", gatedResult.ErrorCode);
+        Assert.Equal(0, gated.CallCount);
+        Assert.Equal(0, gated.GateCalls);
+        Assert.False(Assert.Single(gatedAudit.Events).AutonomousBypass);
+
+        // An operation the autonomous policy would run unattended is not bypassed when its token is bad either.
+        var risky = new RiskyOperation();
+        var riskyAudit = new CapturingAudit();
+        var riskyResult = await AutonomousWith(risky, riskyAudit, new AutonomousTokenConfirmation("reviewed")).ExecuteAsync(
+            new OperationRequest(risky.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), Revision, "forged"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("confirmation_required", riskyResult.ErrorCode);
+        Assert.Equal(0, risky.CallCount);
+        Assert.False(Assert.Single(riskyAudit.Events).AutonomousBypass);
+    }
+
+    private static OperationExecutor AutonomousWith(IOperation operation, CapturingAudit audit, IConfirmationValidator confirmation) =>
+        new(
+            new SingleOperationRegistry(operation),
+            new OperationContext(new InlineDispatcher(), new StaticWorkspace(), confirmation, audit, "autonomous-test", CancellationToken.None));
+
     private static OperationExecutor Autonomous(IOperation operation, CapturingAudit audit) =>
         new(
             new SingleOperationRegistry(operation),
@@ -222,6 +275,20 @@ public sealed class OperationExecutorRiskTests
 
         public ValueTask<bool> IsValidAsync(string token, OperationDescriptor descriptor, JsonElement arguments, WorkspaceSnapshot workspace, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("Autonomous execution must not validate a confirmation token.");
+    }
+
+    /// <summary>Autonomous policy that also validates tokens, as the add-in's approval service does.</summary>
+    private sealed class AutonomousTokenConfirmation(string validToken) : IConfirmationValidator, IAutonomousExecutionPolicy
+    {
+        public int Validations { get; private set; }
+
+        public bool AllowsUnattendedRiskyOperations => true;
+
+        public ValueTask<bool> IsValidAsync(string token, OperationDescriptor descriptor, JsonElement arguments, WorkspaceSnapshot workspace, CancellationToken cancellationToken)
+        {
+            Validations++;
+            return ValueTask.FromResult(string.Equals(token, validToken, StringComparison.Ordinal));
+        }
     }
 
     private sealed class CapturingAudit : IOperationAuditLog
