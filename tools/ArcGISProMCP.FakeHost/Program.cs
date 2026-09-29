@@ -21,6 +21,9 @@ namespace ArcGISProMCP.FakeHost
 
     internal static class FakeHostProgram
     {
+        /// <summary>Prefixed to the project name in the discovery record so listings show a FakeHost for what it is.</summary>
+        public const string FakeHostProjectPrefix = "[FakeHost] ";
+
         private const string Usage = """
             ArcGISProMCP.FakeHost - an ArcGIS Pro MCP host without ArcGIS Pro.
 
@@ -36,7 +39,7 @@ namespace ArcGISProMCP.FakeHost
                                       it removes the person from the loop that the product relies on.
               --autonomous            Report autonomous-control, as the add-in does when a person enables it,
                                       to exercise unattended execution and its refusals.
-              --pipe <name>           Pipe name (default: ArcGISProMCP.Bridge.<pid>, as the add-in uses).
+              --pipe <name>           Pipe name (default: ArcGISProMCP.v1.<pid>, as the add-in uses).
               --toolboxes <dir>       Toolbox root for gp.* (default: the synthetic fixture toolboxes). Point it at
                                       ArcGIS Pro's Resources\ArcToolBox\toolboxes for real tool metadata.
               --no-discovery          Do not publish the discovery record under %LOCALAPPDATA%\ArcGISProMCP\hosts.
@@ -73,6 +76,8 @@ namespace ArcGISProMCP.FakeHost
                 return 2;
             }
 
+            WarnIfArcGisProIsRunning();
+
             using var stopping = new CancellationTokenSource();
             Console.CancelKeyPress += (_, eventArgs) =>
             {
@@ -100,8 +105,11 @@ namespace ArcGISProMCP.FakeHost
                         pipeName,
                         new DateTimeOffset(process.StartTime.ToUniversalTime(), TimeSpan.Zero),
                         DateTimeOffset.UtcNow,
-                        runtime.State.ProjectName,
-                        runtime.State.ProjectUri));
+                        // The prefix and kind keep FakeHost apart from ArcGIS Pro in every listing;
+                        // the gateway never selects a fakehost record automatically.
+                        FakeHostProjectPrefix + runtime.State.ProjectName,
+                        runtime.State.ProjectUri,
+                        BridgeHostKinds.FakeHost));
                 }
 
                 PrintBanner(options, scenario, scenarioPath, runtime, pipeName, processId);
@@ -117,6 +125,24 @@ namespace ArcGISProMCP.FakeHost
                 Console.WriteLine("FakeHost stopped.");
             }
             return 0;
+        }
+
+        private static void WarnIfArcGisProIsRunning()
+        {
+            var processes = Process.GetProcessesByName("ArcGISPro");
+            try
+            {
+                if (processes.Length == 0) return;
+                var ids = string.Join(", ", processes.Select(process => process.Id));
+                Console.Error.WriteLine("WARNING: ArcGIS Pro is running (PID " + ids + ").");
+                Console.Error.WriteLine("WARNING: FakeHost serves a FAKE project. It publishes a 'fakehost' discovery record that the gateway");
+                Console.Error.WriteLine("WARNING: never selects automatically; select it only with ARCGIS_PRO_MCP_HOST_PID, ARCGIS_PRO_MCP_PIPE or");
+                Console.Error.WriteLine("WARNING: " + BridgeEndpointResolver.AllowFakeHostVariable + "=true, and check which host a client is attached to.");
+            }
+            finally
+            {
+                foreach (var process in processes) process.Dispose();
+            }
         }
 
         private static FakeHostArguments Parse(string[] args)
@@ -161,6 +187,7 @@ namespace ArcGISProMCP.FakeHost
             Console.WriteLine($"  approvals {(options.AutoApprove ? "AUTO-APPROVE (eval runs only)" : "interactive: type y + Enter to approve, n + Enter to deny")}");
             if (options.Autonomous) Console.WriteLine("  mode      autonomous-control reported");
             Console.WriteLine($"Point the gateway at this host with ARCGIS_PRO_MCP_HOST_PID={processId} (or ARCGIS_PRO_MCP_PIPE={pipeName}).");
+            Console.WriteLine($"The gateway never selects a FakeHost automatically (unless {BridgeEndpointResolver.AllowFakeHostVariable}=true).");
             Console.WriteLine("Commands: y, n, p (pending), s (state), q (quit).");
         }
 
