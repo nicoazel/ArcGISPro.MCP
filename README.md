@@ -91,21 +91,21 @@ Build: .NET 10 with `TreatWarningsAsErrors`; 0 warnings. Tests (xUnit v3), all p
 | Project | Tests | What it covers |
 | --- | ---: | --- |
 | `ArcGISProMCP.Core.Tests` | 432 | Executor policy, approvals, schemas, search, toolbox catalog and risk tiers, workflows, audit, acceptance manifests |
-| `ArcGISProMCP.Operations.Tests` | 129 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
-| `ArcGISProMCP.Server.Tests` | 119 | MCP contract snapshots, envelopes against output schemas, end-to-end runs through the real bridge handler, E3 trajectories |
+| `ArcGISProMCP.Operations.Tests` | 130 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
+| `ArcGISProMCP.Server.Tests` | 123 | MCP contract snapshots, envelopes against output schemas, end-to-end runs through the real bridge handler, E3 trajectories |
 | `ArcGISProMCP.Bridge.Tests` | 54 | Pipe framing, discovery, host scheduling and the request handler |
-| `ArcGISProMCP.Evals.Tests` | 17 | Retrieval suites gated on a measured baseline, scorecard writing, descriptor dump checks |
-| **Total** | **751** | |
+| `ArcGISProMCP.Evals.Tests` | 19 | Retrieval suites gated on a measured baseline, scorecard writing, descriptor dump checks |
+| **Total** | **758** | |
 
 Eval scorecard ([evals/README.md](evals/README.md); gp suites measured against ArcGIS Pro 3.7.1, 2,210 system tools):
 
 | Suite | Tasks | recall@5 | Held-out tasks | Held-out recall@5 |
 | --- | ---: | ---: | ---: | ---: |
-| Registry search (E1) | 30 | 1.000 | 16 | 0.938 |
-| Geoprocessing search (E2) | 30 | 0.933 | 16 | 0.875 |
-| Golden trajectories (E3) | 8 / 8 passed | schemaValidArgs 1.0 | approvalDiscipline 1.0 | taskSuccess 1.0 |
+| Registry search (E1) | 30 | 0.867 | 16 | 0.938 |
+| Geoprocessing search (E2) | 30 | 0.900 | 16 | 0.875 |
+| Golden trajectories (E3) (from `TrajectoryTests` on every `dotnet test`; not a committed scorecard) | 8 / 8 passed; 4 of 8 exercise approval | schemaValidArgs 1.0 | approvalDiscipline 1.0 (over the 4) | taskSuccess 1.0 |
 
-Held-out tasks were written before search tuning and never tuned against. No live-model scorecard is committed yet; the live harness in `evals/live` runs by hand against ArcGIS Pro or FakeHost.
+Held-out tasks were written before search tuning and never tuned against; they are the numbers to trust. The held-out gains come from matching changes (stemming, camel-case splitting, IDF, a core-toolbox prior); an ablation showed that search synonyms only moved the main suites' recall@5 (held-out recall@5 was the same with or without them), so synonyms fitted to single main-suite tasks were removed and the main-suite numbers above went down with them (see the [ablation table](evals/README.md#search-tuning-phase-4)). No live-model scorecard is committed yet; the live harness in `evals/live` runs by hand against ArcGIS Pro or FakeHost.
 
 CI (GitHub Actions, pinned to commit SHAs, read-only permissions): a Windows build-and-test job over every test project (the installed-Pro gp suites are skipped there, the synthetic-toolbox subset runs), a packaging job that builds the preview bundle and fails if development-only hosts or test support reach it, and a lint job (PSScriptAnalyzer, ruff). Dependabot updates NuGet packages and Actions weekly.
 
