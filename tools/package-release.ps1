@@ -147,6 +147,9 @@ try {
                 "$name/checksums.sha256")) {
                 if ($required -notin $entries) { throw "Release archive is missing '$required'." }
             }
+            # Development-only hosts and test support never ship.
+            $devOnly = @($entries | Where-Object { $_ -match 'FakeHost|ArcGISProMCP\.Testing|scenarios/' })
+            if ($devOnly.Count -gt 0) { throw "Release archive contains development-only files: $($devOnly -join ', ')" }
         } finally { $archive.Dispose() }
 
         [IO.File]::Move($tempZip, $bundlePath, $true)
