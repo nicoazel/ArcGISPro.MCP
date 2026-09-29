@@ -1,5 +1,11 @@
 [CmdletBinding()]
-param([switch]$Live, [string]$ImageUri)
+param(
+    [switch]$Live,
+    [string]$ImageUri,
+    # Build and package without running the test projects. For CI jobs that run after a job that
+    # already ran every test on the same commit; local runs keep the default (tests run).
+    [switch]$SkipTests
+)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -7,11 +13,16 @@ Push-Location $repoRoot
 try {
     dotnet build ArcGISPro.MCP.slnx -c Release
     if ($LASTEXITCODE -ne 0) { throw 'Release build failed.' }
-    $testProjects = @(Get-ChildItem tests -Directory -Filter '*.Tests' | Sort-Object Name | ForEach-Object { 'tests/' + $_.Name })
-    if ($testProjects.Count -eq 0) { throw 'No test projects found under tests/.' }
-    foreach ($testProject in $testProjects) {
-        dotnet test $testProject -c Release --no-build
-        if ($LASTEXITCODE -ne 0) { throw "Tests failed: $testProject" }
+    if ($SkipTests) {
+        Write-Warning 'Skipping the test projects (-SkipTests).'
+    }
+    else {
+        $testProjects = @(Get-ChildItem tests -Directory -Filter '*.Tests' | Sort-Object Name | ForEach-Object { 'tests/' + $_.Name })
+        if ($testProjects.Count -eq 0) { throw 'No test projects found under tests/.' }
+        foreach ($testProject in $testProjects) {
+            dotnet test $testProject -c Release --no-build
+            if ($LASTEXITCODE -ne 0) { throw "Tests failed: $testProject" }
+        }
     }
     git diff --check
     if ($LASTEXITCODE -ne 0) { throw 'Diff whitespace validation failed.' }
@@ -30,7 +41,7 @@ try {
     [pscustomobject]@{
         Package = $package
         Sha256 = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash
-        PortableChecks = 'passed'
+        PortableChecks = $(if ($SkipTests) { 'build and package only (-SkipTests)' } else { 'passed' })
         LiveProtocolChecked = [bool]$Live
         HumanApprovalInteraction = 'requires separate manual UI acceptance'
         LiveFeatureMetadataGeoprocessing = 'requires separate disposable-project acceptance'

@@ -1,6 +1,8 @@
 name: Build and test
 on:
   push:
+    branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -8,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -40,6 +42,11 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failed += $project }
           }
           if ($failed.Count -gt 0) { throw "Tests failed: $($failed -join ', ')" }
+      - name: FakeHost smoke test
+        # Starts FakeHost and the gateway, runs a short MCP session, and stops both processes.
+        shell: pwsh
+        timeout-minutes: 5
+        run: ./tools/test-fakehost.ps1 -Configuration Release
       - name: Upload test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -62,8 +69,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - name: Package release bundle
+        # build-test already ran every test project on this commit; build and package only.
         shell: pwsh
-        run: ./tools/package-release.ps1
+        run: ./tools/package-release.ps1 -SkipTests
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: arcgis-pro-mcp-development-preview
