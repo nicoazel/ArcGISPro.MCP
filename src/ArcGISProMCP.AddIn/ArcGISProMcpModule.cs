@@ -151,7 +151,8 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
                 _processStartedAtUtc,
                 DateTimeOffset.UtcNow,
                 projectName,
-                projectUri));
+                projectUri,
+                BridgeHostKinds.ArcGISPro));
             _hasPublishedHostDiscovery = true;
             _publishedProjectName = projectName;
             _publishedProjectUri = projectUri;

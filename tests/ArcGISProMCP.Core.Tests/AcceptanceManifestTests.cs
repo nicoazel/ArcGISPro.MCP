@@ -72,6 +72,7 @@ public sealed class AcceptanceManifestTests
             ("sections", JsonSchemas.Array(Section(), minItems: 1, maxItems: 32)),
             ("autonomousMode", JsonSchemas.Boolean()),
             ("allPassed", JsonSchemas.Boolean()),
+            ("visuallyInspected", JsonSchemas.Array(JsonSchemas.String(minLength: 1, maxLength: 1024), maxItems: 64)),
             ("evidence", JsonSchemas.Array(JsonSchemas.String(minLength: 1), maxItems: 256)),
             ("evidenceSkipped", JsonSchemas.Array(JsonSchemas.String(minLength: 1), maxItems: 256)),
         ],

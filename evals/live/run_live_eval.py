@@ -137,7 +137,9 @@ async def run_task(
         messages.append({"role": "assistant", "content": response.content})
         tool_uses = [block for block in response.content if block.type == "tool_use"]
         if not tool_uses:
-            run.final_text = "\n".join(block.text for block in response.content if block.type == "text")
+            run.final_text = "\n".join(
+                block.text for block in response.content if block.type == "text"
+            )
             return run
 
         results = []
@@ -149,7 +151,14 @@ async def run_task(
             except Exception as exception:  # noqa: BLE001 - any transport failure becomes a tool error
                 text, is_error = f"{type(exception).__name__}: {exception}", True
             run.calls.append(ToolCall(block.name, arguments, is_error, text))
-            results.append({"type": "tool_result", "tool_use_id": block.id, "content": text, "is_error": is_error})
+            results.append(
+                {
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": text,
+                    "is_error": is_error,
+                }
+            )
         # All results for one assistant turn go back in a single user message.
         messages.append({"role": "user", "content": results})
 
@@ -157,11 +166,15 @@ async def run_task(
     return run
 
 
-async def describe(session: ClientSession, cache: dict[str, dict[str, Any] | None], operation_id: str) -> dict[str, Any] | None:
+async def describe(
+    session: ClientSession, cache: dict[str, dict[str, Any] | None], operation_id: str
+) -> dict[str, Any] | None:
     if operation_id not in cache:
         try:
             result = await session.call_tool("registry_describe", {"operationId": operation_id})
-            cache[operation_id] = None if result.isError else find_descriptor(json.loads(result_text(result)))
+            cache[operation_id] = (
+                None if result.isError else find_descriptor(json.loads(result_text(result)))
+            )
         except Exception:  # noqa: BLE001 - an operation that cannot be described fails its checks
             cache[operation_id] = None
     return cache[operation_id]
@@ -192,13 +205,17 @@ async def grade(
             descriptor = await describe(session, descriptors, call.input["operationId"])
             if descriptor is None:
                 schema_valid = False
-                failures.append(f"call {index}: operation {call.input['operationId']} could not be described")
+                failures.append(
+                    f"call {index}: operation {call.input['operationId']} could not be described"
+                )
                 continue
             try:
                 jsonschema.validate(call.input.get("arguments", {}), descriptor["inputSchema"])
             except jsonschema.ValidationError as error:
                 schema_valid = False
-                failures.append(f"call {index} {call.input['operationId']} arguments: {error.message}")
+                failures.append(
+                    f"call {index} {call.input['operationId']} arguments: {error.message}"
+                )
 
     approval_ok: bool | None = None
     used_approvals: set[int] = set()
@@ -254,7 +271,10 @@ async def grade(
         "schemaValidArgs": schema_valid,
         "approvalDiscipline": approval_ok,
         "expectedOpsReached": not missing,
-        "taskSuccess": schema_valid and approval_ok is not False and not missing and run.error is None,
+        "taskSuccess": schema_valid
+        and approval_ok is not False
+        and not missing
+        and run.error is None,
         "calls": len(run.calls),
         "stopReason": run.stop_reason,
         "failures": failures,
@@ -263,7 +283,9 @@ async def grade(
 
 def git(*arguments: str) -> str | None:
     try:
-        completed = subprocess.run(["git", *arguments], cwd=REPO_ROOT, capture_output=True, text=True, check=True)
+        completed = subprocess.run(
+            ["git", *arguments], cwd=REPO_ROOT, capture_output=True, text=True, check=True
+        )
         return completed.stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return None
@@ -310,16 +332,32 @@ def write_scorecard(model: str, host: str, graded: list[dict[str, Any]]) -> Path
 
 
 async def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="Claude model id (default: %(default)s; e.g. claude-opus-5-5)")
-    parser.add_argument("--effort", default="high", choices=["low", "medium", "high", "xhigh", "max"])
-    parser.add_argument("--server", required=True, help="Gateway executable (arcgis-pro-mcp.exe, or dotnet)")
-    parser.add_argument("--server-arg", action="append", default=[], help="Argument for the gateway; repeatable")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        help="Claude model id (default: %(default)s; e.g. claude-opus-5-5)",
+    )
+    parser.add_argument(
+        "--effort", default="high", choices=["low", "medium", "high", "xhigh", "max"]
+    )
+    parser.add_argument(
+        "--server", required=True, help="Gateway executable (arcgis-pro-mcp.exe, or dotnet)"
+    )
+    parser.add_argument(
+        "--server-arg", action="append", default=[], help="Argument for the gateway; repeatable"
+    )
     parser.add_argument("--tasks", type=Path, default=DEFAULT_TASKS)
-    parser.add_argument("--task", action="append", default=[], help="Run only these task ids; repeatable")
+    parser.add_argument(
+        "--task", action="append", default=[], help="Run only these task ids; repeatable"
+    )
     parser.add_argument("--max-turns", type=int, default=40)
     parser.add_argument("--host", default="live ArcGIS Pro", help="Label recorded in the scorecard")
-    parser.add_argument("--no-write", action="store_true", help="Print the grades without writing a scorecard")
+    parser.add_argument(
+        "--no-write", action="store_true", help="Print the grades without writing a scorecard"
+    )
     args = parser.parse_args()
 
     if not os.environ.get("ANTHROPIC_API_KEY"):
@@ -335,7 +373,11 @@ async def main() -> int:
         await session.initialize()
         listed = await session.list_tools()
         tools = [
-            {"name": tool.name, "description": tool.description or "", "input_schema": tool.inputSchema}
+            {
+                "name": tool.name,
+                "description": tool.description or "",
+                "input_schema": tool.inputSchema,
+            }
             for tool in listed.tools
         ]
         tool_schemas = {tool["name"]: tool["input_schema"] for tool in tools}
@@ -344,7 +386,9 @@ async def main() -> int:
         for task in tasks:
             print(f"== {task['id']}: {task['prompt']}", flush=True)
             try:
-                run = await run_task(client, session, tools, task, args.model, args.effort, args.max_turns)
+                run = await run_task(
+                    client, session, tools, task, args.model, args.effort, args.max_turns
+                )
             except anthropic.APIStatusError as error:
                 run = TaskRun(task["id"], error=f"API {error.status_code}: {error.message}")
             except anthropic.APIConnectionError as error:

@@ -94,6 +94,7 @@
     ],
     "autonomousMode": true,
     "allPassed": true,
+    "visuallyInspected": ["Final layout of urban-tod-corridor run 1 checked in ArcGIS Pro"],
     "package": {
         "path": "artifacts/ArcGISProMCP.AddIn.esriAddinX",
         "sha256": "5f0c2d5e1d0b8f7a6c3e4b2a1908f7e6d5c4b3a291807f6e5d4c3b2a19087f6e"

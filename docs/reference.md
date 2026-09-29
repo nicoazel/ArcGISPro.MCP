@@ -133,7 +133,8 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 
 | Variable | Set on | Effect |
 | --- | --- | --- |
-| `ARCGIS_PRO_MCP_HOST_PID` | Gateway | Selects one ArcGIS Pro process when several are running. |
+| `ARCGIS_PRO_MCP_HOST_PID` | Gateway | Selects one discovered host by process id when several are running. It is also the way to select a development FakeHost. |
+| `ARCGIS_PRO_MCP_ALLOW_FAKEHOST` | Gateway | Development only. `true` lets automatic host selection consider FakeHost records, which it otherwise ignores. |
 | `ARCGIS_PRO_MCP_PIPE` | Gateway and Pro | Explicit pipe name override. It must match on both sides. |
 | `ARCGIS_PRO_MCP_AUTONOMOUS_MODE` | Pro, before startup | `true` bypasses panel review for risky operations. Opt-in expert setting, not recommended; see [security](security.md). |
 | `ARCGIS_PRO_MCP_ENABLE_ARCPY` | Pro, before startup | `true` registers the `arcpy.*` operations. |
@@ -143,6 +144,8 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 | `ARCGIS_PRO_MCP_ARCPY_MAX_TIMEOUT_SECONDS` | Pro | Execution time ceiling (default 300). |
 | `ARCGIS_PRO_MCP_ARCPY_MAX_OUTPUT_CHARS` | Pro | Cap on stdout/stderr, applied to each (default 65536). |
 | `ARCGIS_PRO_MCP_ARCPY_MAX_SCRIPT_BYTES` | Pro | Maximum script size (default 1048576). |
+
+Each host publishes a discovery record under `%LOCALAPPDATA%\ArcGISProMCP\hosts` with a `hostKind` of `arcgis-pro` (the add-in; a record without `hostKind` is treated the same) or `fakehost` (`tools/ArcGISProMCP.FakeHost`, whose project name is also prefixed `[FakeHost] `). Without `ARCGIS_PRO_MCP_PIPE` or `ARCGIS_PRO_MCP_HOST_PID`, the gateway selects automatically among `arcgis-pro` records only, so an ordinary client configuration never attaches to a FakeHost; with only FakeHost records present it fails with `arcgis_host_not_found`.
 
 ## Bundled workflows and skills
 
@@ -208,9 +211,10 @@ Codes a client should handle. The message carries the details.
 
 | Script | Use |
 | --- | --- |
-| `tools/verify-release.ps1` | Release build, portable tests, whitespace, and package inspection. Add `-Live` for a real MCP probe. |
-| `tools/package-release.ps1` | Builds the full unsigned preview bundle after running the verification. |
-| `tools/pack-addin.ps1` | Packs the add-in and can install it (`-Install`). |
+| `tools/verify-release.ps1` | Release build, portable tests, whitespace, and package inspection. Add `-Live` for a real MCP probe. PowerShell 7. |
+| `tools/package-release.ps1` | Builds the full unsigned preview bundle after running the verification. `-SkipTests` (used by CI after its test job) builds and packages without re-running the tests. PowerShell 7. |
+| `tools/test-fakehost.ps1` | Starts FakeHost and the gateway and runs a short MCP session, as CI does. No ArcGIS Pro needed. |
+| `tools/pack-addin.ps1` | Packs the add-in and can install it (`-Install`). PowerShell 7. |
 | `tools/test-mcp.ps1` | Live handshake, tool discovery, state, registry search, and skill read. |
 | `tools/run-live-feature-gp-arcpy.ps1` | Live feature, geoprocessing, and ArcPy acceptance driver. |
 | `tools/run-urban-stress.ps1` | Repeats the urban layout workflows as a stress test. |
