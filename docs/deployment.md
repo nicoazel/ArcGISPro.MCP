@@ -101,6 +101,8 @@ ArcPy is absent from the operation registry unless explicitly enabled before Arc
 
 ## Acceptance evidence
 
+**Committed evidence:** [`docs/acceptance/2026-09-28-5f34f16`](acceptance/2026-09-28-5f34f16/summary.md) records commit `5f34f16` on ArcGIS Pro 3.7.1 (3.7.0.1901 registry build): release verify, the loaded add-in DLLs matching the package, host probe, the MCP smoke test including the approval-card probe, and the three bundled urban workflows x 3 runs in default (review-required) mode, with layouts visually inspected. It does not cover autonomous mode or the feature/GP/ArcPy section.
+
 A live acceptance pass of the ArcGIS-only build was run on the maintainer's workstation on 2026-09-09. It covered MCP protocol and reconnect, multi-instance discovery, feature editing, layer metadata, SDK geoprocessing, the optional ArcPy runner (in autonomous mode), the urban layout workflows and the Pittsburgh showcase, and idle/shutdown behavior. Two findings are retained:
 
 - Explicit remote cancellation of an accepted SDK geoprocessing call is not implemented. A client disconnect after acceptance is reported as `outcome_unknown`.
