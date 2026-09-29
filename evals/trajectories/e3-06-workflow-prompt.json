@@ -1,0 +1,70 @@
+{
+  "id": "e3-06-workflow-prompt",
+  "task": "Review the commercial (C1) parcels with the parcel-review workflow.",
+  "scenario": "riverton",
+  "steps": [
+    {
+      "tool": "workflow_list",
+      "arguments": {},
+      "expectResult": {
+        "$[0].id": "riverton.parcel-review"
+      }
+    },
+    {
+      "prompt": "run.riverton.parcel-review",
+      "arguments": {
+        "where": "ZONE = 'C1'"
+      },
+      "expectText": [
+        "riverton.parcel-review",
+        "workflow_run"
+      ]
+    },
+    {
+      "tool": "workflow_get",
+      "arguments": {
+        "workflowId": "riverton.parcel-review"
+      }
+    },
+    {
+      "tool": "system_get_state",
+      "arguments": {},
+      "capture": {
+        "revision": "$.workspace.revision"
+      }
+    },
+    {
+      "tool": "workflow_run",
+      "arguments": {
+        "workflowId": "riverton.parcel-review",
+        "parameters": {
+          "where": "ZONE = 'C1'"
+        },
+        "expectedRevision": "${revision}"
+      },
+      "capture": {
+        "resource": "$.results[3].resources[0].uri"
+      },
+      "expectResult": {
+        "$.success": true
+      }
+    },
+    {
+      "tool": "resource_read",
+      "arguments": {
+        "uri": "${resource}"
+      }
+    }
+  ],
+  "expect": {
+    "selection": {
+      "Parcels": [
+        4,
+        5
+      ]
+    },
+    "hostCalls": [
+      "view.capture-map City 800x600"
+    ]
+  }
+}

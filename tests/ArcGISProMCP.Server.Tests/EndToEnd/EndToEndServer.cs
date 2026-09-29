@@ -24,6 +24,9 @@ internal sealed class EndToEndServer : IAsyncDisposable
 {
     public const string DefaultScenario = "riverton";
 
+    /// <summary>Error code a <see cref="ToolOutcome"/> carries when the SDK rejected arguments before the tool ran.</summary>
+    public const string SdkRejectedArguments = "sdk_rejected_arguments";
+
     private readonly IHost _host;
     private readonly Pipe _clientToServer;
     private readonly Pipe _serverToClient;
@@ -101,6 +104,17 @@ internal sealed class EndToEndServer : IAsyncDisposable
         var schema = (await ToolsAsync(cancellationToken).ConfigureAwait(false))[tool].OutputSchema
                      ?? throw new InvalidOperationException($"Tool '{tool}' has no outputSchema.");
         var call = await Client.CallToolAsync(tool, dictionary, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (call.IsError == true && call.StructuredContent is null)
+        {
+            // The SDK rejected the arguments before the tool ran, so there is no envelope to check.
+            var text = string.Join(" ", call.Content.OfType<TextContentBlock>().Select(block => block.Text));
+            return new ToolOutcome(tool, true, JsonSerializer.SerializeToElement(new
+            {
+                ok = false,
+                result = (object?)null,
+                error = new { code = SdkRejectedArguments, message = text, retryable = false, revision = (string?)null }
+            }));
+        }
         var envelope = ToolCall.AssertEnvelope(call, schema);
         return new ToolOutcome(tool, call.IsError == true, envelope);
     }
