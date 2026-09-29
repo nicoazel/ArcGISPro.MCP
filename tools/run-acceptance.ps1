@@ -18,6 +18,8 @@
         REQUIRES THE HOST TO RUN IN AUTONOMOUS MODE (ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true at
         Pro startup) and additionally requires -AllowAutonomous, -AllowProjectMutation and a
         -DisposableRoot containing the open project.
+      * The host is a live ArcGIS Pro discovery record (hostKind arcgis-pro), never a FakeHost:
+        an explicit -PipeName that matches no such record blocks every live step.
       * -PlanOnly (alias -DryRun) prints the plan and collects only facts that need no running
         ArcGIS Pro, no build and no child harness. It never writes under docs/.
       * -Commit copies the evidence to docs/acceptance/<yyyy-MM-dd>-<sha7>/. It is refused for
@@ -33,6 +35,13 @@
 .EXAMPLE
     ./tools/run-acceptance.ps1 -Sections smoke,feature-gp-arcpy,stress -AllowProjectMutation -AllowAutonomous -DisposableRoot D:\scratch\mcp-acceptance -Commit
 #>
+# An operator console script: coloured progress is for the person at the workstation, and every
+# result that matters is written to manifest.json and summary.md, so Write-Host is intended here.
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Operator console output; results are recorded in manifest.json and summary.md.')]
+# PSReviewUnusedParameter does not follow parameters into functions and step scriptblocks.
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'Configuration', Justification = 'Used by Invoke-DemoRunnerCall and the smoke, feature-gp-arcpy and stress step scriptblocks.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'RunsPerCase', Justification = 'Passed to run-urban-stress.ps1 by the stress step scriptblock.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ImageUri', Justification = 'Passed to test-mcp.ps1 by the smoke step scriptblock.')]
 [CmdletBinding()]
 param(
     [string]$PipeName,
@@ -262,8 +271,6 @@ if ($unknownSections.Count -gt 0) { throw "Unknown section(s): $($unknownSection
 if ($Sections.Count -eq 0) { throw 'Select at least one section.' }
 if ($Commit -and $PlanOnly) { throw '-Commit cannot be combined with -PlanOnly: a plan is not evidence.' }
 if ($Commit -and $SkipVerify) { throw '-Commit requires the verify step; remove -SkipVerify.' }
-$mutatingSelected = @($Sections | Where-Object { $sectionCatalog[$_].mutatesProject })
-$autonomousSelected = @($Sections | Where-Object { $sectionCatalog[$_].requiresAutonomousMode })
 if ($DisposableRoot) { $DisposableRoot = [IO.Path]::GetFullPath($DisposableRoot) }
 if (@($Screenshot).Count -gt $maxScreenshots) { throw "At most $maxScreenshots screenshots may be attached." }
 foreach ($shot in @($Screenshot)) {
@@ -314,7 +321,7 @@ if ($Commit -and (Test-Path -LiteralPath $commitFolder)) { throw "-Commit refuse
 
 # ---------------------------------------------------------------- ArcGIS Pro install facts (read-only, Pro need not run)
 
-function Get-ProInstallFacts {
+function Get-ProInstallFact {
     $facts = [ordered]@{ installDir = $null; realVersion = $null; registryVersion = $null; exeProductVersion = $null; runningProcessIds = @() }
     $key = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\ESRI\ArcGISPro' -ErrorAction SilentlyContinue
     if ($key) {
@@ -330,12 +337,16 @@ function Get-ProInstallFacts {
     return $facts
 }
 
-function Get-DiscoveryRecords {
+function Get-DiscoveryRecord {
     $root = Join-Path $env:LOCALAPPDATA 'ArcGISProMCP\hosts'
     $records = @()
     if (-not (Test-Path -LiteralPath $root -PathType Container)) { return $records }
     foreach ($file in Get-ChildItem -LiteralPath $root -Filter 'host-*.json' -File) {
         try { $record = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json } catch { continue }
+        if ($null -eq $record -or -not $record.PSObject.Properties['processId']) { continue }
+        # A record without hostKind predates the field and was written by the add-in.
+        $hostKind = 'arcgis-pro'
+        if ($record.PSObject.Properties['hostKind'] -and $record.hostKind) { $hostKind = [string]$record.hostKind }
         $live = $false
         $process = Get-Process -Id ([int]$record.processId) -ErrorAction SilentlyContinue
         if ($process -and $process.ProcessName -eq 'ArcGISPro') {
@@ -345,12 +356,12 @@ function Get-DiscoveryRecords {
             }
             catch { $live = $false }
         }
-        $records += [pscustomobject]@{ processId = [int]$record.processId; pipeName = [string]$record.pipeName; projectUri = [string]$record.projectUri; live = $live }
+        $records += [pscustomobject]@{ processId = [int]$record.processId; pipeName = [string]$record.pipeName; projectUri = [string]$record.projectUri; hostKind = $hostKind; live = $live }
     }
     return $records
 }
 
-function Get-PackageDllHashes([string]$PackagePath) {
+function Get-PackageDllHash([string]$PackagePath) {
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $hashes = @()
@@ -368,7 +379,7 @@ function Get-PackageDllHashes([string]$PackagePath) {
     return @($hashes | Sort-Object { $_.name })
 }
 
-function Get-LoadedDllHashes {
+function Get-LoadedDllHash {
     $cache = Join-Path $env:LOCALAPPDATA ('ESRI\ArcGISPro\AssemblyCache\' + $addInId)
     if (-not (Test-Path -LiteralPath $cache -PathType Container)) { return @() }
     return @(Get-ChildItem -LiteralPath $cache -Filter 'ArcGISProMCP.*.dll' -File -Recurse | Sort-Object Name | ForEach-Object {
@@ -376,26 +387,38 @@ function Get-LoadedDllHashes {
     })
 }
 
-function Compare-DllHashes($Built, $Loaded) {
+function Compare-DllHash($Built, $Loaded) {
     $problems = @()
     if (@($Built).Count -eq 0) { $problems += 'no built DLLs in the package' }
     if (@($Loaded).Count -eq 0) { $problems += "no cached add-in DLLs for $addInId (install the package and restart ArcGIS Pro)" }
     foreach ($dll in @($Built)) {
         $match = @($Loaded | Where-Object { $_.name -eq $dll.name })
         if ($match.Count -eq 0) { $problems += "$($dll.name) not loaded" }
+        elseif ($match.Count -gt 1) { $problems += "$($dll.name) is ambiguous: $($match.Count) cached copies ($(@($match | ForEach-Object { $_.path }) -join ', '))" }
         elseif ($match[0].sha256 -ne $dll.sha256) { $problems += "$($dll.name) loaded hash differs from package" }
     }
     return $problems
 }
 
-$pro = Get-ProInstallFacts
-$discovery = @(Get-DiscoveryRecords)
-$liveHosts = @($discovery | Where-Object { $_.live })
+$pro = Get-ProInstallFact
+$discovery = @(Get-DiscoveryRecord)
+# Only live ArcGIS Pro records count: a FakeHost (hostKind fakehost) is never acceptance evidence.
+$liveHosts = @($discovery | Where-Object { $_.live -and $_.hostKind -eq 'arcgis-pro' })
 $packagePath = Join-Path $repoRoot 'artifacts\ArcGISProMCP.AddIn.esriAddinX'
 
 $resolvedPipe = $PipeName
 $pipeSource = 'parameter'
-if (-not $resolvedPipe) {
+$pipeProblem = $null
+if ($resolvedPipe) {
+    # An explicit pipe must belong to a live ArcGIS Pro, not a FakeHost or a stale record.
+    $pipeHost = @($liveHosts | Where-Object { $_.pipeName -eq $resolvedPipe })
+    if ($pipeHost.Count -eq 1) { $pipeSource = "parameter (live ArcGIS Pro PID $($pipeHost[0].processId))" }
+    else {
+        $pipeProblem = "-PipeName '$resolvedPipe' does not match a live ArcGIS Pro discovery record (hostKind arcgis-pro)"
+        $pipeSource = "parameter, REJECTED: $pipeProblem"
+    }
+}
+else {
     if ($liveHosts.Count -eq 1) { $resolvedPipe = $liveHosts[0].pipeName; $pipeSource = 'single live discovery record' }
     else { $pipeSource = "unresolved ($($liveHosts.Count) live discovery records; pass -PipeName)" }
 }
@@ -444,11 +467,11 @@ $facts = [ordered]@{
     discoveryRecords = $discovery
     pipe = [ordered]@{ name = $resolvedPipe; source = $pipeSource }
     package = $(if (Test-Path -LiteralPath $packagePath -PathType Leaf) { [ordered]@{ path = $packagePath; sha256 = (Get-Sha256Hex $packagePath) } } else { 'not built (artifacts/ArcGISProMCP.AddIn.esriAddinX)' })
-    loadedDlls = @(Get-LoadedDllHashes)
+    loadedDlls = @(Get-LoadedDllHash)
 }
 if (Test-Path -LiteralPath $packagePath -PathType Leaf) {
-    $facts['packageDlls'] = @(Get-PackageDllHashes $packagePath)
-    $facts['dllMismatches'] = @(Compare-DllHashes $facts['packageDlls'] $facts['loadedDlls'])
+    $facts['packageDlls'] = @(Get-PackageDllHash $packagePath)
+    $facts['dllMismatches'] = @(Compare-DllHash $facts['packageDlls'] $facts['loadedDlls'])
 }
 
 if ($PlanOnly) {
@@ -500,9 +523,9 @@ try {
         if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) { throw "Package not found: $packagePath" }
         if (-not $pro.realVersion) { throw 'ArcGIS Pro is not installed (HKLM:\SOFTWARE\ESRI\ArcGISPro).' }
         $script:packageInfo = [ordered]@{ path = 'artifacts/ArcGISProMCP.AddIn.esriAddinX'; sha256 = (Get-Sha256Hex $packagePath) }
-        $script:builtDlls = @(Get-PackageDllHashes $packagePath)
-        $script:loadedDlls = @(Get-LoadedDllHashes)
-        $problems = @(Compare-DllHashes $script:builtDlls $script:loadedDlls)
+        $script:builtDlls = @(Get-PackageDllHash $packagePath)
+        $script:loadedDlls = @(Get-LoadedDllHash)
+        $problems = @(Compare-DllHash $script:builtDlls $script:loadedDlls)
         if ($problems.Count -gt 0) { throw ('Loaded add-in does not match the package: ' + ($problems -join '; ')) }
         @{ detail = "ArcGIS Pro $($pro.realVersion) ($($pro.exeProductVersion)); $($script:builtDlls.Count) add-in DLLs match the package"; evidence = @() }
     }
@@ -511,6 +534,9 @@ try {
     $hostReady = $false
     if (-not $resolvedPipe) {
         Add-Step -Name 'host-probe' -Status 'blocked' -Detail "no host pipe: $pipeSource"
+    }
+    elseif ($pipeProblem) {
+        Add-Step -Name 'host-probe' -Status 'blocked' -Detail "refused: $pipeProblem"
     }
     else {
         $hostReady = Invoke-Step 'host-probe' {
@@ -595,7 +621,6 @@ finally {
 
 # ---------------------------------------------------------------- audit records appended during the run
 
-$auditEvidence = $null
 if ($null -ne $auditOffset -and (Test-Path -LiteralPath $auditPath -PathType Leaf)) {
     $stream = [IO.File]::Open($auditPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
     try {
@@ -610,7 +635,6 @@ if ($null -ne $auditOffset -and (Test-Path -LiteralPath $auditPath -PathType Lea
             $read += $n
         }
         [IO.File]::WriteAllBytes((Join-Path $OutputDirectory 'audit.jsonl'), $buffer)
-        $auditEvidence = 'audit.jsonl'
     }
     finally { $stream.Dispose() }
 }
@@ -652,6 +676,7 @@ $manifest = [ordered]@{
     autonomousMode = [bool]$autonomousMode
     allPassed = [bool]$allPassed
 }
+if (@($VisuallyInspected).Count -gt 0) { $manifest['visuallyInspected'] = @($VisuallyInspected) }
 if ($tag) { $manifest['tag'] = $tag }
 # Facts that exist only when the corresponding step produced them are omitted, never faked.
 if ($packageInfo) { $manifest['package'] = $packageInfo }
@@ -659,7 +684,7 @@ elseif (Test-Path -LiteralPath $packagePath -PathType Leaf) { $manifest['package
 if ($state -and $state.PSObject.Properties['processId']) { $manifest.pro['hostProcessId'] = [int]$state.processId }
 if ($state -and $state.PSObject.Properties['operationCount']) { $manifest.pro['operationCount'] = [int]$state.operationCount }
 
-function New-SummaryMarkdown {
+function ConvertTo-SummaryMarkdown {
     $lines = New-Object System.Collections.ArrayList
     $null = $lines.Add("# Acceptance evidence $($manifest.date) ($sha7)")
     $null = $lines.Add('')
@@ -714,9 +739,9 @@ function New-SummaryMarkdown {
 }
 
 Write-Utf8File (Join-Path $OutputDirectory 'manifest.json') (ConvertTo-JsonText $manifest)
-Write-Utf8File (Join-Path $OutputDirectory 'summary.md') (New-SummaryMarkdown)
+Write-Utf8File (Join-Path $OutputDirectory 'summary.md') (ConvertTo-SummaryMarkdown)
 
-function Write-Sha256Sums([string]$Directory) {
+function Write-Sha256Sum([string]$Directory) {
     $sums = Join-Path $Directory 'SHA256SUMS'
     $entries = @(Get-ChildItem -LiteralPath $Directory -File -Recurse |
         Where-Object { -not [string]::Equals($_.FullName, $sums, [StringComparison]::OrdinalIgnoreCase) } |
@@ -753,12 +778,12 @@ function Copy-BoundedPng([string]$Source, [string]$Destination) {
         }
         finally { $image.Dispose() }
     }
-    catch { }
+    catch { Write-Verbose $_ }
     if (Test-Path -LiteralPath $Destination) { Remove-Item -LiteralPath $Destination -Force }
     return $false
 }
 
-Write-Sha256Sums $OutputDirectory
+Write-Sha256Sum $OutputDirectory
 Write-Host ''
 Write-Host "Working evidence: $OutputDirectory" -ForegroundColor Cyan
 
@@ -804,8 +829,8 @@ if ($Commit) {
     $manifest['evidence'] = @($copied)
     if ($skipped.Count -gt 0) { $manifest['evidenceSkipped'] = @($skipped) }
     Write-Utf8File (Join-Path $commitFolder 'manifest.json') (ConvertTo-JsonText $manifest)
-    Write-Utf8File (Join-Path $commitFolder 'summary.md') (New-SummaryMarkdown)
-    Write-Sha256Sums $commitFolder
+    Write-Utf8File (Join-Path $commitFolder 'summary.md') (ConvertTo-SummaryMarkdown)
+    Write-Sha256Sum $commitFolder
     Write-Host "Committed evidence folder written: $commitFolder" -ForegroundColor Green
     Write-Host 'Review it (paths, audit records), then git add it yourself. Nothing was staged or committed.' -ForegroundColor Green
 }

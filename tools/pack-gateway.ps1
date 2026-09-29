@@ -25,7 +25,7 @@ $packageId = 'ArcGISProMCP.Gateway'
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-function Read-ZipEntryBytes {
+function Read-ZipEntryByte {
     param([System.IO.Compression.ZipArchiveEntry]$Entry)
     $stream = $Entry.Open()
     try {
@@ -82,7 +82,7 @@ $zip = [System.IO.Compression.ZipFile]::OpenRead($nupkg)
 try {
     $nuspecEntry = @($zip.Entries | Where-Object { $_.FullName -eq "$packageId.nuspec" })
     if ($nuspecEntry.Count -ne 1) { throw 'Package has no nuspec.' }
-    $nuspecText = [Text.Encoding]::UTF8.GetString((Read-ZipEntryBytes $nuspecEntry[0])).TrimStart([char]0xFEFF)
+    $nuspecText = [Text.Encoding]::UTF8.GetString((Read-ZipEntryByte $nuspecEntry[0])).TrimStart([char]0xFEFF)
     $nuspec = [xml]$nuspecText
     $ns = New-Object System.Xml.XmlNamespaceManager($nuspec.NameTable)
     $ns.AddNamespace('n', $nuspec.DocumentElement.NamespaceURI)
@@ -94,7 +94,7 @@ try {
 
     $packedServerJson = @($zip.Entries | Where-Object { $_.FullName -eq '.mcp/server.json' })
     if ($packedServerJson.Count -ne 1) { throw 'Package does not contain .mcp/server.json.' }
-    if ((Get-Sha256Hex (Read-ZipEntryBytes $packedServerJson[0])) -ne
+    if ((Get-Sha256Hex (Read-ZipEntryByte $packedServerJson[0])) -ne
         (Get-Sha256Hex ([IO.File]::ReadAllBytes($serverJsonPath)))) {
         throw 'Packed .mcp/server.json differs from source.'
     }
@@ -102,7 +102,7 @@ try {
     $toolSettings = @($zip.Entries | Where-Object { $_.FullName -like 'tools/*/any/DotnetToolSettings.xml' })
     if ($toolSettings.Count -ne 1) { throw 'Package does not contain DotnetToolSettings.xml.' }
     $toolRoot = $toolSettings[0].FullName.Substring(0, $toolSettings[0].FullName.Length - 'DotnetToolSettings.xml'.Length)
-    $settings = [xml]([Text.Encoding]::UTF8.GetString((Read-ZipEntryBytes $toolSettings[0])).TrimStart([char]0xFEFF))
+    $settings = [xml]([Text.Encoding]::UTF8.GetString((Read-ZipEntryByte $toolSettings[0])).TrimStart([char]0xFEFF))
     $command = $settings.SelectSingleNode('//Command')
     if ($null -eq $command -or $command.GetAttribute('Name') -ne 'arcgis-pro-mcp') {
         throw 'Tool command name is not arcgis-pro-mcp.'
@@ -117,7 +117,7 @@ try {
     foreach ($skill in $sourceSkills) {
         $entry = @($packedSkills | Where-Object { $_.Name -eq $skill.Name })
         if ($entry.Count -ne 1) { throw "Skill '$($skill.Name)' is missing from the package." }
-        if ((Get-Sha256Hex (Read-ZipEntryBytes $entry[0])) -ne (Get-FileHash -LiteralPath $skill.FullName -Algorithm SHA256).Hash) {
+        if ((Get-Sha256Hex (Read-ZipEntryByte $entry[0])) -ne (Get-FileHash -LiteralPath $skill.FullName -Algorithm SHA256).Hash) {
             throw "Packed skill '$($skill.Name)' differs from source."
         }
     }

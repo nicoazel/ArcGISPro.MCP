@@ -10,7 +10,7 @@ One folder per run, named `<yyyy-MM-dd>-<sha7>` (local date of the run, first se
 
 | File | Contents |
 |---|---|
-| `manifest.json` | Machine-readable record: `schemaVersion`, `date`, `sha`, `dirty`, `describe`, `tag` (when HEAD is tagged), `version`, `dotnet`, `operator`, `pro` (install dir, registry and `ArcGISPro.exe` versions, running PIDs, host PID, operation count, add-in id), `package` (path and SHA-256 of the `.esriAddinX`), `dlls.built` / `dlls.loaded` (SHA-256 of the add-in DLLs in the package and in Pro's `AssemblyCache`), `sections[]` (each step's status, whether it mutates the project or requires autonomous mode, timing, detail, evidence paths), `autonomousMode`, `allPassed`, `evidence[]` |
+| `manifest.json` | Machine-readable record: `schemaVersion`, `date`, `sha`, `dirty`, `describe`, `tag` (when HEAD is tagged), `version`, `dotnet`, `operator`, `pro` (install dir, registry and `ArcGISPro.exe` versions, running PIDs, host PID, operation count, add-in id), `package` (path and SHA-256 of the `.esriAddinX`), `dlls.built` / `dlls.loaded` (SHA-256 of the add-in DLLs in the package and in Pro's `AssemblyCache`), `sections[]` (each step's status, whether it mutates the project or requires autonomous mode, timing, detail, evidence paths), `autonomousMode`, `allPassed`, `visuallyInspected[]` (what the operator checked by eye, from `-VisuallyInspected`, when given), `evidence[]` |
 | `summary.md` | Human-readable record, split into implemented, portable-tested, live-tested, visually inspected, and blocked or not run |
 | `SHA256SUMS` | `<sha256>  <relative path>` for every other file in the folder, sorted, LF line endings |
 | `host-probe/state.json` | `system.get_state` snapshot taken before the live sections |
