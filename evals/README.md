@@ -16,16 +16,17 @@ run by hand.
 
 ## Current scorecard
 
-Retrieval suites, from [`results/2026-09-26-2290311`](results/2026-09-26-2290311/scorecard.md) (gp suites
-against ArcGIS Pro 3.7.1.1904, 2,210 system tools); these are also the values in `baseline.json`:
+Retrieval suites, from [`results/2026-09-28-5d1c587`](results/2026-09-28-5d1c587/scorecard.md) (gp suites
+against ArcGIS Pro 3.7.1.1904, 2,210 system tools); these are also the values in `baseline.json`. The main
+suites were used to choose the search parameters, so the held-out columns are the numbers to trust:
 
 | Suite | Tasks | recall@1 | recall@5 | MRR |
 |---|---:|---:|---:|---:|
-| registry-search | 30 | 0.667 | 1.000 | 0.803 |
+| registry-search | 30 | 0.600 | 0.867 | 0.716 |
 | registry-search-holdout | 16 | 0.813 | 0.938 | 0.865 |
-| gp-search | 30 | 0.667 | 0.933 | 0.776 |
+| gp-search | 30 | 0.667 | 0.900 | 0.751 |
 | gp-search-holdout | 16 | 0.688 | 0.875 | 0.771 |
-| gp-search-fixture | 5 | 1.000 | 1.000 | 1.000 |
+| gp-search-fixture | 5 | 0.800 | 1.000 | 0.867 |
 
 Golden trajectories, from `TrajectoryTests` on every `dotnet test` (no model in the loop, so these
 check the harness, the server and the recorded agent behaviour, not a model):
@@ -47,6 +48,7 @@ evals/
   tasks/gp-search.jsonl           E2 tasks (installed Pro)
   tasks/gp-search-fixture.jsonl   E2 CI subset (synthetic toolboxes)
   tasks/*-holdout.jsonl           held-out E1/E2 tasks, not used for tuning
+  trajectories/*.json             E3 golden trajectories (replayed by Server.Tests)
   baseline.json                   measured metrics the tests gate on
   ArcGISProMCP.Evals/             task loader, runner, metrics, scorecard writer (net10.0)
   results/<yyyy-MM-dd>-<sha7>/    committed scorecards (scorecard.json + scorecard.md)
@@ -116,8 +118,9 @@ Commit the scorecard in its own commit after the commit it measures.
 
 ### Changing the baseline
 
-`baseline.json` holds measured values, not targets. When search improves, commit the new scorecard
-and raise the baseline in the same change. If you add or remove tasks, re-measure: the tests refuse
+`baseline.json` holds measured values, not targets. When search changes, commit the new scorecard
+and move the baseline in the same change, down as well as up: removing an entry that only served one
+task lowers the main suites, and that lower value is the honest baseline. If you add or remove tasks, re-measure: the tests refuse
 a baseline taken on a different task count. `gp-search` depends on the installed Pro version, which
 the baseline note and the scorecard host record.
 
@@ -129,19 +132,42 @@ and a small curated synonym map of general GIS vocabulary (`SearchSynonyms`). `g
 core system toolboxes a modest prior (`GpToolboxPriority`: x1.25 for analysis, management, conversion,
 cartography, edit and stats; x1.1 for Spatial Analyst and 3D Analyst).
 
-The free parameters (rarity floor, core factor) were chosen on the main suites only. The held-out suites
-were written first and measured before and after, never used for choices.
+The held-out gains come from the matching changes (stemming, camel-case splitting, IDF and the
+core-toolbox prior), not from synonyms. An ablation showed that synonyms moved only the main suites'
+recall@5, so entries fitted to single main-suite tasks (font, colour and unit names, "pt", checksum
+wording, "see through", "picture", "highlight", "bounding box", "set up", "how many", "heat map") were
+removed, and the main-suite numbers went down with them. The criteria an entry must meet are in
+`SearchSynonyms`.
 
-| Suite | Tasks | recall@1 before -> after | recall@5 before -> after | MRR before -> after |
-|---|---:|---|---|---|
-| registry-search | 30 | 0.500 -> 0.667 | 0.833 -> 1.000 | 0.607 -> 0.803 |
-| registry-search-holdout | 16 | 0.813 -> 0.813 | 0.938 -> 0.938 | 0.856 -> 0.865 |
-| gp-search | 30 | 0.533 -> 0.667 | 0.667 -> 0.933 | 0.586 -> 0.776 |
-| gp-search-holdout | 16 | 0.500 -> 0.688 | 0.688 -> 0.875 | 0.559 -> 0.771 |
-| gp-search-fixture | 5 | 0.800 -> 1.000 | 1.000 -> 1.000 | 0.900 -> 1.000 |
+| Suite | Tasks | Before tuning (`832a4ac`) | Matching changes, no synonyms | Full synonym map (`2290311`) | Current, fitted entries removed (`5d1c587`) |
+|---|---:|---|---|---|---|
+| registry-search | 30 | 0.833 / 0.607 | 0.800 / 0.632 | 1.000 / 0.803 | 0.867 / 0.716 |
+| registry-search-holdout | 16 | 0.938 / 0.856 | 0.938 / 0.846 | 0.938 / 0.865 | 0.938 / 0.865 |
+| gp-search | 30 | 0.667 / 0.586 | 0.800 / 0.686 | 0.933 / 0.776 | 0.900 / 0.751 |
+| gp-search-holdout | 16 | 0.688 / 0.559 | 0.875 / 0.724 | 0.875 / 0.771 | 0.875 / 0.771 |
+| gp-search-fixture | 5 | 1.000 / 0.900 | 1.000 / 0.900 | 1.000 / 1.000 | 1.000 / 0.867 |
 
-"Before" is `832a4ac` (the descriptor fixture regenerated for the phase-2 gp operations, 41 descriptors);
-"after" is `2290311`, scorecard in `results/2026-09-26-2290311`. gp suites ran against ArcGIS Pro 3.7.1.1904.
+Cells are recall@5 / MRR. Read it this way:
+
+- Held-out recall@5 does not move with synonyms at all (0.938 and 0.875 in every column after the
+  matching changes). The gp held-out gain from 0.688 to 0.875 is the matching changes and the prior.
+- On the held-out suites the synonym map adds a little ranking (gp held-out MRR 0.724 -> 0.771, recall@1
+  0.625 -> 0.688; registry held-out MRR 0.846 -> 0.865). The current map keeps all of that: the removed
+  entries touched no held-out task.
+- Registry main recall@5 without synonyms (0.800) is below the pre-tuning 0.833; the matching changes
+  help registry ranking (MRR) more than its recall@5.
+- The main-suite gains from the full map (registry 1.000, gp 0.933) were largely the fitted entries.
+  The remaining entries were also chosen while looking at the main suites, so the current main-suite
+  numbers still flatter search somewhat.
+
+"Before tuning" is `832a4ac` (the descriptor fixture regenerated for the phase-2 gp operations, 41
+descriptors), measured from a `git archive` of that commit, scorecard in
+[`results/2026-09-28-832a4ac`](results/2026-09-28-832a4ac/scorecard.md). "Full synonym map" is
+[`results/2026-09-26-2290311`](results/2026-09-26-2290311/scorecard.md) (re-measured unchanged on
+`0b2006f`). "No synonyms" was measured on `0b2006f` with the synonym map emptied and is not a committed
+scorecard. "Current" is [`results/2026-09-28-5d1c587`](results/2026-09-28-5d1c587/scorecard.md). gp suites
+ran against ArcGIS Pro 3.7.1.1904. The free parameters (rarity floor, core factor) were chosen on the main
+suites only; the held-out suites were written first and never used for choices.
 
 ## Descriptors
 
