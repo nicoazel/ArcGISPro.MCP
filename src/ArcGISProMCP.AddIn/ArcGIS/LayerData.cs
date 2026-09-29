@@ -1,5 +1,6 @@
 using ArcGIS.Core;
 using ArcGIS.Core.Data;
+using ArcGIS.Core.Data.Exceptions;
 using ArcGIS.Desktop.Mapping;
 using ArcGISProMCP.Core.Operations;
 
@@ -22,9 +23,12 @@ internal static class LayerData
     }
 
     /// <summary>
-    /// Whether the table has a GlobalID field. Some data sources, such as shapefiles, throw
-    /// <see cref="NotSupportedException"/> from <see cref="TableDefinition.HasGlobalID"/> instead of
-    /// returning false; found by live acceptance on a shapefile layer.
+    /// Whether the table has a GlobalID field. The ArcGIS Pro 3.7 SDK documents two exceptions for
+    /// <see cref="TableDefinition.HasGlobalID"/> (ArcGIS.Core.xml): <see cref="NotSupportedException"/>
+    /// "the definition does not support this operation (e.g., the table is a shapefile)", seen live on
+    /// a shapefile layer, and <see cref="GeodatabaseException"/>, the documented base class of every
+    /// geodatabase exception. Both mean the GlobalID cannot be determined, which is treated as no
+    /// GlobalID; any other exception is a real failure and propagates.
     /// </summary>
     public static bool HasGlobalId(TableDefinition definition)
     {
@@ -33,6 +37,10 @@ internal static class LayerData
             return definition.HasGlobalID();
         }
         catch (NotSupportedException)
+        {
+            return false;
+        }
+        catch (GeodatabaseException)
         {
             return false;
         }
