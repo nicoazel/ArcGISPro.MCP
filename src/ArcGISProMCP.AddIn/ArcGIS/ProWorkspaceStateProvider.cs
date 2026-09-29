@@ -15,17 +15,23 @@ namespace ArcGISProMCP.AddIn.ArcGIS;
 internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher) : IRevisionPublishingWorkspace
 {
     private long _mutationSequence;
-    public void AdvanceRevision() => AdvanceRevision("operation");
+    public void AdvanceRevision() => AdvanceRevision(static () => "operation");
 
-    /// <summary>Advances the revision; <paramref name="reason"/> is recorded when revision logging is on.</summary>
-    public void AdvanceRevision(string reason)
+    /// <summary>
+    /// Advances the revision. <paramref name="reason"/> is evaluated only when revision logging is
+    /// on, so event handlers pay nothing for it otherwise.
+    /// </summary>
+    public void AdvanceRevision(Func<string> reason)
     {
         var sequence = Interlocked.Increment(ref _mutationSequence);
-        LogLine($"advance	{sequence}	{reason}");
+        if (RevisionLog.Enabled) RevisionLog.Append($"advance\t{sequence}\t{reason()}");
     }
 
     /// <summary>Records a host event that deliberately does not advance the revision.</summary>
-    public void NoteIgnoredEvent(string reason) => LogLine($"ignored	{Interlocked.Read(ref _mutationSequence)}	{reason}");
+    public void NoteIgnoredEvent(Func<string> reason)
+    {
+        if (RevisionLog.Enabled) RevisionLog.Append($"ignored\t{Interlocked.Read(ref _mutationSequence)}\t{reason()}");
+    }
 
     public Task<WorkspaceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken) =>
         dispatcher.OnMainCimThreadAsync(CreateSnapshot, cancellationToken);
@@ -43,10 +49,11 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
     {
         var result = await WorkspaceSnapshotSettler.SettleWithinBudgetAsync(
             DrainHostAsync, GetSnapshotAsync, SettleBudget, cancellationToken).ConfigureAwait(false);
+        if (!RevisionLog.Enabled) return result.Snapshot;
         if (result.TimedOut)
-            LogLine($"settle-timeout\t{Interlocked.Read(ref _mutationSequence)}\t{result.Snapshot.Revision}\tbudget {SettleBudget.TotalMilliseconds:0} ms elapsed; published a plain sample");
+            RevisionLog.Append($"settle-timeout\t{Interlocked.Read(ref _mutationSequence)}\t{result.Snapshot.Revision}\tbudget {SettleBudget.TotalMilliseconds:0} ms elapsed; published a plain sample");
         else if (!result.Settled)
-            LogLine($"settle-unsettled\t{Interlocked.Read(ref _mutationSequence)}\t{result.Snapshot.Revision}\t{result.Samples} samples without {WorkspaceSnapshotSettler.RequiredQuietSamples} quiet in a row");
+            RevisionLog.Append($"settle-unsettled\t{Interlocked.Read(ref _mutationSequence)}\t{result.Snapshot.Revision}\t{result.Samples} samples without {WorkspaceSnapshotSettler.RequiredQuietSamples} quiet in a row");
         return result.Snapshot;
     }
 
@@ -65,48 +72,13 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
         await QueuedTask.Run(static () => { }).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Opt-in diagnostics: <c>ARCGIS_PRO_MCP_REVISION_LOG=1</c> records every revision change and the state behind it.</summary>
-    private static readonly bool RevisionLogEnabled =
-        string.Equals(Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_REVISION_LOG")?.Trim(), "1", StringComparison.Ordinal) ||
-        string.Equals(Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_REVISION_LOG")?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
-
     private string? _lastLoggedRevision;
 
-    private static void LogLine(string line)
+    private void LogRevisionChange(string revision, Func<string> material)
     {
-        if (!RevisionLogEnabled) return;
-        try
-        {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ArcGISProMCP", "diagnostics");
-            Directory.CreateDirectory(directory);
-            File.AppendAllText(Path.Combine(directory, $"revisions-{Environment.ProcessId}.log"), $"{DateTimeOffset.UtcNow:O}	{line}{Environment.NewLine}");
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
-    }
-
-    private void LogRevisionChange(string revision, string material)
-    {
-        if (!RevisionLogEnabled || string.Equals(revision, _lastLoggedRevision, StringComparison.Ordinal)) return;
+        if (!RevisionLog.Enabled || string.Equals(revision, _lastLoggedRevision, StringComparison.Ordinal)) return;
         _lastLoggedRevision = revision;
-        try
-        {
-            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ArcGISProMCP", "diagnostics");
-            Directory.CreateDirectory(directory);
-            File.AppendAllText(
-                Path.Combine(directory, $"revisions-{Environment.ProcessId}.log"),
-                $"{DateTimeOffset.UtcNow:O}	{revision}	{material}{Environment.NewLine}");
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
+        RevisionLog.Append($"{revision}\t{material()}");
     }
 
     private WorkspaceSnapshot CreateSnapshot()
@@ -163,7 +135,7 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
             string.Join(';', maps.Select(map => $"{map.Id}:{map.Name}:{map.LayerCount}")),
             string.Join(';', layouts.Select(layout => $"{layout.Id}:{layout.Name}:{layout.MapFrameCount}")));
         var revision = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(revisionMaterial)))[..16].ToLowerInvariant();
-        LogRevisionChange(revision, revisionMaterial);
+        LogRevisionChange(revision, () => revisionMaterial);
 
         return new WorkspaceSnapshot(
             revision,
@@ -194,5 +166,59 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
                         : "Disabled; risky operations require local review."),
                 new CapabilityState("visual-observations", true)
             ]);
+    }
+}
+
+/// <summary>
+/// Opt-in diagnostics: <c>ARCGIS_PRO_MCP_REVISION_LOG=1</c> (or <c>true</c>) appends revision changes,
+/// the host events behind them and settle outcomes to
+/// <c>%LOCALAPPDATA%\ArcGISProMCP\diagnostics\revisions-&lt;pid&gt;.log</c>, one file per ArcGIS Pro
+/// process. Lines include the project URI and map and layout names. Writing stops once the file
+/// reaches <see cref="MaximumBytes"/>. Callers check <see cref="Enabled"/> before building a line.
+/// </summary>
+internal static class RevisionLog
+{
+    /// <summary>The log stops growing at this size; delete the file to resume logging.</summary>
+    internal const long MaximumBytes = 50L * 1024 * 1024;
+
+    public static bool Enabled { get; } = IsEnabled(Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_REVISION_LOG"));
+
+    private static readonly Lock Gate = new();
+    private static bool _capped;
+
+    internal static bool IsEnabled(string? value)
+    {
+        var trimmed = value?.Trim();
+        return string.Equals(trimmed, "1", StringComparison.Ordinal) ||
+               string.Equals(trimmed, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static void Append(string line)
+    {
+        if (!Enabled) return;
+        lock (Gate)
+        {
+            if (_capped) return;
+            try
+            {
+                var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ArcGISProMCP", "diagnostics");
+                Directory.CreateDirectory(directory);
+                var path = Path.Combine(directory, $"revisions-{Environment.ProcessId}.log");
+                var file = new FileInfo(path);
+                if (file.Exists && file.Length >= MaximumBytes)
+                {
+                    _capped = true;
+                    File.AppendAllText(path, $"{DateTimeOffset.UtcNow:O}\tcapped\tlog reached {MaximumBytes / (1024 * 1024)} MB; no further lines are written{Environment.NewLine}");
+                    return;
+                }
+                File.AppendAllText(path, $"{DateTimeOffset.UtcNow:O}\t{line}{Environment.NewLine}");
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
     }
 }

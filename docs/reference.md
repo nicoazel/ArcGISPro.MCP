@@ -137,7 +137,7 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 | `ARCGIS_PRO_MCP_ALLOW_FAKEHOST` | Gateway | Development only. `true` lets automatic host selection consider FakeHost records, which it otherwise ignores. |
 | `ARCGIS_PRO_MCP_PIPE` | Gateway and Pro | Explicit pipe name override. It must match on both sides. |
 | `ARCGIS_PRO_MCP_AUTONOMOUS_MODE` | Pro, before startup | `true` bypasses panel review for risky operations. Opt-in expert setting, not recommended; see [security](security.md). |
-| `ARCGIS_PRO_MCP_REVISION_LOG` | Pro, before startup | `1`/`true` appends each workspace revision change, with the project, map and layout state behind it, to `%LOCALAPPDATA%\ArcGISProMCP\diagnosticsevisions-<pid>.log`. Diagnostics for unexpected `workspace_revision_mismatch`; off by default. |
+| `ARCGIS_PRO_MCP_REVISION_LOG` | Pro, before startup | `1`/`true` appends each workspace revision change, the host event behind each revision advance and settle timeouts to `%LOCALAPPDATA%\ArcGISProMCP\diagnostics\revisions-<pid>.log` (one file per ArcGIS Pro process). Lines contain the project path (URI) and map and layout names; writing stops at 50 MB. Diagnostics for unexpected `workspace_revision_mismatch` or `workspace_changed`; off by default. See [deployment](deployment.md#diagnostics). |
 | `ARCGIS_PRO_MCP_ENABLE_ARCPY` | Pro, before startup | `true` registers the `arcpy.*` operations. |
 | `ARCGIS_PRO_MCP_ARCPY_SCRIPT_ROOT` | Pro | Absolute directory of approved scripts. Required when ArcPy is enabled. |
 | `ARCGIS_PRO_MCP_ARCPY_WORKING_ROOT` | Pro | Absolute, separate working directory tree. Required when ArcPy is enabled. |

@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
-- `ARCGIS_PRO_MCP_REVISION_LOG=1` diagnostics: the host logs every workspace revision change with the state behind it.
+- `ARCGIS_PRO_MCP_REVISION_LOG=1` diagnostics: the host logs every workspace revision change with the state behind it (project URI, map and layout names), the event behind each revision advance and settle timeouts, to one file per ArcGIS Pro process. The log stops growing at 50 MB, and log lines are not built while logging is off. See [deployment](docs/deployment.md#diagnostics).
 - `SECURITY.md` with supported versions, private reporting through GitHub security advisories, and a threat model summary.
 - `CONTRIBUTING.md` with prerequisites, build, test and packaging commands, and pull request conventions.
 - This changelog and a public [roadmap](docs/ROADMAP.md).

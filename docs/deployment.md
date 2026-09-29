@@ -86,6 +86,16 @@ Keep the dockpane open and review each approval request. Run the procedures in [
 
 ArcPy is absent from the operation registry unless explicitly enabled before ArcGIS Pro starts. Follow [ArcPy configuration and trust boundaries](arcpy.md); do not enable it on a workstation that accepts untrusted scripts or untrusted MCP clients.
 
+### Diagnostics
+
+`ARCGIS_PRO_MCP_REVISION_LOG=1` (or `true`), set for the ArcGIS Pro process before it starts, turns on the workspace revision log. It is off by default. Each ArcGIS Pro process writes its own file, `%LOCALAPPDATA%\ArcGISProMCP\diagnostics\revisions-<pid>.log`, with tab-separated, UTC-timestamped lines:
+
+- every new workspace revision with the state it was computed from: the MCP write sequence, the project URI (its full local path), project name and dirty flag, and each map's and layout's name, handle, layer count and map frame count;
+- `advance` and `ignored` lines naming the ArcGIS event (or `operation`) behind each revision advance, or the event deliberately ignored;
+- `settle-unsettled` and `settle-timeout` lines when a write published its revision without the revision going quiet, or after the 3 s settle budget ran out.
+
+The log contains project paths and map and layout names, so treat it like the project itself when sharing it. Writing stops once the file reaches 50 MB (a final `capped` line says so); delete the file to start again. Nothing rotates or deletes it automatically.
+
 ## Implemented surface
 
 - Searchable registry with curated project, map, scene, layer, cartography, feature, table, metadata, geoprocessing, layout, observation, workflow and optional ArcPy operations. See the [reference](reference.md).

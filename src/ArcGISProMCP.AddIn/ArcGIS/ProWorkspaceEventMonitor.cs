@@ -27,16 +27,17 @@ internal sealed class ProWorkspaceEventMonitor : IDisposable
             // A data source (re)connecting or a Contents node expanding is not a project edit, and
             // ArcGIS raises these asynchronously after layer.add and similar writes return.
             if (WorkspaceEventHints.IsNonContentOnly(hints))
-                workspace.NoteIgnoredEvent("MapMemberPropertiesChanged:" + string.Join(',', hints));
+                workspace.NoteIgnoredEvent(() => "MapMemberPropertiesChanged:" + string.Join(',', hints));
             else
-                workspace.AdvanceRevision("MapMemberPropertiesChanged:" + string.Join(',', hints));
+                workspace.AdvanceRevision(() => "MapMemberPropertiesChanged:" + string.Join(',', hints));
         }, true);
-        _added = LayersAddedEvent.Subscribe(_ => workspace.AdvanceRevision("LayersAdded"), true);
-        _removed = LayersRemovedEvent.Subscribe(_ => workspace.AdvanceRevision("LayersRemoved"), true);
-        _edits = EditCompletedEvent.Subscribe(_ => { workspace.AdvanceRevision("EditCompleted"); return Task.CompletedTask; }, true);
+        _added = LayersAddedEvent.Subscribe(_ => workspace.AdvanceRevision(static () => "LayersAdded"), true);
+        _removed = LayersRemovedEvent.Subscribe(_ => workspace.AdvanceRevision(static () => "LayersRemoved"), true);
+        _edits = EditCompletedEvent.Subscribe(_ => { workspace.AdvanceRevision(static () => "EditCompleted"); return Task.CompletedTask; }, true);
         _elements = ElementEvent.Subscribe(args =>
         {
-            if (args.Hint != ElementEventHint.SelectionChanged) workspace.AdvanceRevision("ElementEvent:" + args.Hint);
+            var hint = args.Hint;
+            if (hint != ElementEventHint.SelectionChanged) workspace.AdvanceRevision(() => "ElementEvent:" + hint);
         }, true);
     }
 
