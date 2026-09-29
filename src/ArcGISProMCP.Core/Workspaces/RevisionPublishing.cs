@@ -15,19 +15,21 @@ public interface IRevisionPublishingWorkspace : IWorkspaceStateProvider
 
 /// <summary>
 /// Samples a workspace until its revision stops changing. Hosts publish some structural
-/// notifications after their SDK mutators return; waiting for a quiet period makes the revision
+/// notifications after their SDK mutators return (live ArcGIS Pro acceptance showed layer.add
+/// notifications landing after a 50 ms window); waiting for a 200 ms quiet period, at most 3 s,
+/// makes the revision
 /// handed to the next serialized workflow step the one the host actually settles on.
 /// </summary>
 public static class WorkspaceSnapshotSettler
 {
     /// <summary>Maximum number of samples taken after the first one.</summary>
-    public const int MaximumAttempts = 20;
+    public const int MaximumAttempts = 60;
 
     /// <summary>Consecutive unchanged samples required before the revision counts as settled.</summary>
-    public const int RequiredQuietSamples = 2;
+    public const int RequiredQuietSamples = 4;
 
     /// <summary>Default delay between samples.</summary>
-    public static readonly TimeSpan DefaultInterval = TimeSpan.FromMilliseconds(25);
+    public static readonly TimeSpan DefaultInterval = TimeSpan.FromMilliseconds(50);
 
     public static async Task<WorkspaceSnapshot> WaitForSettledSnapshotAsync(
         Func<CancellationToken, Task<WorkspaceSnapshot>> sample,

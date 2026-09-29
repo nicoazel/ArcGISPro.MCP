@@ -10,25 +10,25 @@ namespace ArcGISProMCP.Core.Tests;
 public sealed class WorkspaceSnapshotSettlerTests
 {
     [Fact]
-    public async Task Returns_after_two_consecutive_samples_repeat_the_revision()
+    public async Task Returns_after_four_consecutive_samples_repeat_the_revision()
     {
-        var samples = new SampleSequence("a", "b", "c", "c", "c", "d");
+        var samples = new SampleSequence("a", "b", "c", "c", "c", "c", "c", "d");
 
         var snapshot = await WorkspaceSnapshotSettler.WaitForSettledSnapshotAsync(samples.NextAsync, TestContext.Current.CancellationToken, TimeSpan.Zero);
 
         Assert.Equal("c", snapshot.Revision);
-        Assert.Equal(5, samples.Taken);
+        Assert.Equal(7, samples.Taken);
     }
 
     [Fact]
     public async Task A_changing_revision_resets_the_quiet_count()
     {
-        var samples = new SampleSequence("a", "a", "b", "b", "b");
+        var samples = new SampleSequence("a", "a", "a", "b", "b", "b", "b", "b");
 
         var snapshot = await WorkspaceSnapshotSettler.WaitForSettledSnapshotAsync(samples.NextAsync, TestContext.Current.CancellationToken, TimeSpan.Zero);
 
         Assert.Equal("b", snapshot.Revision);
-        Assert.Equal(5, samples.Taken);
+        Assert.Equal(8, samples.Taken);
     }
 
     [Fact]
@@ -46,9 +46,9 @@ public sealed class WorkspaceSnapshotSettlerTests
     [Fact]
     public void The_settle_budget_matches_the_add_in_defaults()
     {
-        Assert.Equal(20, WorkspaceSnapshotSettler.MaximumAttempts);
-        Assert.Equal(2, WorkspaceSnapshotSettler.RequiredQuietSamples);
-        Assert.Equal(TimeSpan.FromMilliseconds(25), WorkspaceSnapshotSettler.DefaultInterval);
+        Assert.Equal(60, WorkspaceSnapshotSettler.MaximumAttempts);
+        Assert.Equal(4, WorkspaceSnapshotSettler.RequiredQuietSamples);
+        Assert.Equal(TimeSpan.FromMilliseconds(50), WorkspaceSnapshotSettler.DefaultInterval);
     }
 
     [Fact]

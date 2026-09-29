@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- `ARCGIS_PRO_MCP_REVISION_LOG=1` diagnostics: the host logs every workspace revision change with the state behind it.
 - `SECURITY.md` with supported versions, private reporting through GitHub security advisories, and a threat model summary.
 - `CONTRIBUTING.md` with prerequisites, build, test and packaging commands, and pull request conventions.
 - This changelog and a public [roadmap](docs/ROADMAP.md).
@@ -70,6 +71,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Fixed
 
+- Workflows stopped with `workspace_changed` right after `layer.add` in live ArcGIS Pro, because deferred ArcGIS notifications arrived after the 50 ms settle window. Writes now wait for a 200 ms quiet period (at most 3 s). Which view has focus is no longer part of the workspace revision, so pane switches no longer cause spurious `workspace_revision_mismatch`. Found by live acceptance.
 - `feature.*` operations failed on shapefile layers with "The definition of the table ... does not support this operation": ArcGIS throws from `HasGlobalID()` for shapefiles instead of returning false. Found by live acceptance; the GlobalID check is now guarded.
 - `layer.add` with `name` reused an existing same-named layer even when its data source was broken or pointed at a different dataset, and echoed the requested source for it (`Created: false`), so the next step failed. It now reuses a layer only when its connection is not `Broken` and its dataset path matches the request; otherwise it swaps the feature class in place, keeping symbology (`Repaired: true`), or removes and re-adds the layer at the same position (`Replaced: true`), and adds a `layer_repaired` notice. `Source` is now the path the layer actually reads, with the request in `RequestedSource`, plus `DataSourceStatus`. Found by live ArcGIS Pro acceptance.
 - Operations on a layer with a broken data source (`feature.*`, `table.query`, `table.statistics`, `symbology.set-simple`, `symbology.set-unique-values`, `layout.set-frame-extent`) failed with `operation_failed` "Object reference not set to an instance of an object." They now fail with `layer_data_source_unavailable` and a message naming the layer and how to repair it. Operations can raise the new Core `OperationException(code, message)`, which the executor reports with its own code. Found by live ArcGIS Pro acceptance.

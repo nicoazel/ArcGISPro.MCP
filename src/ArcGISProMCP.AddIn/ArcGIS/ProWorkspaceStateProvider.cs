@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.Immutable;
 using System.Security.Cryptography;
 using System.Text;
@@ -19,6 +20,33 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
 
     public Task<WorkspaceSnapshot> GetSettledSnapshotAsync(CancellationToken cancellationToken) =>
         WorkspaceSnapshotSettler.WaitForSettledSnapshotAsync(GetSnapshotAsync, cancellationToken);
+
+    /// <summary>Opt-in diagnostics: <c>ARCGIS_PRO_MCP_REVISION_LOG=1</c> records every revision change and the state behind it.</summary>
+    private static readonly bool RevisionLogEnabled =
+        string.Equals(Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_REVISION_LOG")?.Trim(), "1", StringComparison.Ordinal) ||
+        string.Equals(Environment.GetEnvironmentVariable("ARCGIS_PRO_MCP_REVISION_LOG")?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+
+    private string? _lastLoggedRevision;
+
+    private void LogRevisionChange(string revision, string material)
+    {
+        if (!RevisionLogEnabled || string.Equals(revision, _lastLoggedRevision, StringComparison.Ordinal)) return;
+        _lastLoggedRevision = revision;
+        try
+        {
+            var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ArcGISProMCP", "diagnostics");
+            Directory.CreateDirectory(directory);
+            File.AppendAllText(
+                Path.Combine(directory, $"revisions-{Environment.ProcessId}.log"),
+                $"{DateTimeOffset.UtcNow:O}	{revision}	{material}{Environment.NewLine}");
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
 
     private WorkspaceSnapshot CreateSnapshot()
     {
@@ -68,9 +96,13 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
             project.URI,
             project.Name,
             project.IsDirty,
-            string.Join(';', maps.Select(map => $"{map.Id}:{map.Name}:{map.LayerCount}:{map.IsActive}")),
-            string.Join(';', layouts.Select(layout => $"{layout.Id}:{layout.Name}:{layout.MapFrameCount}:{layout.IsOpen}")));
+            // Which view has focus is UI state, not project content: it can change without any edit
+            // (live acceptance saw spurious workspace_revision_mismatch). Activations made through
+            // map.activate/layout.activate still advance the revision via the mutation sequence.
+            string.Join(';', maps.Select(map => $"{map.Id}:{map.Name}:{map.LayerCount}")),
+            string.Join(';', layouts.Select(layout => $"{layout.Id}:{layout.Name}:{layout.MapFrameCount}")));
         var revision = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(revisionMaterial)))[..16].ToLowerInvariant();
+        LogRevisionChange(revision, revisionMaterial);
 
         return new WorkspaceSnapshot(
             revision,
