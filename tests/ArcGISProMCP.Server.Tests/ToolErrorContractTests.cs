@@ -55,27 +55,37 @@ public sealed class ToolErrorContractTests
     }
 
     [Theory]
-    [InlineData("missing operationId", """{"arguments":{}}""")]
-    [InlineData("missing arguments", """{"operationId":"layer.list"}""")]
-    [InlineData("no arguments at all", "{}")]
-    [InlineData("operationId is not a string", """{"operationId":5,"arguments":{}}""")]
-    [InlineData("dryRun is not a boolean", """{"operationId":"layer.list","arguments":{},"dryRun":"yes"}""")]
-    [InlineData("expectedRevision is not a string", """{"operationId":"layer.list","arguments":{},"expectedRevision":7}""")]
-    public async Task Registry_invoke_with_malformed_arguments_is_a_tool_error_and_never_reaches_the_host(string because, string arguments)
+    [InlineData("registry_invoke", """{"arguments":{}}""", "Missing required argument 'operationId'.")]
+    [InlineData("registry_invoke", """{"operationId":"layer.list"}""", "Missing required argument 'arguments'.")]
+    [InlineData("registry_invoke", "{}", "Missing required argument 'operationId'.")]
+    [InlineData("registry_invoke", """{"operationId":5,"arguments":{}}""", "Argument 'operationId' must be string, not a number.")]
+    [InlineData("registry_invoke", """{"operationId":"layer.list","arguments":{},"dryRun":"yes"}""", "Argument 'dryRun' must be boolean, not a string.")]
+    [InlineData("registry_invoke", """{"operationId":"layer.list","arguments":{},"expectedRevision":7}""", "Argument 'expectedRevision' must be string or null, not a number.")]
+    [InlineData("approval_status", """{"requestId":"req-1","waitSeconds":"soon"}""", "Argument 'waitSeconds' must be integer, not a string.")]
+    [InlineData("approval_status", """{"waitSeconds":5}""", "Missing required argument 'requestId'.")]
+    public async Task Malformed_arguments_are_an_invalid_arguments_envelope_and_never_reach_the_host(string toolName, string arguments, string message)
     {
         await using var server = await McpTestServer.StartAsync(cancellationToken: Token);
 
-        var (call, schema) = await CallAsync(server, "registry_invoke",
+        var (call, schema) = await CallAsync(server, toolName,
             JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(arguments)!.ToDictionary(pair => pair.Key, pair => (object?)pair.Value));
 
-        // The SDK reports argument binding failures as a tool execution error (isError), not as a
-        // JSON-RPC invalid-params error, so the model can correct the call.
-        Assert.True(call.IsError, because);
+        // A tool execution error (isError), not a JSON-RPC invalid-params error, so the model can
+        // correct the call; the envelope matches the advertised outputSchema like every other failure.
+        Assert.True(call.IsError);
         Assert.Empty(server.Bridge.Calls);
-        // Binding fails before the tool runs, so there is currently no envelope; if one is added it
-        // must still match the advertised outputSchema.
-        if (call.StructuredContent is { } structured)
-            SchemaAssert.Valid(schema, structured);
+        var envelope = AssertEnvelope(call, schema);
+        Assert.False(envelope.GetProperty("ok").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, envelope.GetProperty("result").ValueKind);
+        var error = envelope.GetProperty("error");
+        Assert.Equal("invalid_arguments", error.GetProperty("code").GetString());
+        Assert.Equal(message, error.GetProperty("message").GetString());
+        Assert.False(error.GetProperty("retryable").GetBoolean());
+        // Binding exceptions (type names, JSON paths, parameter names of the method) are not echoed.
+        var text = Assert.IsType<TextContentBlock>(Assert.Single(call.Content)).Text;
+        Assert.DoesNotContain("System.", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("could not be converted", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("An error occurred invoking", text, StringComparison.Ordinal);
     }
 
     [Fact]
