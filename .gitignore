@@ -14,3 +14,7 @@ artifacts/
 __pycache__/
 *.pyc
 *.gdb/*.lock
+*.sr.lock
+*.rd.lock
+*.wr.lock
+*.ed.lock

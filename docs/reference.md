@@ -71,7 +71,7 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 | Id | Risk | Does |
 | --- | --- | --- |
 | `layer.list` | ReadOnly | Flattened layer tree with handles and appearance state. |
-| `layer.add` | SafeWrite | Adds a dataset, layer file, or service URL. |
+| `layer.add` | SafeWrite | Adds a dataset, layer file, or service URL. With `name`, a same-named layer whose data connection is healthy is never removed: it is reused when it reads the requested source (paths compared ignoring case, trailing separators, `/` vs `\` and an optional `.shp`, then by workspace plus dataset name, so a file geodatabase feature class matches with or without its feature dataset), reused with a `source_unverified` warning when ArcGIS reports no dataset path for it (for example some service layers), and otherwise only repaired in place (feature class swapped, symbology kept; `Repaired: true`) or, when ArcGIS cannot swap it, left unchanged with a `layer_source_mismatch` warning. Only a layer whose connection is broken is repaired in place or, as a last resort, removed and re-added at the same position (`Replaced: true`, symbology not kept), with a `layer_repaired` notice. `Source` is what the layer actually reads, `RequestedSource` echoes the request, and `DataSourceStatus` is `ok`, `broken`, `unverified` or `mismatch`. A UNC path and a mapped drive for the same share are not recognized as equal; such a layer is repaired in place. A same-named group layer is never replaced. |
 | `layer.set-appearance` | SafeWrite | Visibility and transparency (0–100 %). |
 | `layer.set-elevation` | SafeWrite | Scene elevation mode, offset, and vertical exaggeration. |
 | `symbology.set-simple` | SafeWrite | Single-symbol renderer for a point, line, or polygon layer. |
@@ -137,6 +137,7 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 | `ARCGIS_PRO_MCP_ALLOW_FAKEHOST` | Gateway | Development only. `true` lets automatic host selection consider FakeHost records, which it otherwise ignores. |
 | `ARCGIS_PRO_MCP_PIPE` | Gateway and Pro | Explicit pipe name override. It must match on both sides. |
 | `ARCGIS_PRO_MCP_AUTONOMOUS_MODE` | Pro, before startup | `true` bypasses panel review for risky operations. Opt-in expert setting, not recommended; see [security](security.md). |
+| `ARCGIS_PRO_MCP_REVISION_LOG` | Pro, before startup | `1`/`true` appends each workspace revision change, the host event behind each revision advance and settle timeouts to `%LOCALAPPDATA%\ArcGISProMCP\diagnostics\revisions-<pid>.log` (one file per ArcGIS Pro process). Lines contain the project path (URI) and map and layout names; writing stops at 50 MB. Diagnostics for unexpected `workspace_revision_mismatch` or `workspace_changed`; off by default. See [deployment](deployment.md#diagnostics). |
 | `ARCGIS_PRO_MCP_ENABLE_ARCPY` | Pro, before startup | `true` registers the `arcpy.*` operations. |
 | `ARCGIS_PRO_MCP_ARCPY_SCRIPT_ROOT` | Pro | Absolute directory of approved scripts. Required when ArcPy is enabled. |
 | `ARCGIS_PRO_MCP_ARCPY_WORKING_ROOT` | Pro | Absolute, separate working directory tree. Required when ArcPy is enabled. |
@@ -206,6 +207,7 @@ Codes a client should handle. The message carries the details.
 | `bridge_contract_mismatch` | gateway | The add-in returned a result this gateway cannot read. Install matching add-in and gateway versions. |
 | `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped). |
 | `skill_not_found` | skill get | Unknown bundled skill id. |
+| `layer_data_source_unavailable` | invoke, workflow step | The target layer's data source is broken or cannot be opened (for example relative paths after a project was copied). The message names the layer; repair its data source in ArcGIS Pro, or re-add it with `layer.add` using the same name and a valid source. |
 
 ## Scripts
 

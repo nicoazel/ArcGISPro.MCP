@@ -75,6 +75,10 @@ public sealed class AcceptanceManifestTests
             ("visuallyInspected", JsonSchemas.Array(JsonSchemas.String(minLength: 1, maxLength: 1024), maxItems: 64)),
             ("evidence", JsonSchemas.Array(JsonSchemas.String(minLength: 1), maxItems: 256)),
             ("evidenceSkipped", JsonSchemas.Array(JsonSchemas.String(minLength: 1), maxItems: 256)),
+            // Written by run-acceptance.ps1 -Commit once it rewrote evidence paths to the committed
+            // layout; older folders (2026-09-28-5f34f16) list working-evidence paths and omit it.
+            ("evidencePathsRelative", JsonSchemas.Boolean()),
+            ("visualNotesSource", JsonSchemas.String(minLength: 1, maxLength: 1024)),
         ],
         ["schemaVersion", "date", "sha", "dirty", "version", "dotnet", "operator", "pro", "package", "dlls", "sections", "autonomousMode", "allPassed"]);
 
@@ -191,6 +195,8 @@ public sealed class AcceptanceManifestTests
             Assert.True(issues.Count == 0, $"{name}: " + string.Join("; ", issues.Select(i => $"{i.Path} {i.Message}")));
             var problems = CommittedManifestProblems(manifest, name);
             Assert.True(problems.Count == 0, $"{name}: " + string.Join("; ", problems));
+            var paths = EvidencePathProblems(manifest, folder);
+            Assert.True(paths.Count == 0, $"{name}: " + string.Join("; ", paths));
             var sums = ChecksumProblems(folder);
             Assert.True(sums.Count == 0, $"{name}: " + string.Join("; ", sums));
         }
@@ -233,6 +239,100 @@ public sealed class AcceptanceManifestTests
             if (!loaded.TryGetValue(dllName, out var loadedHash) ||
                 !string.Equals(loadedHash, dll.GetProperty("sha256").GetString(), StringComparison.Ordinal))
                 problems.Add($"{dllName}: loaded hash does not match the built package");
+        }
+        return problems;
+    }
+
+    [Fact]
+    public void Evidence_paths_must_exist_when_the_manifest_declares_them_relative()
+    {
+        var folder = Directory.CreateTempSubdirectory("acceptance-paths-");
+        try
+        {
+            var manifest = SampleNode();
+            manifest["evidencePathsRelative"] = true;
+            manifest["evidence"] = new JsonArray("host-probe/state.json", "images/layout-tod.png");
+            manifest["visuallyInspected"] = new JsonArray(
+                "images/layout-tod.png: URBAN TEST 01 layout renders",
+                "not committed: stress/green/final-layout.png: kept under artifacts/ only",
+                "All three layouts: no blank frames");
+            foreach (var section in manifest["sections"]!.AsArray())
+                section!["evidence"] = new JsonArray();
+            manifest["sections"]![3]!["evidence"] = new JsonArray("host-probe/state.json");
+
+            var missing = EvidencePathProblems(ToElement(manifest), folder.FullName);
+            Assert.Contains(missing, p => p.Contains("host-probe/state.json", StringComparison.Ordinal));
+            Assert.Contains(missing, p => p.Contains("images/layout-tod.png", StringComparison.Ordinal));
+            Assert.DoesNotContain(missing, p => p.Contains("stress/green", StringComparison.Ordinal));
+            Assert.DoesNotContain(missing, p => p.Contains("All three layouts", StringComparison.Ordinal));
+
+            Directory.CreateDirectory(Path.Combine(folder.FullName, "host-probe"));
+            Directory.CreateDirectory(Path.Combine(folder.FullName, "images"));
+            File.WriteAllText(Path.Combine(folder.FullName, "host-probe", "state.json"), "{}\n");
+            File.WriteAllBytes(Path.Combine(folder.FullName, "images", "layout-tod.png"), [0x89, 0x50]);
+            Assert.Empty(EvidencePathProblems(ToElement(manifest), folder.FullName));
+
+            // A working-evidence path the -Commit rewrite missed is caught.
+            manifest["sections"]![0]!["evidence"] = new JsonArray("preflight.json");
+            Assert.Contains(EvidencePathProblems(ToElement(manifest), folder.FullName), p => p.Contains("preflight.json", StringComparison.Ordinal));
+
+            manifest["evidence"] = new JsonArray("../outside.json");
+            Assert.Contains(EvidencePathProblems(ToElement(manifest), folder.FullName), p => p.Contains("../outside.json", StringComparison.Ordinal));
+        }
+        finally { folder.Delete(recursive: true); }
+    }
+
+    [Fact]
+    public void Manifests_without_relative_evidence_paths_are_exempt()
+    {
+        // The first committed folder (2026-09-28-5f34f16) predates the rule and is immutable.
+        var sample = SampleNode();
+        Assert.Null(sample["evidencePathsRelative"]);
+        Assert.Empty(EvidencePathProblems(ToElement(sample), Path.GetTempPath()));
+
+        sample["evidencePathsRelative"] = false;
+        Assert.Empty(EvidencePathProblems(ToElement(sample), Path.GetTempPath()));
+    }
+
+    /// <summary>
+    /// For manifests with <c>evidencePathsRelative: true</c>: every evidence path, and the path before
+    /// ": " in each visual-inspection note (unless the note starts with "not committed: "), names a
+    /// file inside the folder. The path-like rule matches Test-EvidencePathLike in run-acceptance.ps1.
+    /// </summary>
+    private static List<string> EvidencePathProblems(JsonElement manifest, string folder)
+    {
+        var problems = new List<string>();
+        if (!manifest.TryGetProperty("evidencePathsRelative", out var relative) || relative.ValueKind != JsonValueKind.True)
+            return problems;
+
+        var root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        void Check(string where, string path)
+        {
+            var full = Path.GetFullPath(Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar)));
+            if (path.Contains('\\', StringComparison.Ordinal) || Path.IsPathRooted(path) ||
+                !full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                problems.Add($"{where}: '{path}' is not a relative path inside the folder");
+            else if (!File.Exists(full))
+                problems.Add($"{where}: '{path}' is not in the folder");
+        }
+
+        foreach (var section in manifest.GetProperty("sections").EnumerateArray())
+            foreach (var path in section.GetProperty("evidence").EnumerateArray())
+                Check($"sections[{section.GetProperty("name").GetString()}].evidence", path.GetString()!);
+        if (manifest.TryGetProperty("evidence", out var evidence))
+            foreach (var path in evidence.EnumerateArray())
+                Check("evidence", path.GetString()!);
+        if (manifest.TryGetProperty("visuallyInspected", out var inspected))
+        {
+            foreach (var note in inspected.EnumerateArray().Select(n => n.GetString()!))
+            {
+                if (note.StartsWith("not committed: ", StringComparison.Ordinal)) continue;
+                var separator = note.IndexOf(": ", StringComparison.Ordinal);
+                if (separator <= 0) continue;
+                var token = note[..separator];
+                if (System.Text.RegularExpressions.Regex.IsMatch(token, @"[\\/]|\.[A-Za-z0-9]{1,5}$"))
+                    Check("visuallyInspected", token);
+            }
         }
         return problems;
     }

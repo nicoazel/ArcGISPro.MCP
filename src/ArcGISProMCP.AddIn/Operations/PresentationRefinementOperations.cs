@@ -25,6 +25,8 @@ internal sealed class LayoutSetFrameExtentOperation() : ProOperationBase(Operati
             var frame = layout.GetElementsAsFlattenedList().OfType<MapFrame>().SingleOrDefault(item => item.Name == name)
                 ?? throw new ArgumentException($"Map frame '{name}' was not found.");
             var layer = ProHandles.ResolveLayer(frame.Map, RequiredString(arguments, "layer"));
+            // A broken data layer has no extent to frame; group layers report their own status.
+            if (layer is not ILayerContainer) LayerData.EnsureAvailable(layer);
             frame.SetCamera(layer, false);
             var camera = frame.Camera;
             var padding = OptionalDouble(arguments, "padding", 1.2);
@@ -130,7 +132,7 @@ internal sealed class SymbologySetUniqueValuesOperation() : ProOperationBase(Ope
             var map = ProHandles.ResolveMap(OptionalString(arguments, "map"));
             var layer = ProHandles.ResolveLayer(map, RequiredString(arguments, "layer")) as FeatureLayer
                 ?? throw new ArgumentException("A feature layer is required.");
-            using var featureClass = layer.GetFeatureClass();
+            using var featureClass = LayerData.OpenFeatureClass(layer);
             using var definition = featureClass.GetDefinition();
             if (definition.GetShapeType() != GeometryType.Polygon) throw new ArgumentException("This category renderer supports polygon layers.");
             var field = RequiredString(arguments, "field");

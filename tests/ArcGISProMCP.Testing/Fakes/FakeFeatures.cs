@@ -1,4 +1,5 @@
 using System.Globalization;
+using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Operations.Services;
 
 namespace ArcGISProMCP.Testing;
@@ -37,6 +38,13 @@ internal sealed class FakeFeatureTable
     public HashSet<long> Selection { get; } = [];
 
     public List<FeatureQueryFilter> Filters { get; } = [];
+
+    /// <summary>
+    /// Simulates a layer whose data source is broken (for example relative paths after a project
+    /// was copied): every service member fails the way ProFeatureService does, with
+    /// <c>layer_data_source_unavailable</c>.
+    /// </summary>
+    public bool DataSourceBroken { get; set; }
 
     /// <summary>Edits ArcGIS "rejects" with this message instead of applying them.</summary>
     public string? RejectEditsWith { get; set; }
@@ -240,8 +248,8 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
                         string.Equals(candidate.Uri, value, StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(candidate.Name, value, StringComparison.OrdinalIgnoreCase))
                     ?? throw new InvalidOperationException($"Layer '{target.Layer}' was not found in map '{map.Name}'.");
-        return layer.Table is { } table
-            ? (map, layer, table)
-            : throw new InvalidOperationException("Feature operations require a feature layer.");
+        var table = layer.Table ?? throw new InvalidOperationException("Feature operations require a feature layer.");
+        if (table.DataSourceBroken) throw OperationException.LayerDataSourceUnavailable(layer.Name);
+        return (map, layer, table);
     }
 }

@@ -55,7 +55,7 @@ Decisions already taken:
 
 ## Phase 5: evidence and release
 
-- **Tooling done, evidence pending** 5.1 A live acceptance script that records the commit, ArcGIS Pro version and DLL hashes into committed, reviewable evidence. `tools/run-acceptance.ps1`, the evidence folder contract and the manifest test are in place; the first committed evidence needs a maintainer run against live ArcGIS Pro.
+- **Done (partial scope)** 5.1 A live acceptance script that records the commit, ArcGIS Pro version and DLL hashes into committed, reviewable evidence. Latest evidence: [`docs/acceptance/2026-09-29-96f6a5b`](acceptance/2026-09-29-96f6a5b/summary.md) covers verify, the loaded-DLL match, host probe, the MCP smoke test and 3 bundled workflows x 3 runs on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0), in default (review-required) mode. The autonomous-mode `feature-gp-arcpy` section has not been recorded. The live runs found and fixed four defects (broken-layer handling in `layer.add`, NullReferenceExceptions on broken data sources, `HasGlobalID` on shapefiles, and workspace revision drift from ArcGIS event echoes).
 - **Done** 5.2 Pin GitHub Actions to commit SHAs, enable Dependabot, and add PSScriptAnalyzer and ruff.
 - 5.3 0.3.0 release notes and checksums. Pending the maintainer's release, after 5.1 evidence.
 - **Draft** 5.4 An MCP registry listing. The gateway packs as an `McpServer` NuGet tool with `server.json` (`tools/pack-gateway.ps1`); publishing needs the maintainer's NuGet and registry accounts and has not happened.

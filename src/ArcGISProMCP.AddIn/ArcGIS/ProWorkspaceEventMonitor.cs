@@ -2,6 +2,7 @@ using ArcGIS.Core.Events;
 using ArcGIS.Desktop.Editing.Events;
 using ArcGIS.Desktop.Layouts.Events;
 using ArcGIS.Desktop.Mapping.Events;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.ArcGIS;
 
@@ -20,13 +21,23 @@ internal sealed class ProWorkspaceEventMonitor : IDisposable
 
     public ProWorkspaceEventMonitor(ProWorkspaceStateProvider workspace)
     {
-        _properties = MapMemberPropertiesChangedEvent.Subscribe(_ => workspace.AdvanceRevision(), true);
-        _added = LayersAddedEvent.Subscribe(_ => workspace.AdvanceRevision(), true);
-        _removed = LayersRemovedEvent.Subscribe(_ => workspace.AdvanceRevision(), true);
-        _edits = EditCompletedEvent.Subscribe(_ => { workspace.AdvanceRevision(); return Task.CompletedTask; }, true);
+        _properties = MapMemberPropertiesChangedEvent.Subscribe(args =>
+        {
+            var hints = args.EventHints?.Select(static hint => hint.ToString()).ToArray() ?? [];
+            // A data source (re)connecting or a Contents node expanding is not a project edit, and
+            // ArcGIS raises these asynchronously after layer.add and similar writes return.
+            if (WorkspaceEventHints.IsNonContentOnly(hints))
+                workspace.NoteIgnoredEvent(() => "MapMemberPropertiesChanged:" + string.Join(',', hints));
+            else
+                workspace.AdvanceRevision(() => "MapMemberPropertiesChanged:" + string.Join(',', hints));
+        }, true);
+        _added = LayersAddedEvent.Subscribe(_ => workspace.AdvanceRevision(static () => "LayersAdded"), true);
+        _removed = LayersRemovedEvent.Subscribe(_ => workspace.AdvanceRevision(static () => "LayersRemoved"), true);
+        _edits = EditCompletedEvent.Subscribe(_ => { workspace.AdvanceRevision(static () => "EditCompleted"); return Task.CompletedTask; }, true);
         _elements = ElementEvent.Subscribe(args =>
         {
-            if (args.Hint != ElementEventHint.SelectionChanged) workspace.AdvanceRevision();
+            var hint = args.Hint;
+            if (hint != ElementEventHint.SelectionChanged) workspace.AdvanceRevision(() => "ElementEvent:" + hint);
         }, true);
     }
 
