@@ -24,7 +24,12 @@
         ArcGIS Pro, no build and no child harness. It never writes under docs/.
       * -Commit copies the evidence to docs/acceptance/<yyyy-MM-dd>-<sha7>/. It is refused for
         -PlanOnly, -SkipVerify, a dirty working tree, an existing target folder, or any
-        selected step that did not pass. It never runs git add/commit.
+        selected step that did not pass. It never runs git add/commit. The committed manifest
+        lists only files the folder contains: section and top-level evidence paths, and the path
+        before ': ' in each -VisuallyInspected note, are rewritten to the committed layout (for
+        example stress/tod/final-layout.png -> images/layout-tod.png), and it records
+        "evidencePathsRelative": true. A note whose path was not committed is prefixed with
+        'not committed: '.
 
     Only the maintainer, on a workstation with ArcGIS Pro and the exact installed package,
     should produce committed evidence. See docs/acceptance/README.md.
@@ -56,6 +61,9 @@ param(
     [string]$DisposableRoot,
     [string[]]$Screenshot = @(),
     [string[]]$VisuallyInspected = @(),
+    # Where the -VisuallyInspected notes come from (for example 'operator review of the working
+    # evidence, 2026-09-28'); recorded in manifest.json and summary.md.
+    [string]$VisualNotesSource,
     [string]$Operator,
     [string]$OutputDirectory,
     [switch]$SkipVerify,
@@ -677,6 +685,7 @@ $manifest = [ordered]@{
     allPassed = [bool]$allPassed
 }
 if (@($VisuallyInspected).Count -gt 0) { $manifest['visuallyInspected'] = @($VisuallyInspected) }
+if ($VisualNotesSource) { $manifest['visualNotesSource'] = $VisualNotesSource }
 if ($tag) { $manifest['tag'] = $tag }
 # Facts that exist only when the corresponding step produced them are omitted, never faked.
 if ($packageInfo) { $manifest['package'] = $packageInfo }
@@ -723,8 +732,11 @@ function ConvertTo-SummaryMarkdown {
     $null = $lines.Add('')
     $null = $lines.Add('## Visually inspected')
     $null = $lines.Add('')
-    if (@($VisuallyInspected).Count -eq 0) { $null = $lines.Add('- Nothing recorded by the operator (-VisuallyInspected). Automated PNG checks are not visual inspection.') }
-    foreach ($item in @($VisuallyInspected)) { $null = $lines.Add("- $item") }
+    $inspected = @()
+    if ($manifest.Contains('visuallyInspected')) { $inspected = @($manifest['visuallyInspected']) }
+    if ($inspected.Count -eq 0) { $null = $lines.Add('- Nothing recorded by the operator (-VisuallyInspected). Automated PNG checks are not visual inspection.') }
+    foreach ($item in $inspected) { $null = $lines.Add("- $item") }
+    if ($manifest.Contains('visualNotesSource')) { $null = $lines.Add('') ; $null = $lines.Add("Source of these notes: $($manifest['visualNotesSource'])") }
     $null = $lines.Add('')
     $null = $lines.Add('## Blocked or not run')
     $null = $lines.Add('')
@@ -740,6 +752,31 @@ function ConvertTo-SummaryMarkdown {
 
 Write-Utf8File (Join-Path $OutputDirectory 'manifest.json') (ConvertTo-JsonText $manifest)
 Write-Utf8File (Join-Path $OutputDirectory 'summary.md') (ConvertTo-SummaryMarkdown)
+
+function Test-EvidencePathLike([string]$Text) {
+    <# Same rule as AcceptanceManifestTests: a note's leading token names a file when it has a separator or an extension. #>
+    return ($Text -match '[\\/]') -or ($Text -match '\.[A-Za-z0-9]{1,5}$')
+}
+
+function ConvertTo-EvidenceKey([string]$Path) {
+    <# A lookup key for a working-evidence path: relative to the output directory, '/' separators, lower case. #>
+    $candidate = $Path.Trim()
+    if ([IO.Path]::IsPathRooted($candidate)) {
+        if (-not (Test-PathUnderRoot $candidate $OutputDirectory)) { return $candidate.Replace('\', '/').ToLowerInvariant() }
+        $candidate = Get-RelativePath $OutputDirectory $candidate
+    }
+    $candidate = $candidate.Replace('\', '/')
+    while ($candidate.StartsWith('./')) { $candidate = $candidate.Substring(2) }
+    return $candidate.TrimEnd('/').ToLowerInvariant()
+}
+
+function Resolve-CommittedEvidence([hashtable]$Map, [string]$Path) {
+    <# The committed paths for one working-evidence path; a folder maps to every committed file under it. #>
+    $key = ConvertTo-EvidenceKey $Path
+    if ($Map.ContainsKey($key)) { return @($Map[$key]) }
+    $prefix = $key + '/'
+    return @($Map.Keys | Where-Object { $_.StartsWith($prefix, [StringComparison]::Ordinal) } | Sort-Object | ForEach-Object { $Map[$_] })
+}
 
 function Write-Sha256Sum([string]$Directory) {
     $sums = Join-Path $Directory 'SHA256SUMS'
@@ -795,6 +832,8 @@ if ($Commit) {
     $null = New-Item -ItemType Directory -Path $commitFolder -Force
     $copied = New-Object System.Collections.ArrayList
     $skipped = New-Object System.Collections.ArrayList
+    # Working-evidence key -> committed relative path, used to rewrite every evidence path below.
+    $committedPaths = @{}
     foreach ($relative in @('host-probe/state.json', 'smoke/result.json', 'stress/summary.json', 'audit.jsonl')) {
         $source = Join-Path $OutputDirectory $relative
         if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { continue }
@@ -803,6 +842,7 @@ if ($Commit) {
         $null = New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force
         Copy-Item -LiteralPath $source -Destination $target
         $null = $copied.Add($relative)
+        $committedPaths[(ConvertTo-EvidenceKey $relative)] = $relative
     }
     $featureEvidence = Join-Path $OutputDirectory 'feature-gp-arcpy\evidence'
     if (Test-Path -LiteralPath $featureEvidence -PathType Container) {
@@ -813,6 +853,7 @@ if ($Commit) {
             $null = New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force
             Copy-Item -LiteralPath $file.FullName -Destination $target
             $null = $copied.Add($relative)
+            $committedPaths[(ConvertTo-EvidenceKey $file.FullName)] = $relative
         }
     }
     $pngs = @(@($Screenshot | ForEach-Object { [IO.Path]::GetFullPath($_) }) + @($pngCandidates))
@@ -823,10 +864,35 @@ if ($Commit) {
         $relative = 'images/' + $name
         $target = Join-Path $commitFolder $relative
         $null = New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force
-        if (Copy-BoundedPng $png $target) { $null = $copied.Add($relative); $index++ }
+        if (Copy-BoundedPng $png $target) {
+            $null = $copied.Add($relative)
+            $committedPaths[(ConvertTo-EvidenceKey $png)] = $relative
+            $index++
+        }
         else { $null = $skipped.Add("$png (could not fit in 500 KB)") }
     }
     $manifest['evidence'] = @($copied)
+    # List only files this folder contains, at their committed paths. Working evidence under
+    # artifacts/ keeps the original paths in its own manifest.json.
+    $manifest['sections'] = @($script:steps | ForEach-Object {
+            $section = [ordered]@{}
+            foreach ($entry in $_.GetEnumerator()) { $section[$entry.Key] = $entry.Value }
+            $section['evidence'] = @(@($_.evidence) | ForEach-Object { Resolve-CommittedEvidence $committedPaths ([string]$_) } | Select-Object -Unique)
+            $section
+        })
+    if ($manifest.Contains('visuallyInspected')) {
+        $manifest['visuallyInspected'] = @(@($manifest['visuallyInspected']) | ForEach-Object {
+                $note = [string]$_
+                $separator = $note.IndexOf(': ', [StringComparison]::Ordinal)
+                if ($separator -le 0) { return $note }
+                $token = $note.Substring(0, $separator)
+                if (-not (Test-EvidencePathLike $token)) { return $note }
+                $resolved = @(Resolve-CommittedEvidence $committedPaths $token)
+                if ($resolved.Count -eq 1) { return $resolved[0] + $note.Substring($separator) }
+                return 'not committed: ' + $note
+            })
+    }
+    $manifest['evidencePathsRelative'] = $true
     if ($skipped.Count -gt 0) { $manifest['evidenceSkipped'] = @($skipped) }
     Write-Utf8File (Join-Path $commitFolder 'manifest.json') (ConvertTo-JsonText $manifest)
     Write-Utf8File (Join-Path $commitFolder 'summary.md') (ConvertTo-SummaryMarkdown)

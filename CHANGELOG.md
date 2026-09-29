@@ -86,6 +86,7 @@ All notable changes to this project are documented here. The format is based on 
 - A request cancelled by ArcGIS Pro shutting down now fails with the retryable code `host_stopping` instead of the generic `bridge_request_failed`. `docs/security.md` states that keyed requests cannot be cancelled by callers once started.
 - Idempotent registry and workflow requests run under the host lifetime rather than the first caller's cancellation token, so cancelling one caller no longer cancels work another caller with the same key is waiting on.
 - FakeHost `--help` gave the wrong default pipe name (it is `ArcGISProMCP.v1.<pid>`).
+- `tools/run-acceptance.ps1 -Commit` listed working-evidence paths in the committed manifest (`preflight.json`, `logs/verify.stdout.log`, `stress/tod/final-layout.png`) that the committed folder does not contain. It now rewrites section `evidence[]` and the path in each `visuallyInspected[]` note to the committed layout (for example `images/layout-tod.png`), drops evidence it did not copy, prefixes notes about uncommitted files with `not committed: `, and records `"evidencePathsRelative": true`; the Core acceptance test then requires every listed path to exist. The first committed folder, `2026-09-28-5f34f16`, predates the field and is exempt. `-VisualNotesSource` records where the visual-inspection notes come from in `manifest.json` and `summary.md`.
 
 ### Security
 
