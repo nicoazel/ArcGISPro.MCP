@@ -22,6 +22,23 @@ internal static class LayerData
         if (IsBroken(member)) throw OperationException.LayerDataSourceUnavailable(member.Name);
     }
 
+    /// <summary>
+    /// Whether the table has a GlobalID field. Some data sources, such as shapefiles, throw
+    /// <see cref="NotSupportedException"/> from <see cref="TableDefinition.HasGlobalID"/> instead of
+    /// returning false; found by live acceptance on a shapefile layer.
+    /// </summary>
+    public static bool HasGlobalId(TableDefinition definition)
+    {
+        try
+        {
+            return definition.HasGlobalID();
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>The layer's table; the caller disposes it.</summary>
     public static Table OpenTable(BasicFeatureLayer layer)
     {

@@ -22,7 +22,7 @@ internal sealed class ProFeatureService : IFeatureService
             layer.IsEditable && layer.CanEditData(),
             featureClassDefinition is not null,
             definition.GetObjectIDField(),
-            definition.HasGlobalID() ? definition.GetGlobalIDField() : null,
+            LayerData.HasGlobalId(definition) ? definition.GetGlobalIDField() : null,
             featureClassDefinition?.GetShapeField(),
             featureClassDefinition?.GetShapeType().ToString(),
             spatialReference is null ? null : new FeatureSpatialReference(spatialReference.Wkid, spatialReference.Name),
@@ -46,7 +46,7 @@ internal sealed class ProFeatureService : IFeatureService
             layer.Name,
             definition is FeatureClassDefinition,
             definition.GetObjectIDField(),
-            definition.HasGlobalID() ? definition.GetGlobalIDField() : null,
+            LayerData.HasGlobalId(definition) ? definition.GetGlobalIDField() : null,
             definition.GetFields().Select(field => new FeatureSchemaField(field.Name, field.FieldType.ToString())).ToArray());
     }
 
@@ -55,7 +55,7 @@ internal sealed class ProFeatureService : IFeatureService
         var (_, layer) = Resolve(target);
         using var table = LayerData.OpenTable(layer);
         using var definition = table.GetDefinition();
-        var hasGlobalId = definition.HasGlobalID();
+        var hasGlobalId = LayerData.HasGlobalId(definition);
         var rows = new List<FeatureRow>();
         using var cursor = table.Search(CreateFilter(layer, filter), false);
         while (rows.Count < limit && cursor.MoveNext())
