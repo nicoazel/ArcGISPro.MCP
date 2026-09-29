@@ -17,7 +17,7 @@ foreach ($path in @($server, $fakeHost)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Not built: $path" }
 }
 
-function New-RedirectedProcess([string]$Path, [string[]]$Arguments) {
+function Get-RedirectedStartInfo([string]$Path, [string[]]$Arguments) {
     $start = New-Object Diagnostics.ProcessStartInfo
     if ([IO.Path]::GetExtension($Path) -eq '.dll') {
         $start.FileName = 'dotnet'
@@ -41,7 +41,7 @@ function Read-LineWithin($Reader, [int]$Seconds) {
 }
 
 # --auto-approve stands in for the person at the panel; it is for scripted and eval runs only.
-$hostStart = New-RedirectedProcess $fakeHost @('--scenario', $Scenario, '--auto-approve')
+$hostStart = Get-RedirectedStartInfo $fakeHost @('--scenario', $Scenario, '--auto-approve')
 $hostProcess = New-Object Diagnostics.Process
 $hostProcess.StartInfo = $hostStart
 $gateway = $null
@@ -58,7 +58,7 @@ try {
     # Keep draining FakeHost's console so it never blocks on a full pipe.
     $hostRest = $hostProcess.StandardOutput.ReadToEndAsync()
 
-    $gatewayStart = New-RedirectedProcess $server @()
+    $gatewayStart = Get-RedirectedStartInfo $server @()
     $gatewayStart.EnvironmentVariables['ARCGIS_PRO_MCP_HOST_PID'] = [string]$hostProcess.Id
     $gatewayStart.EnvironmentVariables.Remove('ARCGIS_PRO_MCP_PIPE')
     $gateway = New-Object Diagnostics.Process
