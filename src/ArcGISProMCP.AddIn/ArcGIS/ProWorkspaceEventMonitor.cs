@@ -2,6 +2,7 @@ using ArcGIS.Core.Events;
 using ArcGIS.Desktop.Editing.Events;
 using ArcGIS.Desktop.Layouts.Events;
 using ArcGIS.Desktop.Mapping.Events;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.ArcGIS;
 
@@ -22,12 +23,13 @@ internal sealed class ProWorkspaceEventMonitor : IDisposable
     {
         _properties = MapMemberPropertiesChangedEvent.Subscribe(args =>
         {
-            var hints = args.EventHints?.ToArray() ?? [];
-            var reason = "MapMemberPropertiesChanged:" + string.Join(',', hints);
+            var hints = args.EventHints?.Select(static hint => hint.ToString()).ToArray() ?? [];
             // A data source (re)connecting or a Contents node expanding is not a project edit, and
             // ArcGIS raises these asynchronously after layer.add and similar writes return.
-            if (hints.Length > 0 && hints.All(IsNonContentHint)) workspace.NoteIgnoredEvent(reason);
-            else workspace.AdvanceRevision(reason);
+            if (WorkspaceEventHints.IsNonContentOnly(hints))
+                workspace.NoteIgnoredEvent("MapMemberPropertiesChanged:" + string.Join(',', hints));
+            else
+                workspace.AdvanceRevision("MapMemberPropertiesChanged:" + string.Join(',', hints));
         }, true);
         _added = LayersAddedEvent.Subscribe(_ => workspace.AdvanceRevision("LayersAdded"), true);
         _removed = LayersRemovedEvent.Subscribe(_ => workspace.AdvanceRevision("LayersRemoved"), true);
@@ -37,9 +39,6 @@ internal sealed class ProWorkspaceEventMonitor : IDisposable
             if (args.Hint != ElementEventHint.SelectionChanged) workspace.AdvanceRevision("ElementEvent:" + args.Hint);
         }, true);
     }
-
-    internal static bool IsNonContentHint(MapMemberEventHint hint) =>
-        hint is MapMemberEventHint.ConnectionStatus or MapMemberEventHint.Expansion;
 
     public void Dispose()
     {
