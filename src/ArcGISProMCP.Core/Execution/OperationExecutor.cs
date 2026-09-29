@@ -119,6 +119,10 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
         {
             throw;
         }
+        catch (OperationException exception)
+        {
+            result = OperationResult.Fail(exception.Code, exception.Message, startSnapshot.Revision);
+        }
         catch (Exception exception)
         {
             result = OperationResult.Fail("operation_failed", exception.Message, startSnapshot.Revision);

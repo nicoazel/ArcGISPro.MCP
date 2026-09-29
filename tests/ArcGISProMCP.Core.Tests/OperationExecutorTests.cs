@@ -186,6 +186,45 @@ public sealed class OperationExecutorTests
         Assert.Null(auditEvent.Decision);
     }
 
+    [Fact]
+    public async Task Coded_operation_exception_reports_its_stable_code_and_audits_it()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
+        fixture.Operation.Throws = OperationException.LayerDataSourceUnavailable(
+            "Land Use Program", new InvalidOperationException("inner"));
+
+        var result = await fixture.ExecuteAsync(expectedRevision: null);
+
+        Assert.False(result.Success);
+        Assert.Equal(OperationErrorCodes.LayerDataSourceUnavailable, result.ErrorCode);
+        Assert.Equal("layer_data_source_unavailable", result.ErrorCode);
+        Assert.Contains("'Land Use Program'", result.Message, StringComparison.Ordinal);
+        Assert.Contains("layer.add", result.Message, StringComparison.Ordinal);
+        Assert.Equal(ExecutorFixture.Revision, result.WorkspaceRevision);
+        Assert.Equal("layer_data_source_unavailable", Assert.Single(fixture.Audit.Events).ErrorCode);
+    }
+
+    [Fact]
+    public async Task Uncoded_exception_still_reports_operation_failed()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
+        fixture.Operation.Throws = new InvalidOperationException("boom");
+
+        var result = await fixture.ExecuteAsync(expectedRevision: null);
+
+        Assert.False(result.Success);
+        Assert.Equal("operation_failed", result.ErrorCode);
+        Assert.Equal("boom", result.Message);
+    }
+
+    [Fact]
+    public void Operation_exception_requires_a_code()
+    {
+        Assert.Throws<ArgumentException>(() => new OperationException(" ", "message"));
+        var exception = new OperationException("some_code", "message");
+        Assert.Equal("some_code", exception.Code);
+    }
+
     private sealed class ExecutorFixture
     {
         internal const string Revision = "revision-1";
@@ -224,6 +263,9 @@ public sealed class OperationExecutorTests
     {
         public int CallCount { get; private set; }
 
+        /// <summary>When set, <see cref="ExecuteAsync"/> throws this instead of succeeding.</summary>
+        public Exception? Throws { get; set; }
+
         public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(
             "test.mutate.execute",
             "Test execute",
@@ -234,6 +276,7 @@ public sealed class OperationExecutorTests
         public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
         {
             CallCount++;
+            if (Throws is not null) throw Throws;
             return Task.FromResult(OperationResult.Ok(JsonSerializer.SerializeToElement(new { executed = true }), ExecutorFixture.Revision));
         }
     }
