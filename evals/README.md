@@ -154,9 +154,11 @@ Two tests keep the dump true:
   entry field by field, schemas included.
 - `DescriptorDumpTests` (Evals.Tests) covers the operations that stay in the add-in, which cannot be
   constructed without ArcGIS Pro: it reads the `OperationDescriptor.Create(...)` calls in
-  `src/ArcGISProMCP.Operations` and `src/ArcGISProMCP.AddIn/Operations`, requires the same set of ids as
-  the dump, and compares the search-relevant fields (title, summary, tags, aliases, capabilities, risk,
-  confirmation, user-code flag).
+  `src/ArcGISProMCP.Operations` and `src/ArcGISProMCP.AddIn/Operations` (subdirectories included), requires
+  the same set of ids as the dump, and compares every literal field: title, summary, tags, aliases,
+  examples, related operations, version, capabilities, risk, execution target, confirmation, undoable,
+  user-code flag and typical duration. Input and output schemas are compared only by `DescriptorGuardTests`,
+  so a schema change to an add-in-only operation still needs its dump entry edited by hand.
 
 When a descriptor changes on purpose, edit its dump entry in the same commit and re-run the evals.
 
