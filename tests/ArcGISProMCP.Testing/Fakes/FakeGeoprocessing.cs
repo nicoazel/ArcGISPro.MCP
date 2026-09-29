@@ -1,7 +1,7 @@
 using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.Operations.Tests.Fakes;
+namespace ArcGISProMCP.Testing;
 
 internal sealed record FakeGeoprocessingCall(
     string Tool,

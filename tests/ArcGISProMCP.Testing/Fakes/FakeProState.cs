@@ -1,6 +1,6 @@
 using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.Operations.Tests.Fakes;
+namespace ArcGISProMCP.Testing;
 
 /// <summary>An in-memory ArcGIS Pro project that the fake services read and mutate.</summary>
 internal sealed class FakeProState

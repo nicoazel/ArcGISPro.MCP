@@ -1,7 +1,7 @@
 using System.Globalization;
 using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.Operations.Tests.Fakes;
+namespace ArcGISProMCP.Testing;
 
 internal sealed class FakeFeatureRow(long objectId, Guid globalId, FeatureGeometry? geometry)
 {

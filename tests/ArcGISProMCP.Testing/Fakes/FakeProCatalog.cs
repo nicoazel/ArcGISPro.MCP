@@ -4,9 +4,10 @@ using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Registry;
 using ArcGISProMCP.Core.Resources;
+using ArcGISProMCP.Operations;
 using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.Operations.Tests.Fakes;
+namespace ArcGISProMCP.Testing;
 
 /// <summary>
 /// "Fake Pro": every host-neutral operation from src/ArcGISProMCP.Operations, composed with fake
@@ -16,20 +17,25 @@ namespace ArcGISProMCP.Operations.Tests.Fakes;
 internal sealed class FakePro : IDisposable
 {
     private readonly string _resourceRoot = Path.Combine(Path.GetTempPath(), $"ArcGISProMCP-FakePro-{Guid.NewGuid():N}");
+    private readonly bool _ownsResources;
 
     public FakePro(
         FakeProState? state = null,
         ArcPyExecutionSettings? arcPy = null,
         bool autonomous = false,
         TimeSpan? mapStructuralSettleDelay = null,
-        ToolboxCatalog? toolboxes = null)
+        ToolboxCatalog? toolboxes = null,
+        IConfirmationValidator? confirmation = null,
+        FileResourceStore? resources = null,
+        CancellationToken applicationStopping = default)
     {
         State = state ?? new FakeProState();
         Dispatcher = new FakeDispatcher();
         Workspace = new FakeWorkspace(State);
         Confirmation = new FakeConfirmation(autonomous);
         Audit = new FakeAuditLog();
-        Resources = new FileResourceStore(_resourceRoot);
+        _ownsResources = resources is null;
+        Resources = resources ?? new FileResourceStore(_resourceRoot);
         Views = new FakeViewCaptureService(State);
         Features = new FakeFeatureService(State);
         Geoprocessing = new FakeGeoprocessingService();
@@ -41,7 +47,7 @@ internal sealed class FakePro : IDisposable
             Views,
             Features,
             Geoprocessing);
-        Context = new OperationContext(Dispatcher, Workspace, Confirmation, Audit, "fake-pro", CancellationToken.None);
+        Context = new OperationContext(Dispatcher, Workspace, confirmation ?? Confirmation, Audit, "fake-pro", applicationStopping);
         Registry = FakeProCatalog.CreateRegistry(Services, Resources, Toolboxes, arcPy, mapStructuralSettleDelay ?? TimeSpan.Zero);
         Executor = new OperationExecutor(Registry, Context);
     }
@@ -52,6 +58,7 @@ internal sealed class FakePro : IDisposable
 
     public FakeWorkspace Workspace { get; }
 
+    /// <summary>The fixed-token validator; the context uses it unless another validator was supplied.</summary>
     public FakeConfirmation Confirmation { get; }
 
     public FakeAuditLog Audit { get; }
@@ -78,13 +85,12 @@ internal sealed class FakePro : IDisposable
         Registry.TryGet(id, out var operation) ? operation : throw new KeyNotFoundException($"Operation '{id}' is not in the fake catalog.");
 
     /// <summary>Runs one operation directly, bypassing executor policy (revisions, confirmation).</summary>
-    public Task<OperationResult> RunAsync(string id, string argumentsJson = "{}") =>
-        Operation(id).ExecuteAsync(Arguments(argumentsJson), Context, TestContext.Current.CancellationToken);
+    public Task<OperationResult> RunDirectAsync(string id, string argumentsJson, CancellationToken cancellationToken) =>
+        Operation(id).ExecuteAsync(Arguments(argumentsJson), Context, cancellationToken);
 
     /// <summary>Runs one operation through the real executor with the current revision and a valid approval.</summary>
-    public async Task<OperationResult> InvokeAsync(string id, string argumentsJson = "{}")
+    public async Task<OperationResult> InvokeApprovedAsync(string id, string argumentsJson, CancellationToken cancellationToken)
     {
-        var cancellationToken = TestContext.Current.CancellationToken;
         var revision = (await Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false)).Revision;
         return await Executor.ExecuteAsync(
             new OperationRequest(id, Arguments(argumentsJson), revision, FakeConfirmation.ApprovedToken),
@@ -99,6 +105,7 @@ internal sealed class FakePro : IDisposable
 
     public void Dispose()
     {
+        if (!_ownsResources) return;
         Resources.Dispose();
         try
         {

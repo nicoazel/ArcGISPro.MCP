@@ -1,7 +1,7 @@
 using System.Text;
 using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.Operations.Tests.Fakes;
+namespace ArcGISProMCP.Testing;
 
 internal sealed class FakeProjectService(FakeProState state) : IProjectService
 {

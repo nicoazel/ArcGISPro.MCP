@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Shared test support: "Fake Pro" (every host-neutral operation over in-memory ArcGIS services),
+    scenario loading, and an in-process host that runs the add-in's real bridge request handler.
+    Used by Operations.Tests, Server.Tests (end-to-end and golden trajectories) and
+    tools/ArcGISProMCP.FakeHost. Never shipped: tools/package-release.ps1 publishes only the server.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>ArcGISProMCP.Testing</RootNamespace>
+    <AssemblyName>ArcGISProMCP.Testing</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/ArcGISProMCP.Operations/ArcGISProMCP.Operations.csproj" />
+    <ProjectReference Include="../../src/ArcGISProMCP.Bridge/ArcGISProMCP.Bridge.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The add-in's Esri-free bridge handler, compiled as-is (Bridge.Tests links the same files). -->
+    <Compile Include="../../src/ArcGISProMCP.AddIn/Bridge/ProBridgeRequestHandler.cs" Link="Host/ProBridgeRequestHandler.cs" />
+    <Compile Include="../../src/ArcGISProMCP.AddIn/Services/BridgeAccessState.cs" Link="Host/BridgeAccessState.cs" />
+    <Compile Include="../../src/ArcGISProMCP.AddIn/Services/ProResourceStore.cs" Link="Host/ProResourceStore.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Synthetic system toolboxes (fixture.*, management.*) owned by Core.Tests; flows to every referencing output. -->
+    <None Include="../ArcGISProMCP.Core.Tests/Fixtures/toolboxes/**/*" LinkBase="Fixtures/toolboxes" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="ArcGISProMCP.Operations.Tests" />
+    <InternalsVisibleTo Include="ArcGISProMCP.Server.Tests" />
+    <InternalsVisibleTo Include="ArcGISProMCP.FakeHost" />
+  </ItemGroup>
+</Project>
