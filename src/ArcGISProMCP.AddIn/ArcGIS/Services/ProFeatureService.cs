@@ -35,6 +35,21 @@ internal sealed class ProFeatureService : IFeatureService
                 field.Length)).ToArray());
     }
 
+    public FeatureLayerSchema Schema(FeatureLayerTarget target)
+    {
+        var (map, layer) = Resolve(target);
+        using var table = layer.GetTable();
+        using var definition = table.GetDefinition();
+        return new FeatureLayerSchema(
+            ProHandles.ForMap(map),
+            ProHandles.ForLayer(layer),
+            layer.Name,
+            definition is FeatureClassDefinition,
+            definition.GetObjectIDField(),
+            definition.HasGlobalID() ? definition.GetGlobalIDField() : null,
+            definition.GetFields().Select(field => new FeatureSchemaField(field.Name, field.FieldType.ToString())).ToArray());
+    }
+
     public IReadOnlyList<FeatureRow> Query(FeatureLayerTarget target, FeatureQueryFilter filter, int limit)
     {
         var (_, layer) = Resolve(target);

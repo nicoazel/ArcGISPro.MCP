@@ -273,6 +273,20 @@ public sealed class FeatureOperationTests
     }
 
     [Fact]
+    public async Task Query_and_select_read_the_light_schema_not_the_editable_description()
+    {
+        using var pro = Parcels(out _, out _, out var table);
+        table.AddRow(1, 1, "R1");
+        var calls = new List<string>();
+        pro.Features.Observer = (action, _) => calls.Add(action);
+
+        await pro.RunAsync("feature.query", """{"layer": "Parcels"}""");
+        await pro.RunAsync("feature.select", """{"layer": "Parcels"}""");
+
+        Assert.Equal(["schema", "query", "schema", "select"], calls);
+    }
+
+    [Fact]
     public async Task Select_mode_must_be_new_or_add()
     {
         using var pro = Parcels(out _, out _, out _);

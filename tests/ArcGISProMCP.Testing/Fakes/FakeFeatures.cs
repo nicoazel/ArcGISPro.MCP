@@ -120,7 +120,7 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
     public List<string> Edits { get; } = [];
 
     /// <summary>
-    /// Called after each service member ("describe", "query", "select", "create", "update",
+    /// Called after each service member ("describe", "schema", "query", "select", "create", "update",
     /// "delete") with the layer name, so a test can stage a concurrent change at that moment.
     /// </summary>
     public Action<string, string>? Observer { get; set; }
@@ -141,6 +141,20 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
             table.GeometryType,
             table.IsFeatureClass ? table.SpatialReference : null,
             table.Fields.ToArray());
+    }
+
+    public FeatureLayerSchema Schema(FeatureLayerTarget target)
+    {
+        var (map, layer, table) = Resolve(target);
+        Observer?.Invoke("schema", layer.Name);
+        return new FeatureLayerSchema(
+            FakeProState.MapHandle(map),
+            FakeProState.LayerHandle(layer),
+            layer.Name,
+            table.IsFeatureClass,
+            table.ObjectIdField,
+            table.GlobalIdField,
+            table.Fields.Select(field => new FeatureSchemaField(field.Name, field.Type)).ToArray());
     }
 
     public IReadOnlyList<FeatureRow> Query(FeatureLayerTarget target, FeatureQueryFilter filter, int limit)

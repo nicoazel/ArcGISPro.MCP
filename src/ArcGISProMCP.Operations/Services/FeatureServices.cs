@@ -33,6 +33,24 @@ internal sealed record FeatureLayerInfo(
     FeatureSpatialReference? SpatialReference,
     IReadOnlyList<FeatureFieldInfo> Fields);
 
+/// <summary>A field's name and ArcGIS type name (see <see cref="FeatureFieldInfo.Type"/>).</summary>
+internal sealed record FeatureSchemaField(string Name, string Type);
+
+/// <summary>
+/// What a read or selection needs from a resolved feature layer: identity, identifier fields, whether
+/// the table is a feature class, and field names and types. Unlike <see cref="FeatureLayerInfo"/> it
+/// does not evaluate editability or read shape and spatial-reference details.
+/// </summary>
+/// <param name="GlobalIdField">Null when the table has no GlobalID.</param>
+internal sealed record FeatureLayerSchema(
+    string MapId,
+    string LayerId,
+    string Name,
+    bool IsFeatureClass,
+    string ObjectIdField,
+    string? GlobalIdField,
+    IReadOnlyList<FeatureSchemaField> Fields);
+
 /// <summary>An envelope in the layer's spatial reference.</summary>
 internal sealed record FeatureEnvelope(double XMin, double YMin, double XMax, double YMax);
 
@@ -72,7 +90,11 @@ internal sealed record FeatureCreateResult(long? ObjectId, Guid? GlobalId);
 /// </summary>
 internal interface IFeatureService
 {
+    /// <summary>The full schema, editability and spatial reference; used by describe and the edit operations.</summary>
     FeatureLayerInfo Describe(FeatureLayerTarget target);
+
+    /// <summary>The lighter schema reads and selections need; does not evaluate editability.</summary>
+    FeatureLayerSchema Schema(FeatureLayerTarget target);
 
     IReadOnlyList<FeatureRow> Query(FeatureLayerTarget target, FeatureQueryFilter filter, int limit);
 
