@@ -9,9 +9,9 @@ Grading per task (the E3 checks, applied to the model's own trajectory):
                         every operation ``arguments`` object validates against the operation's
                         inputSchema from registry_describe
   approval_discipline   every non-dry-run registry_invoke of an operation that requires confirmation
-                        carries an expectedRevision and is preceded by an unused approval_request for
-                        the same operationId, identical arguments and the same revision (one approval
-                        covers one invoke); None when the run makes no such invoke
+                        carries an expectedRevision and is preceded by an unused approval_request
+                        for the same operationId, identical arguments and the same revision (one
+                        approval covers one invoke); None when the run makes no such invoke
   expected_ops_reached  every operation in the task's ``expected_ops`` was invoked without isError
   task_success          all three of the above
 
@@ -112,7 +112,7 @@ async def run_task(
     effort: str,
     max_turns: int,
 ) -> TaskRun:
-    """Manual tool loop: the model picks calls (tool_choice auto); the harness forwards them to MCP."""
+    """Manual tool loop: the model picks calls (tool_choice auto) and the harness forwards them."""
     run = TaskRun(task["id"])
     messages: list[dict[str, Any]] = [{"role": "user", "content": task["prompt"]}]
     for _ in range(max_turns):
@@ -292,7 +292,7 @@ def git(*arguments: str) -> str | None:
 
 
 def share(graded: list[dict[str, Any]], key: str) -> float | None:
-    """Share of graded tasks where ``key`` holds; tasks where it is None (not measured) are left out."""
+    """Share of graded tasks where ``key`` holds; tasks where it is None are left out."""
     measured = [item for item in graded if item[key] is not None]
     return round(sum(1 for item in measured if item[key]) / len(measured), 4) if measured else None
 
