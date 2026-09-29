@@ -111,7 +111,7 @@ The log contains project paths and map and layout names, so treat it like the pr
 
 ## Acceptance evidence
 
-**Committed evidence:** [`docs/acceptance/2026-09-28-5f34f16`](acceptance/2026-09-28-5f34f16/summary.md) records commit `5f34f16` on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0): release verify, the loaded add-in DLLs matching the package, host probe, the MCP smoke test including the approval-card probe, and the three bundled urban workflows x 3 runs in default (review-required) mode, with layouts visually inspected. It does not cover autonomous mode or the feature/GP/ArcPy section.
+**Committed evidence:** [`docs/acceptance/2026-09-29-96f6a5b`](acceptance/2026-09-29-96f6a5b/summary.md) (the latest; the first was [`2026-09-28-5f34f16`](acceptance/2026-09-28-5f34f16/summary.md)) records commit `96f6a5b` on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0): release verify, the loaded add-in DLLs matching the package, host probe, the MCP smoke test including the approval-card probe, and the three bundled urban workflows x 3 runs in default (review-required) mode, with layouts visually inspected. It does not cover autonomous mode or the feature/GP/ArcPy section.
 
 A live acceptance pass of the ArcGIS-only build was run on the maintainer's workstation on 2026-09-09. It covered MCP protocol and reconnect, multi-instance discovery, feature editing, layer metadata, SDK geoprocessing, the optional ArcPy runner (in autonomous mode), the urban layout workflows and the Pittsburgh showcase, and idle/shutdown behavior. Two findings are retained:
 
@@ -122,6 +122,7 @@ The evidence from that pass (result JSON, hashes and images under `artifacts/`) 
 
 ## Known limits
 
+- The post-write settle is capped at 3 s. In the 2026-09-29 evidence run, 26 of 324 writes (8%, heavy layout and 3D steps) reached the cap because ArcGIS Pro did not go idle within 3 s; the host then published a plain sample. No revision drift followed in that run, but a late ArcGIS event echo after a capped settle can still surface as `workspace_changed` on the next workflow step. Rerun the workflow after refreshing state.
 - **Workflows cannot execute confirmation-gated steps in default mode.** `workflow_run` invokes each step without an approval token, and there is no per-step approval yet. A step such as `gp.run`, `metadata.update`, `feature.update`, `feature.delete`, `project.save` or `arcpy.run-script` fails with `confirmation_required` unless the host runs in autonomous mode. Run such operations individually through `approval_request` and `registry_invoke`.
 - Workflows are not transactional or resumable after a crash. There is no automatic rollback. A run that detects a mid-run workspace change stops with `workspace_changed` and leaves its completed steps in place.
 - Feature editing excludes batch edits, multipoint construction, multipart construction and complete subtype/domain/range validation.

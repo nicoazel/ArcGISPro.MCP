@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ### Added
 
+- Live ArcGIS Pro acceptance evidence: `docs/acceptance/2026-09-28-5f34f16` (first) and `docs/acceptance/2026-09-29-96f6a5b` (latest): verify, loaded-DLL match, host probe, MCP smoke and the three bundled urban workflows x 3 runs on ArcGIS Pro 3.7.1 in default mode, with layouts visually inspected. Autonomous mode and the feature/GP/ArcPy section are not covered.
 - `ARCGIS_PRO_MCP_REVISION_LOG=1` diagnostics: the host logs every workspace revision change with the state behind it (project URI, map and layout names), the event behind each revision advance and settle timeouts, to one file per ArcGIS Pro process. The log stops growing at 50 MB, and log lines are not built while logging is off. See [deployment](docs/deployment.md#diagnostics).
 - `SECURITY.md` with supported versions, private reporting through GitHub security advisories, and a threat model summary.
 - `CONTRIBUTING.md` with prerequisites, build, test and packaging commands, and pull request conventions.
