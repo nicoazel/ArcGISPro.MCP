@@ -6,7 +6,7 @@ run by hand.
 
 | Suite | What is searched | Tasks | Runs |
 |---|---|---:|---|
-| `registry-search` (E1) | `OperationRegistry.Search`, as `registry_search` calls it, over the add-in's 38 operation descriptors | 30 | always |
+| `registry-search` (E1) | `OperationRegistry.Search`, as `registry_search` calls it, over the add-in's 41 operation descriptors | 30 | always |
 | `gp-search` (E2) | `ToolboxCatalog.Search`, as `gp.search` calls it, over the installed ArcGIS Pro system toolboxes | 30 | when `C:\Program Files\ArcGIS\Pro\Resources\ArcToolBox\toolboxes` exists |
 | `registry-search-holdout` (E1) | as `registry-search`; held out from tuning | 16 | always |
 | `gp-search-holdout` (E2) | as `gp-search`; held out from tuning | 16 | when Pro is installed |
@@ -24,7 +24,6 @@ evals/
   tasks/gp-search.jsonl           E2 tasks (installed Pro)
   tasks/gp-search-fixture.jsonl   E2 CI subset (synthetic toolboxes)
   tasks/*-holdout.jsonl           held-out E1/E2 tasks, not used for tuning
-  fixtures/operation-descriptors.json   interim descriptor fixture (see below)
   baseline.json                   measured metrics the tests gate on
   ArcGISProMCP.Evals/             task loader, runner, metrics, scorecard writer (net10.0)
   results/<yyyy-MM-dd>-<sha7>/    committed scorecards (scorecard.json + scorecard.md)
@@ -120,22 +119,25 @@ were written first and measured before and after, never used for choices.
 "Before" is `832a4ac` (the descriptor fixture regenerated for the phase-2 gp operations, 41 descriptors);
 "after" is `2290311`, scorecard in `results/2026-09-26-2290311`. gp suites ran against ArcGIS Pro 3.7.1.1904.
 
-## Descriptor fixture (interim)
+## Descriptors
 
-The add-in's descriptors live in an assembly that references Esri DLLs, so tests cannot build the real
-operation catalog yet. Until the Phase 4 operations seam moves descriptors into an Esri-free project,
-`fixtures/operation-descriptors.json` carries the search-relevant fields (id, title, summary, tags,
-aliases, capabilities, risk, domain, confirmation, user-code flag) extracted from
-`src/ArcGISProMCP.AddIn/Operations/*.cs`. E1 registers them in a real `OperationRegistry` and searches
-it with the product code.
+E1 searches the add-in's real descriptors from one file:
+`tests/ArcGISProMCP.Operations.Tests/Fixtures/operation-descriptors.json`, a dump of all 41 descriptors
+taken from the built add-in's registry. E1 loads every descriptor in full, registers them in a real
+`OperationRegistry` and searches it with the product code.
 
-`DescriptorFixtureTests` fails when the fixture no longer matches the source. Regenerate it with:
+Two tests keep the dump true:
 
-```powershell
-$env:EVALS_UPDATE_FIXTURE = '1'; dotnet test tests/ArcGISProMCP.Evals.Tests --filter "FullyQualifiedName~DescriptorFixtureTests"
-```
+- `DescriptorGuardTests` (Operations.Tests) composes every portable operation in
+  `src/ArcGISProMCP.Operations` with fake ArcGIS services and requires each descriptor to equal its dump
+  entry field by field, schemas included.
+- `DescriptorDumpTests` (Evals.Tests) covers the operations that stay in the add-in, which cannot be
+  constructed without ArcGIS Pro: it reads the `OperationDescriptor.Create(...)` calls in
+  `src/ArcGISProMCP.Operations` and `src/ArcGISProMCP.AddIn/Operations`, requires the same set of ids as
+  the dump, and compares the search-relevant fields (title, summary, tags, aliases, capabilities, risk,
+  confirmation, user-code flag).
 
-After the seam, build the registry from `ProOperationCatalog` and delete the fixture and its extractor.
+When a descriptor changes on purpose, edit its dump entry in the same commit and re-run the evals.
 
 ## Live harness
 

@@ -8,7 +8,10 @@ internal static class EvalPaths
 
     public static string Evals => Path.Combine(RepositoryRoot, "evals");
 
-    public static string DescriptorFixture => Path.Combine(Evals, "fixtures", "operation-descriptors.json");
+    /// <summary>Every add-in operation descriptor, dumped from the built add-in (owned by Operations.Tests).</summary>
+    public const string DescriptorDumpRelative = "tests/ArcGISProMCP.Operations.Tests/Fixtures/operation-descriptors.json";
+
+    public static string DescriptorDump => Path.Combine(RepositoryRoot, DescriptorDumpRelative);
 
     public static string Baseline => Path.Combine(Evals, "baseline.json");
 

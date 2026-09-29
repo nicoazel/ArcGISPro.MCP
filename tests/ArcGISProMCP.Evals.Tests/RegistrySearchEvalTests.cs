@@ -4,7 +4,7 @@ namespace ArcGISProMCP.Evals.Tests;
 
 /// <summary>
 /// E1: natural-language tasks routed through the real <see cref="Core.Registry.OperationRegistry"/> search
-/// over the add-in's real descriptors (interim: via the extracted descriptor fixture).
+/// over the add-in's real descriptors, loaded from the descriptor dump.
 /// </summary>
 [Trait("Category", "eval")]
 public sealed class RegistrySearchEvalTests
@@ -14,7 +14,7 @@ public sealed class RegistrySearchEvalTests
     [Fact]
     public void E1_tasks_expect_registered_operations()
     {
-        var ids = DescriptorFixtures.Load(EvalPaths.DescriptorFixture).Operations.Select(entry => entry.Id).ToHashSet(StringComparer.Ordinal);
+        var ids = OperationDescriptorDump.Load(EvalPaths.DescriptorDump).Select(descriptor => descriptor.Id).ToHashSet(StringComparer.Ordinal);
         var tasks = EvalTaskLoader.LoadJsonl(EvalPaths.Tasks("registry-search.jsonl"));
 
         Assert.Equal(30, tasks.Length);
@@ -26,11 +26,11 @@ public sealed class RegistrySearchEvalTests
     [Fact]
     public void E1_registry_search_holds_its_baseline()
     {
-        var fixture = DescriptorFixtures.Load(EvalPaths.DescriptorFixture);
-        var registry = DescriptorFixtures.CreateRegistry(fixture);
+        var descriptors = OperationDescriptorDump.Load(EvalPaths.DescriptorDump);
+        var registry = OperationDescriptorDump.CreateRegistry(descriptors);
         var tasks = EvalTaskLoader.LoadJsonl(EvalPaths.Tasks("registry-search.jsonl"));
 
-        var result = EvalRunner.Run(Suite, $"OperationRegistry over {fixture.Operations.Length} add-in descriptors (source fixture)",
+        var result = EvalRunner.Run(Suite, $"OperationRegistry over {descriptors.Length} add-in descriptors (descriptor dump)",
             tasks, EvalSearches.Registry(registry));
 
         EvalReporting.ReportAndCheck(result);
@@ -39,7 +39,7 @@ public sealed class RegistrySearchEvalTests
     [Fact]
     public void E1_holdout_tasks_expect_registered_operations()
     {
-        var ids = DescriptorFixtures.Load(EvalPaths.DescriptorFixture).Operations.Select(entry => entry.Id).ToHashSet(StringComparer.Ordinal);
+        var ids = OperationDescriptorDump.Load(EvalPaths.DescriptorDump).Select(descriptor => descriptor.Id).ToHashSet(StringComparer.Ordinal);
         var tasks = EvalTaskLoader.LoadJsonl(EvalPaths.Tasks("registry-search-holdout.jsonl"));
 
         Assert.Equal(16, tasks.Length);
@@ -50,11 +50,11 @@ public sealed class RegistrySearchEvalTests
     [Fact]
     public void E1_registry_search_holdout_holds_its_baseline()
     {
-        var fixture = DescriptorFixtures.Load(EvalPaths.DescriptorFixture);
-        var registry = DescriptorFixtures.CreateRegistry(fixture);
+        var descriptors = OperationDescriptorDump.Load(EvalPaths.DescriptorDump);
+        var registry = OperationDescriptorDump.CreateRegistry(descriptors);
         var tasks = EvalTaskLoader.LoadJsonl(EvalPaths.Tasks("registry-search-holdout.jsonl"));
 
-        var result = EvalRunner.Run(Suite + "-holdout", $"OperationRegistry over {fixture.Operations.Length} add-in descriptors (source fixture)",
+        var result = EvalRunner.Run(Suite + "-holdout", $"OperationRegistry over {descriptors.Length} add-in descriptors (descriptor dump)",
             tasks, EvalSearches.Registry(registry));
 
         EvalReporting.ReportAndCheck(result);

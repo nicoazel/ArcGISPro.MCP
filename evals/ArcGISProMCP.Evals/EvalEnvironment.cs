@@ -75,8 +75,15 @@ public sealed record EvalBaseline(string Note, IReadOnlyDictionary<string, Basel
     /// <summary>How far recall@5 may fall below the baseline before the eval fails.</summary>
     public const double RecallAt5Tolerance = 0.05;
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow
+    };
+
     public static EvalBaseline Load(string path) =>
-        JsonSerializer.Deserialize<EvalBaseline>(File.ReadAllText(path), DescriptorFixtures.JsonOptions)
+        JsonSerializer.Deserialize<EvalBaseline>(File.ReadAllText(path), JsonOptions)
         ?? throw new InvalidDataException($"'{path}' is empty.");
 
     /// <summary>Null when the suite is within tolerance; otherwise the reason it regressed.</summary>

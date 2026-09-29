@@ -9,7 +9,8 @@ namespace ArcGISProMCP.Operations.Tests;
 /// Moving operations out of the add-in is a refactor: no descriptor may change. The fixture
 /// operation-descriptors.json was dumped from the add-in's registry (all 41 operations,
 /// including the ArcPy pair) before any operation moved, so every operation the fake catalog
-/// composes is compared field by field against what the add-in shipped.
+/// composes is compared field by field against what the add-in shipped. The evals search the same
+/// file (evals/README.md); Evals.Tests DescriptorDumpTests checks the add-in-only entries against source.
 /// </summary>
 public sealed class DescriptorGuardTests
 {
