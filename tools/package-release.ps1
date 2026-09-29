@@ -1,3 +1,5 @@
+#Requires -Version 7.0
+# Uses .NET APIs that Windows PowerShell 5.1 lacks (for example IO.Path.GetRelativePath); run with pwsh.
 [CmdletBinding()]
 param(
     # Passed to verify-release.ps1: build and package without re-running the tests. CI uses it

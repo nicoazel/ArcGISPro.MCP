@@ -211,9 +211,10 @@ Codes a client should handle. The message carries the details.
 
 | Script | Use |
 | --- | --- |
-| `tools/verify-release.ps1` | Release build, portable tests, whitespace, and package inspection. Add `-Live` for a real MCP probe. |
-| `tools/package-release.ps1` | Builds the full unsigned preview bundle after running the verification. |
-| `tools/pack-addin.ps1` | Packs the add-in and can install it (`-Install`). |
+| `tools/verify-release.ps1` | Release build, portable tests, whitespace, and package inspection. Add `-Live` for a real MCP probe. PowerShell 7. |
+| `tools/package-release.ps1` | Builds the full unsigned preview bundle after running the verification. `-SkipTests` (used by CI after its test job) builds and packages without re-running the tests. PowerShell 7. |
+| `tools/test-fakehost.ps1` | Starts FakeHost and the gateway and runs a short MCP session, as CI does. No ArcGIS Pro needed. |
+| `tools/pack-addin.ps1` | Packs the add-in and can install it (`-Install`). PowerShell 7. |
 | `tools/test-mcp.ps1` | Live handshake, tool discovery, state, registry search, and skill read. |
 | `tools/run-live-feature-gp-arcpy.ps1` | Live feature, geoprocessing, and ArcPy acceptance driver. |
 | `tools/run-urban-stress.ps1` | Repeats the urban layout workflows as a stress test. |

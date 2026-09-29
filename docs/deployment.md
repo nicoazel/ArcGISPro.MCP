@@ -19,7 +19,7 @@ From the repository root:
 ./tools/package-release.ps1
 ```
 
-The packager always runs `tools/verify-release.ps1` first. That performs the Release solution build, portable Core and Bridge tests, whitespace validation, add-in packaging, and exact add-in-content inspection. It then publishes the framework-dependent Windows x64 stdio server and creates:
+The packager always runs `tools/verify-release.ps1` first. That performs the Release solution build, every portable test project under `tests/`, whitespace validation, add-in packaging, and exact add-in-content inspection. It then publishes the framework-dependent Windows x64 stdio server and creates:
 
 ```text
 artifacts/releases/ArcGISProMCP-0.2.0-win-x64-development-preview.zip
@@ -154,7 +154,8 @@ Try the package without publishing it:
 
 ```powershell
 dotnet tool install --tool-path "$env:TEMP\arcgis-pro-mcp-tool" --add-source artifacts/packages ArcGISProMCP.Gateway --version 0.2.0
-# or, with .NET 10: dnx ArcGISProMCP.Gateway --version 0.2.0 --add-source artifacts/packages --yes
+# or, with .NET 10 (dnx asks before it downloads and runs the tool):
+# dnx ArcGISProMCP.Gateway --version 0.2.0 --add-source artifacts/packages
 ```
 
 ### Environment variables in `server.json`
