@@ -1,6 +1,6 @@
 using ArcGISProMCP.Core.Operations;
 
-namespace ArcGISProMCP.Operations.Tests.Fakes;
+namespace ArcGISProMCP.Testing;
 
 /// <summary>The ArcGIS thread a fake service member is running on.</summary>
 internal enum FakeThread

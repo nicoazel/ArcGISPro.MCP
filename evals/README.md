@@ -161,3 +161,63 @@ py -3.11 evals/live/run_live_eval.py --server C:\ArcGISProMCP\0.2.0\server\arcgi
 
 The default model is `claude-sonnet-5`. Results go to `evals/results/<date>-<sha7>/live-<model>.json`
 unless `--no-write` is passed. Run it against a disposable copy of a project: the tasks write.
+
+### Against FakeHost (`--host fakehost`)
+
+`tools/ArcGISProMCP.FakeHost` runs the add-in's real bridge handler, operation registry, executor and
+approval queue over a fake in-memory project, on the real named pipe with a per-PID discovery record.
+Use it to run the live harness without ArcGIS Pro: the model, the gateway and the MCP protocol are real;
+only the ArcGIS SDK calls are fakes. It exposes the 19 host-neutral operations (project, map, layer list,
+feature, `gp.*` and `view.capture`), so select tasks that need only those, for example `--task live-01
+--task live-03`; tasks that need `layer.set-appearance`, layouts or symbology fail there by design.
+
+```powershell
+dotnet build tools/ArcGISProMCP.FakeHost
+# Terminal 1: the host. --auto-approve resolves every approval request itself; use it for eval runs
+# only. Without it, each request waits for you to type y (approve) or n (deny) and press Enter.
+tools/ArcGISProMCP.FakeHost/bin/Debug/net10.0/ArcGISProMCP.FakeHost.exe --scenario riverton --auto-approve
+# Terminal 2: point the gateway at that host (FakeHost prints its PID) and run the harness.
+$env:ARCGIS_PRO_MCP_HOST_PID = '<pid printed by FakeHost>'
+py -3.11 evals/live/run_live_eval.py --server C:\ArcGISProMCP\0.2.0\server\arcgis-pro-mcp.exe --host fakehost --task live-01 --task live-03
+```
+
+`--host fakehost` labels the scorecard so FakeHost runs are never mistaken for live ArcGIS Pro runs.
+Scenarios live in `tools/ArcGISProMCP.FakeHost/scenarios/*.json` (`riverton`: eight zoned parcels,
+five roads, an imagery layer, a plan layout and the `riverton.parcel-review` workflow); FakeHost's
+`--toolboxes` option points `gp.*` at a real toolbox root, and `--autonomous` reports autonomous-control
+to exercise unattended refusals. `tools/test-fakehost.ps1` is a scripted smoke test of the same setup.
+
+## Golden trajectories (E3)
+
+`trajectories/*.json` are ordered MCP calls a well-behaved agent makes for one task, replayed by
+`tests/ArcGISProMCP.Server.Tests/EndToEnd/TrajectoryTests.cs` (`[Trait("Category", "eval")]`) against
+the in-process end-to-end server: the real gateway configuration, the add-in's real bridge handler and
+FakeHost's runtime, seeded from a scenario.
+
+| Trajectory | Task |
+|---|---|
+| `e3-01-delete-feature` | discover, validate, review and delete one parcel |
+| `e3-02-update-attribute` | query a parcel's ObjectID, then a reviewed attribute update (waiting `approval_status`) |
+| `e3-03-buffer-dry-run-first` | `gp.search`, `gp.describe`, `gp.run` dry run, then a reviewed `gp.run` |
+| `e3-04-count-rows` | count rows with `gp.query` (`management.GetCount`) |
+| `e3-05-capture-view` | `view.capture` of the active map, then `resource_read` |
+| `e3-06-workflow-prompt` | `workflow_list`, the `run.<workflowId>` prompt, `workflow_get`, `workflow_run` |
+| `e3-07-edit-then-save` | a reviewed edit, then a reviewed `project.save` |
+| `e3-08-autonomous-refusal` | autonomous host refuses a destructive tool; the dry run predicts it |
+
+A step is `{"tool", "arguments", "capture", "expectResult", "expectError"}`, `{"approve": "<operationId>"}`
+(the person approves at the panel) or `{"prompt", "arguments", "expectText"}`. Captures are simple paths
+(`$.workspace.revision`, `$.data.rows[0].objectId`) reused as `"${name}"`. `expect` checks the final fake
+project: `rowCounts`, `absent`, `values`, `dirty`, `layers`, `selection`, `hostCalls`, `gpTools`, `captures`.
+
+Each trajectory is graded with the live harness's metrics:
+
+- **schemaValidArgs**: every tool call's arguments validate against the tool's `inputSchema` (no
+  undeclared arguments), and operation `arguments` against the registry schema.
+- **approvalDiscipline**: every confirmation-gated, non-dry-run `registry_invoke` follows an
+  `approval_request` with the same operation, identical arguments and the same revision. A call that
+  declares `expectError` is a refusal probe and is exempt.
+- **taskSuccess**: no unexpected `isError`, every `expectResult` and final-state check holds.
+
+All eight must score 1 / 1 / success. The test class also checks that the grader catches an invoke whose
+arguments differ from the reviewed ones, and schema-invalid arguments.

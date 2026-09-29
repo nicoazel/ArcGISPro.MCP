@@ -15,6 +15,12 @@
   <ItemGroup>
     <!-- The server's Content items (skills/*.skill.json) flow to this output directory through the reference. -->
     <ProjectReference Include="../../src/ArcGISProMCP.Server/ArcGISProMCP.Server.csproj" />
+    <!-- End-to-end tests: FakeHostRuntime runs the add-in's bridge handler over Fake Pro in-process. -->
+    <ProjectReference Include="../ArcGISProMCP.Testing/ArcGISProMCP.Testing.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="../../tools/ArcGISProMCP.FakeHost/scenarios/*.json" LinkBase="scenarios" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../evals/trajectories/*.json" LinkBase="trajectories" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <!-- Snapshots are read from and (with UPDATE_SNAPSHOTS=1) rewritten in the source tree. -->

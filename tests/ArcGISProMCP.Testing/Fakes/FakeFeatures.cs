@@ -1,7 +1,7 @@
 using System.Globalization;
 using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.Operations.Tests.Fakes;
+namespace ArcGISProMCP.Testing;
 
 internal sealed class FakeFeatureRow(long objectId, Guid globalId, FeatureGeometry? geometry)
 {
@@ -78,6 +78,17 @@ internal sealed class FakeFeatureTable
         return row;
     }
 
+    /// <summary>Adds a row with explicit values; the ObjectID defaults to the next free one.</summary>
+    public FakeFeatureRow AddRow(FeatureGeometry? geometry, IEnumerable<KeyValuePair<string, object?>> values, long? objectId = null, Guid? globalId = null)
+    {
+        var id = objectId ?? (Rows.Count == 0 ? 1 : Rows.Max(row => row.ObjectId) + 1);
+        if (Rows.Any(row => row.ObjectId == id)) throw new ArgumentException($"ObjectID {id} is already in the table.", nameof(objectId));
+        var row = new FakeFeatureRow(id, globalId ?? Guid.NewGuid(), geometry);
+        foreach (var (name, value) in values) row.Values[name] = value;
+        Rows.Add(row);
+        return row;
+    }
+
     public IEnumerable<FakeFeatureRow> Matching(FeatureQueryFilter filter)
     {
         Filters.Add(filter);
@@ -108,9 +119,16 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
 {
     public List<string> Edits { get; } = [];
 
+    /// <summary>
+    /// Called after each service member ("describe", "query", "select", "create", "update",
+    /// "delete") with the layer name, so a test can stage a concurrent change at that moment.
+    /// </summary>
+    public Action<string, string>? Observer { get; set; }
+
     public FeatureLayerInfo Describe(FeatureLayerTarget target)
     {
         var (map, layer, table) = Resolve(target);
+        Observer?.Invoke("describe", layer.Name);
         return new FeatureLayerInfo(
             FakeProState.MapHandle(map),
             FakeProState.LayerHandle(layer),
@@ -127,8 +145,8 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
 
     public IReadOnlyList<FeatureRow> Query(FeatureLayerTarget target, FeatureQueryFilter filter, int limit)
     {
-        var (_, _, table) = Resolve(target);
-        return table.Matching(filter)
+        var (_, layer, table) = Resolve(target);
+        var rows = table.Matching(filter)
             .Take(limit)
             .Select(row => new FeatureRow(
                 row.ObjectId,
@@ -137,14 +155,17 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
                     ? row.ObjectId
                     : row.Values.GetValueOrDefault(field)).ToArray()))
             .ToArray();
+        Observer?.Invoke("query", layer.Name);
+        return rows;
     }
 
     public FeatureSelectionResult Select(FeatureLayerTarget target, FeatureQueryFilter filter, int limit, bool add)
     {
-        var (_, _, table) = Resolve(target);
+        var (_, layer, table) = Resolve(target);
         var ids = table.Matching(filter).Take(limit).Select(row => row.ObjectId).ToArray();
         if (!add) table.Selection.Clear();
         table.Selection.UnionWith(ids);
+        Observer?.Invoke("select", layer.Name);
         return new FeatureSelectionResult(ids.Length, table.Selection.Count);
     }
 
@@ -162,6 +183,7 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
         row.Geometry = geometry;
         foreach (var (name, value) in attributes) row.Values[name] = value;
         Edits.Add($"create {layer.Name} {row.ObjectId}");
+        Edited("create", layer);
         return new FeatureCreateResult(row.ObjectId, row.GlobalId);
     }
 
@@ -173,6 +195,7 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
         if (geometry is not null) row.Geometry = geometry;
         foreach (var (name, value) in attributes) row.Values[name] = value;
         Edits.Add($"update {layer.Name} {objectId}");
+        Edited("update", layer);
     }
 
     public void Delete(FeatureLayerTarget target, long objectId)
@@ -181,6 +204,13 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
         if (table.RejectEditsWith is { } reason) throw new InvalidOperationException($"ArcGIS could not delete ObjectID {objectId}: {reason}");
         table.Rows.RemoveAll(row => row.ObjectId == objectId);
         Edits.Add($"delete {layer.Name} {objectId}");
+        Edited("delete", layer);
+    }
+
+    private void Edited(string action, FakeLayer layer)
+    {
+        if (state.TrackDirty) state.IsDirty = true;
+        Observer?.Invoke(action, layer.Name);
     }
 
     private (FakeMap Map, FakeLayer Layer, FakeFeatureTable Table) Resolve(FeatureLayerTarget target)

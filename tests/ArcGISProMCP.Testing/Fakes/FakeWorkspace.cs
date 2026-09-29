@@ -3,7 +3,7 @@ using System.Text.Json;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Workspaces;
 
-namespace ArcGISProMCP.Operations.Tests.Fakes;
+namespace ArcGISProMCP.Testing;
 
 /// <summary>
 /// Workspace snapshots over <see cref="FakeProState"/>. The revision is "rev-N" where N counts

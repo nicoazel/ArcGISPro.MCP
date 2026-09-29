@@ -1,7 +1,7 @@
 using System.Text;
 using ArcGISProMCP.Operations.Services;
 
-namespace ArcGISProMCP.Operations.Tests.Fakes;
+namespace ArcGISProMCP.Testing;
 
 internal sealed class FakeProjectService(FakeProState state) : IProjectService
 {
@@ -20,6 +20,7 @@ internal sealed class FakeProjectService(FakeProState state) : IProjectService
         FakeDispatcher.Require(FakeThread.Ui, nameof(SaveAsync));
         if (!state.IsOpen) throw new InvalidOperationException("No ArcGIS Pro project is open.");
         state.Calls.Add("project.save");
+        if (state.TrackDirty) state.IsDirty = false;
         return Task.CompletedTask;
     }
 }

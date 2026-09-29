@@ -15,5 +15,6 @@
     <InternalsVisibleTo Include="ArcGISProMCP.AddIn" />
     <InternalsVisibleTo Include="ArcGISProMCP.Operations.Tests" />
     <InternalsVisibleTo Include="ArcGISProMCP.Core.Tests" />
+    <InternalsVisibleTo Include="ArcGISProMCP.Testing" />
   </ItemGroup>
 </Project>

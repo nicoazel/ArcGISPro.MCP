@@ -1,0 +1,44 @@
+{
+  "id": "e3-04-count-rows",
+  "task": "How many parcels are there?",
+  "scenario": "riverton",
+  "steps": [
+    {
+      "tool": "registry_search",
+      "arguments": {
+        "query": "count rows",
+        "limit": 5
+      }
+    },
+    {
+      "tool": "registry_describe",
+      "arguments": {
+        "operationId": "gp.query"
+      }
+    },
+    {
+      "tool": "registry_invoke",
+      "arguments": {
+        "operationId": "gp.query",
+        "arguments": {
+          "tool": "management.GetCount",
+          "parameters": [
+            "Parcels"
+          ]
+        }
+      },
+      "capture": {
+        "count": "$.data.returnValue"
+      }
+    }
+  ],
+  "expect": {
+    "captures": {
+      "count": "8"
+    },
+    "gpTools": [
+      "management.GetCount"
+    ],
+    "dirty": false
+  }
+}
