@@ -227,6 +227,38 @@ public sealed class ArcPyExecutionPolicyTests
     }
 
     [Fact]
+    public void Scripts_reached_through_a_directory_junction_are_rejected()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Directory junctions are a Windows feature.");
+        using var fixture = new ArcPyFixture();
+        var outside = Path.Combine(fixture.Root, "outside");
+        Directory.CreateDirectory(outside);
+        var content = Encoding.UTF8.GetBytes("print('outside the script root')");
+        File.WriteAllBytes(Path.Combine(outside, "run.py"), content);
+        var junction = Path.Combine(fixture.ScriptRoot, "linked");
+        using (var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe")
+        {
+            ArgumentList = { "/c", "mklink", "/J", junction, outside },
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        })!)
+        {
+            mklink.WaitForExit();
+        }
+        Assert.SkipUnless(Directory.Exists(junction), "A directory junction could not be created.");
+
+        var inspect = Assert.Throws<ArcPyPolicyException>(() => ArcPyExecutionPolicy.InspectScript(fixture.Settings, "linked/run.py"));
+        var prepare = Assert.Throws<ArcPyPolicyException>(() => ArcPyExecutionPolicy.PrepareScript(
+            fixture.Settings, "linked/run.py", Convert.ToHexString(SHA256.HashData(content)), [], 10));
+
+        Assert.Equal("arcpy_script_rejected", inspect.Code);
+        Assert.Equal("arcpy_script_rejected", prepare.Code);
+        Assert.Contains("reparse points", prepare.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ArcGIS_Pro_bootstrap_marker_is_accepted_without_package_directory_marker()
     {
         using var fixture = new ArcPyFixture();

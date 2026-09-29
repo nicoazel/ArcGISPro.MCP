@@ -1,5 +1,13 @@
+#Requires -Version 7.0
+# Uses .NET APIs that Windows PowerShell 5.1 lacks (for example IO.Path.GetRelativePath); run with pwsh.
 [CmdletBinding()]
-param([switch]$Live, [string]$ImageUri)
+param(
+    [switch]$Live,
+    [string]$ImageUri,
+    # Build and package without running the test projects. For CI jobs that run after a job that
+    # already ran every test on the same commit; local runs keep the default (tests run).
+    [switch]$SkipTests
+)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -7,9 +15,16 @@ Push-Location $repoRoot
 try {
     dotnet build ArcGISPro.MCP.slnx -c Release
     if ($LASTEXITCODE -ne 0) { throw 'Release build failed.' }
-    foreach ($testProject in @('tests/ArcGISProMCP.Core.Tests', 'tests/ArcGISProMCP.Bridge.Tests', 'tests/ArcGISProMCP.Server.Tests')) {
-        dotnet test $testProject -c Release --no-build
-        if ($LASTEXITCODE -ne 0) { throw "Tests failed: $testProject" }
+    if ($SkipTests) {
+        Write-Warning 'Skipping the test projects (-SkipTests).'
+    }
+    else {
+        $testProjects = @(Get-ChildItem tests -Directory -Filter '*.Tests' | Sort-Object Name | ForEach-Object { 'tests/' + $_.Name })
+        if ($testProjects.Count -eq 0) { throw 'No test projects found under tests/.' }
+        foreach ($testProject in $testProjects) {
+            dotnet test $testProject -c Release --no-build
+            if ($LASTEXITCODE -ne 0) { throw "Tests failed: $testProject" }
+        }
     }
     git diff --check
     if ($LASTEXITCODE -ne 0) { throw 'Diff whitespace validation failed.' }
@@ -17,7 +32,7 @@ try {
     $package = Join-Path $repoRoot 'artifacts/ArcGISProMCP.AddIn.esriAddinX'
     $zip = [IO.Compression.ZipFile]::OpenRead($package)
     try {
-        $expected = @('Config.daml', 'Install/ArcGISProMCP.AddIn.dll', 'Install/ArcGISProMCP.Core.dll', 'Install/ArcGISProMCP.Bridge.dll')
+        $expected = @('Config.daml', 'Install/ArcGISProMCP.AddIn.dll', 'Install/ArcGISProMCP.Core.dll', 'Install/ArcGISProMCP.Bridge.dll', 'Install/ArcGISProMCP.Operations.dll')
         $actual = @($zip.Entries.FullName | ForEach-Object { $_.Replace('\','/') })
         if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Unexpected add-in package contents.' }
     }
@@ -28,7 +43,7 @@ try {
     [pscustomobject]@{
         Package = $package
         Sha256 = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash
-        PortableChecks = 'passed'
+        PortableChecks = $(if ($SkipTests) { 'build and package only (-SkipTests)' } else { 'passed' })
         LiveProtocolChecked = [bool]$Live
         HumanApprovalInteraction = 'requires separate manual UI acceptance'
         LiveFeatureMetadataGeoprocessing = 'requires separate disposable-project acceptance'

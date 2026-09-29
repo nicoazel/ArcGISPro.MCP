@@ -1,3 +1,5 @@
+#Requires -Version 7.0
+# Uses .NET APIs that Windows PowerShell 5.1 lacks (for example IO.Path.GetRelativePath); run with pwsh.
 [CmdletBinding()]
 param(
     [ValidateSet('Debug', 'Release')]
@@ -24,7 +26,7 @@ New-Item -ItemType Directory -Path (Join-Path $stage 'Install') -Force | Out-Nul
 New-Item -ItemType Directory -Path $artifacts -Force | Out-Null
 try {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'src\ArcGISProMCP.AddIn\Config.daml') -Destination $stage
-    foreach ($name in @('ArcGISProMCP.AddIn.dll', 'ArcGISProMCP.Core.dll', 'ArcGISProMCP.Bridge.dll')) {
+    foreach ($name in @('ArcGISProMCP.AddIn.dll', 'ArcGISProMCP.Core.dll', 'ArcGISProMCP.Bridge.dll', 'ArcGISProMCP.Operations.dll')) {
         Copy-Item -LiteralPath (Join-Path $output $name) -Destination (Join-Path $stage 'Install')
     }
 

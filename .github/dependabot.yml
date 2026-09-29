@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # The ArcGIS Pro SDK version must match the supported ArcGIS Pro release;
+      # it is bumped deliberately alongside compatibility testing.
+      - dependency-name: Esri.ArcGISPro.Extensions30
+    groups:
+      nuget:
+        patterns:
+          - '*'
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+    commit-message:
+      prefix: ci

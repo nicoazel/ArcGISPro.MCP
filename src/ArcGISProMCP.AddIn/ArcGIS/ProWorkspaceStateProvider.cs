@@ -10,34 +10,15 @@ using ArcGISProMCP.Core.Workspaces;
 
 namespace ArcGISProMCP.AddIn.ArcGIS;
 
-internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher) : IWorkspaceStateProvider
+internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher) : IRevisionPublishingWorkspace
 {
     private long _mutationSequence;
-    internal void AdvanceRevision() => Interlocked.Increment(ref _mutationSequence);
+    public void AdvanceRevision() => Interlocked.Increment(ref _mutationSequence);
     public Task<WorkspaceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken) =>
         dispatcher.OnMainCimThreadAsync(CreateSnapshot, cancellationToken);
 
-    internal async Task<WorkspaceSnapshot> GetSettledSnapshotAsync(CancellationToken cancellationToken)
-    {
-        var previous = await GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        var quietSamples = 0;
-        for (var attempt = 0; attempt < 20; attempt++)
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(25), cancellationToken).ConfigureAwait(false);
-            var current = await GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-            if (string.Equals(current.Revision, previous.Revision, StringComparison.Ordinal))
-            {
-                quietSamples++;
-                if (quietSamples >= 2) return current;
-            }
-            else
-            {
-                quietSamples = 0;
-            }
-            previous = current;
-        }
-        return previous;
-    }
+    public Task<WorkspaceSnapshot> GetSettledSnapshotAsync(CancellationToken cancellationToken) =>
+        WorkspaceSnapshotSettler.WaitForSettledSnapshotAsync(GetSnapshotAsync, cancellationToken);
 
     private WorkspaceSnapshot CreateSnapshot()
     {

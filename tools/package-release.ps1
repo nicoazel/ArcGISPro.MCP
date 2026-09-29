@@ -1,5 +1,11 @@
+#Requires -Version 7.0
+# Uses .NET APIs that Windows PowerShell 5.1 lacks (for example IO.Path.GetRelativePath); run with pwsh.
 [CmdletBinding()]
-param()
+param(
+    # Passed to verify-release.ps1: build and package without re-running the tests. CI uses it
+    # after the build-test job has run them; local runs keep the default (tests run).
+    [switch]$SkipTests
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -9,6 +15,8 @@ $rid = 'win-x64'
 $status = 'development-preview'
 
 function Remove-ReleaseTemporaryPath {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Private cleanup helper; it removes only validated staging paths under artifacts/releases.')]
     param([string]$Path, [string]$Prefix)
     $resolved = [IO.Path]::GetFullPath($Path)
     $parent = [IO.Directory]::GetParent($resolved)
@@ -24,7 +32,7 @@ function Remove-ReleaseTemporaryPath {
 
 Push-Location $repoRoot
 try {
-    & ./tools/verify-release.ps1
+    & ./tools/verify-release.ps1 -SkipTests:$SkipTests
 
     $props = [xml](Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props') -Raw)
     $versionNode = $props.SelectSingleNode('/Project/PropertyGroup/Version')
@@ -145,6 +153,9 @@ try {
                 "$name/checksums.sha256")) {
                 if ($required -notin $entries) { throw "Release archive is missing '$required'." }
             }
+            # Development-only hosts and test support never ship.
+            $devOnly = @($entries | Where-Object { $_ -match 'FakeHost|ArcGISProMCP\.Testing|scenarios/' })
+            if ($devOnly.Count -gt 0) { throw "Release archive contains development-only files: $($devOnly -join ', ')" }
         } finally { $archive.Dispose() }
 
         [IO.File]::Move($tempZip, $bundlePath, $true)

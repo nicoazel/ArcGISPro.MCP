@@ -1,16 +1,42 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ArcGISProMCP.Bridge.Protocol;
 
 namespace ArcGISProMCP.Bridge.Transport;
 
+/// <summary>
+/// A host discovery record. <see cref="HostKind"/> tells ArcGIS Pro (the add-in) apart from the
+/// development FakeHost; records written before the field existed have no kind and are ArcGIS Pro.
+/// </summary>
 public sealed record BridgeHostRecord(
     int ProcessId,
     string PipeName,
     DateTimeOffset ProcessStartedAtUtc,
     DateTimeOffset PublishedAtUtc,
     string? ProjectName = null,
-    string? ProjectUri = null);
+    string? ProjectUri = null,
+    string? HostKind = null)
+{
+    /// <summary>The kind this record describes; a missing kind means ArcGIS Pro.</summary>
+    [JsonIgnore]
+    public string EffectiveHostKind => string.IsNullOrWhiteSpace(HostKind) ? BridgeHostKinds.ArcGISPro : HostKind.Trim();
+
+    [JsonIgnore]
+    public bool IsArcGISPro => string.Equals(EffectiveHostKind, BridgeHostKinds.ArcGISPro, StringComparison.OrdinalIgnoreCase);
+
+    [JsonIgnore]
+    public bool IsFakeHost => string.Equals(EffectiveHostKind, BridgeHostKinds.FakeHost, StringComparison.OrdinalIgnoreCase);
+}
+
+public static class BridgeHostKinds
+{
+    /// <summary>The ArcGIS Pro add-in.</summary>
+    public const string ArcGISPro = "arcgis-pro";
+
+    /// <summary>tools/ArcGISProMCP.FakeHost: a development host over a fake project, never real data.</summary>
+    public const string FakeHost = "fakehost";
+}
 
 public static class BridgeHostDiscovery
 {
@@ -118,6 +144,8 @@ public static class BridgeHostDiscovery
 
 public static class BridgeEndpointResolver
 {
+    public const string AllowFakeHostVariable = "ARCGIS_PRO_MCP_ALLOW_FAKEHOST";
+
     public static string ResolvePipeName(
         Func<string, string?>? getEnvironmentVariable = null,
         IReadOnlyList<BridgeHostRecord>? liveHosts = null)
@@ -132,21 +160,42 @@ public static class BridgeEndpointResolver
         {
             if (!int.TryParse(pidText, out var processId) || processId <= 0)
                 throw new BridgeException("arcgis_host_selector_invalid", "ARCGIS_PRO_MCP_HOST_PID must be a positive ArcGIS Pro process id.");
+            // An explicit PID may name any live host, including a FakeHost: the operator chose it.
             var selected = liveHosts.SingleOrDefault(host => host.ProcessId == processId);
             if (selected is null)
                 throw new BridgeException("arcgis_host_not_found", $"No discovered ArcGIS Pro MCP host matches PID {processId}.", true);
             return selected.PipeName;
         }
 
-        if (liveHosts.Count == 1) return liveHosts[0].PipeName;
-        if (liveHosts.Count == 0) return BridgeProtocol.DefaultPipeName;
+        // Automatic selection only considers ArcGIS Pro, so an ordinary client configuration can
+        // never attach to a development FakeHost (fake data) that happens to be running.
+        var allowFakeHost = IsTrue(getEnvironmentVariable(AllowFakeHostVariable));
+        var candidates = liveHosts
+            .Where(host => host.IsArcGISPro || allowFakeHost && host.IsFakeHost)
+            .ToArray();
 
-        var choices = string.Join(", ", liveHosts.Select(host =>
+        if (candidates.Length == 1) return candidates[0].PipeName;
+        if (candidates.Length == 0)
+        {
+            var fakeHosts = liveHosts.Where(host => host.IsFakeHost).ToArray();
+            if (fakeHosts.Length == 0) return BridgeProtocol.DefaultPipeName;
+            var fakeChoices = string.Join(", ", fakeHosts.Select(host => $"PID {host.ProcessId}"));
+            throw new BridgeException(
+                "arcgis_host_not_found",
+                $"No ArcGIS Pro MCP host is running; only FakeHost development hosts are ({fakeChoices}). " +
+                $"FakeHost is never selected automatically: set ARCGIS_PRO_MCP_HOST_PID, ARCGIS_PRO_MCP_PIPE or {AllowFakeHostVariable}=true for this gateway process to use one.",
+                true);
+        }
+
+        var choices = string.Join(", ", candidates.Select(host =>
             $"PID {host.ProcessId} ({(string.IsNullOrWhiteSpace(host.ProjectName) ? "no project" : host.ProjectName)})"));
         throw new BridgeException(
             "arcgis_host_ambiguous",
             $"Multiple ArcGIS Pro MCP hosts are available: {choices}. Set ARCGIS_PRO_MCP_HOST_PID or ARCGIS_PRO_MCP_PIPE for this gateway process.");
     }
+
+    private static bool IsTrue(string? value) =>
+        value?.Trim() is { } text && (text == "1" || string.Equals(text, "true", StringComparison.OrdinalIgnoreCase));
 }
 
 public sealed class DiscoveringBridgeClient(

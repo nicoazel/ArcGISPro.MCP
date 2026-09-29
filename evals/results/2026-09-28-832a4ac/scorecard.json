@@ -1,0 +1,438 @@
+{
+  "schema": 1,
+  "sha": "832a4ac",
+  "dirty": false,
+  "date": "2026-09-28",
+  "model": null,
+  "suites": [
+    {
+      "suite": "gp-search",
+      "host": "ArcGIS Pro 3.7.1.1904 system toolboxes (2210 tools)",
+      "tasks": 30,
+      "metrics": {
+        "recall@1": 0.5333,
+        "recall@5": 0.6667,
+        "mrr": 0.5864,
+        "taskPassRate": 0.6667,
+        "meanFirstHitRank": 2.5455,
+        "misses": 8,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "gp-03",
+          "task": "keep only the areas where two polygon layers overlap",
+          "expected": [
+            "analysis.Intersect",
+            "analysis.PairwiseIntersect"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "na.ShareAsRouteLayers",
+            "ba.RemoveOverlapMultiple",
+            "parcel.FindGapsAndOverlaps",
+            "ba.RemoveOverlap",
+            "sfa.OverlayLayers"
+          ]
+        },
+        {
+          "id": "gp-04",
+          "task": "combine several feature classes into a single one",
+          "expected": [
+            "management.Merge",
+            "management.Append"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "management.AppendAnnotation",
+            "ca.CellPhoneRecordsToFeatureClass",
+            "md.FeatureToNetCDF",
+            "mb.IterateFeatureClasses",
+            "locref.ConfigureAddressFeatureClasses"
+          ]
+        },
+        {
+          "id": "gp-08",
+          "task": "distance from each well to the nearest river",
+          "expected": [
+            "analysis.Near",
+            "analysis.GenerateNearTable"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "stats.AverageNearestNeighbor",
+            "sa.DistanceAccumulation",
+            "na.MakeClosestFacilityAnalysisLayer",
+            "na.MakeLocationAllocationAnalysisLayer",
+            "ga.NearestNeighbor3D"
+          ]
+        },
+        {
+          "id": "gp-11",
+          "task": "select rows with a SQL where clause",
+          "expected": [
+            "management.SelectLayerByAttribute"
+          ],
+          "k": 5,
+          "firstHitRank": 8,
+          "top": [
+            "analysis.Select",
+            "analysis.TableSelect",
+            "management.MakeTableView",
+            "management.MakeQueryTable",
+            "management.MakeFeatureLayer"
+          ]
+        },
+        {
+          "id": "gp-12",
+          "task": "how many rows are in this table",
+          "expected": [
+            "management.GetCount"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "management.TableCompare",
+            "management.MatchPhotosToRowsByTime",
+            "conversion.TableToGeodatabase",
+            "management.TableToRelationshipClass",
+            "management.FeatureCompare"
+          ]
+        },
+        {
+          "id": "gp-15",
+          "task": "compute the area of each polygon in acres",
+          "expected": [
+            "management.CalculateGeometryAttributes"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "management.ComputeDirtyArea",
+            "ga.ArealInterpolationLayerToPolygons",
+            "na.MakeServiceAreaAnalysisLayer",
+            "management.PolygonToLine",
+            "cartography.AggregatePolygons"
+          ]
+        },
+        {
+          "id": "gp-17",
+          "task": "reproject a feature class to a different coordinate system",
+          "expected": [
+            "management.Project"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "locref.ConfigureAddressFeatureClasses",
+            "locref.ConfigureUtilityNetworkFeatureClass",
+            "locref.ConfigureUtilityNetworkFeatureClasses",
+            "3d.FeatureClassZToASCII",
+            "conversion.FeatureClassToShapefile"
+          ]
+        },
+        {
+          "id": "gp-18",
+          "task": "permanently delete a feature class",
+          "expected": [
+            "management.Delete"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "3d.RemoveFeatureClassFromTerrain",
+            "management.RemoveFeatureClassFromTopology",
+            "locref.ConfigureAddressFeatureClasses",
+            "management.DeleteFeatures",
+            "3d.FeatureClassZToASCII"
+          ]
+        },
+        {
+          "id": "gp-21",
+          "task": "fix invalid or broken geometries",
+          "expected": [
+            "management.RepairGeometry"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "management.RepairTrajectoryDatasetPaths",
+            "management.ExportMosaicDatasetPaths",
+            "management.CreateOrthoCorrectedRasterDataset",
+            "geocoding.CreateLocator",
+            "management.RepairMosaicDatasetPaths"
+          ]
+        },
+        {
+          "id": "gp-25",
+          "task": "convert polygons to a raster",
+          "expected": [
+            "conversion.PolygonToRaster",
+            "conversion.FeatureToRaster"
+          ],
+          "k": 5,
+          "firstHitRank": 20,
+          "top": [
+            "ra.ConvertFeatureToRaster",
+            "ra.ConvertRasterToFeature",
+            "management.ConvertRasterFunctionTemplate",
+            "3d.RasterTin",
+            "3d.RasterDomain"
+          ]
+        }
+      ]
+    },
+    {
+      "suite": "gp-search-fixture",
+      "host": "synthetic fixture toolboxes (13 tools)",
+      "tasks": 5,
+      "metrics": {
+        "recall@1": 0.8,
+        "recall@5": 1,
+        "mrr": 0.9,
+        "taskPassRate": 1,
+        "meanFirstHitRank": 1.2,
+        "misses": 0,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": []
+    },
+    {
+      "suite": "gp-search-holdout",
+      "host": "ArcGIS Pro 3.7.1.1904 system toolboxes (2210 tools)",
+      "tasks": 16,
+      "metrics": {
+        "recall@1": 0.5,
+        "recall@5": 0.6875,
+        "mrr": 0.5589,
+        "taskPassRate": 0.6875,
+        "meanFirstHitRank": 4.6429,
+        "misses": 2,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "gph-03",
+          "task": "stitch adjacent polygons together into one outline",
+          "expected": [
+            "management.Dissolve",
+            "analysis.PairwiseDissolve",
+            "cartography.AggregatePolygons"
+          ],
+          "k": 5,
+          "firstHitRank": 18,
+          "top": [
+            "management.MosaicToNewRaster",
+            "analysis.CreateThiessenPolygons",
+            "management.Mosaic",
+            "geocoding.AssignZonesToStreets",
+            "analysis.Buffer"
+          ]
+        },
+        {
+          "id": "gph-04",
+          "task": "rings at 1, 2 and 5 miles around each store",
+          "expected": [
+            "analysis.MultipleRingBuffer"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "aviation.ICAOAnnex15",
+            "maritime.ConvertS57ToS101",
+            "aviation.ExportAIXM51Message",
+            "aviation.ImportAIXM51Message",
+            "maritime.ExportS101Cell"
+          ]
+        },
+        {
+          "id": "gph-05",
+          "task": "pull out the roads whose type is highway into a new feature class",
+          "expected": [
+            "analysis.Select",
+            "conversion.ExportFeatures"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "management.CreateUnRegisteredFeatureclass",
+            "locref.ConfigureAddressFeatureClasses",
+            "mb.FeatureTypeIfThenElse",
+            "na.CreateTurnFeatureClass",
+            "ia.VideoMetadataToFeatureClass"
+          ]
+        },
+        {
+          "id": "gph-12",
+          "task": "polygon centroids as points",
+          "expected": [
+            "management.FeatureToPoint"
+          ],
+          "k": 5,
+          "firstHitRank": 13,
+          "top": [
+            "3d.LasPointStatsByArea",
+            "conversion.PolygonToRaster",
+            "geocoding.AssignStreetsToPoints",
+            "conversion.RasterToPolygon",
+            "management.LasPointStatsAsRaster"
+          ]
+        },
+        {
+          "id": "gph-14",
+          "task": "turn a raster into polygons",
+          "expected": [
+            "conversion.RasterToPolygon"
+          ],
+          "k": 5,
+          "firstHitRank": 13,
+          "top": [
+            "conversion.RasterToGeodatabase",
+            "conversion.RasterToOtherFormat",
+            "management.GetRasterProperties",
+            "conversion.ExtractScannedPolygons",
+            "3d.RasterTin"
+          ]
+        }
+      ]
+    },
+    {
+      "suite": "registry-search",
+      "host": "OperationRegistry over 41 add-in descriptors (source fixture)",
+      "tasks": 30,
+      "metrics": {
+        "recall@1": 0.5,
+        "recall@5": 0.8333,
+        "mrr": 0.6072,
+        "taskPassRate": 0.8333,
+        "meanFirstHitRank": 2.6667,
+        "misses": 3,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "rs-04",
+          "task": "Set up a local 3D scene called Massing Study",
+          "expected": [
+            "map.ensure"
+          ],
+          "k": 5,
+          "firstHitRank": 10,
+          "top": [
+            "layer.set-elevation",
+            "layout.set-text",
+            "metadata.update",
+            "basemap.set",
+            "feature.update"
+          ]
+        },
+        {
+          "id": "rs-11",
+          "task": "Draw all the parks in one solid green fill",
+          "expected": [
+            "symbology.set-simple"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "feature.create",
+            "feature.delete",
+            "feature.update",
+            "arcpy.inspect-script",
+            "arcpy.run-script"
+          ]
+        },
+        {
+          "id": "rs-15",
+          "task": "Find vacant parcels inside the downtown bounding box",
+          "expected": [
+            "feature.query"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "gp.search",
+            "style.search",
+            "gp.describe",
+            "gp.run"
+          ]
+        },
+        {
+          "id": "rs-16",
+          "task": "Highlight every fire hydrant within the study area",
+          "expected": [
+            "feature.select"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "map.clear-selection",
+            "gp.query",
+            "map.list",
+            "project.save"
+          ]
+        },
+        {
+          "id": "rs-28",
+          "task": "Show me a picture of what the map looks like now",
+          "expected": [
+            "view.capture"
+          ],
+          "k": 5,
+          "firstHitRank": 10,
+          "top": [
+            "layout.add-map-frame",
+            "map.activate",
+            "basemap.set",
+            "layout.inspect",
+            "layout.set-frame-extent"
+          ]
+        }
+      ]
+    },
+    {
+      "suite": "registry-search-holdout",
+      "host": "OperationRegistry over 41 add-in descriptors (source fixture)",
+      "tasks": 16,
+      "metrics": {
+        "recall@1": 0.8125,
+        "recall@5": 0.9375,
+        "mrr": 0.8563,
+        "taskPassRate": 0.9375,
+        "meanFirstHitRank": 1.3333,
+        "misses": 1,
+        "schemaValidArgs": null,
+        "approvalDiscipline": null,
+        "taskSuccess": null
+      },
+      "failures": [
+        {
+          "id": "rsh-11",
+          "task": "Move this manhole to a new location",
+          "expected": [
+            "feature.update"
+          ],
+          "k": 5,
+          "firstHitRank": null,
+          "top": [
+            "layout.ensure",
+            "map.ensure",
+            "feature.delete",
+            "feature.select"
+          ]
+        }
+      ]
+    }
+  ]
+}

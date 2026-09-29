@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <NoWarn>$(NoWarn);CA1707;CA1861</NoWarn>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/ArcGISProMCP.Operations/ArcGISProMCP.Operations.csproj" />
+    <!-- FakePro and the fake ArcGIS services; also copies the synthetic toolboxes to Fixtures/toolboxes. -->
+    <ProjectReference Include="../ArcGISProMCP.Testing/ArcGISProMCP.Testing.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The input schemas captured before the typed-schema migration, shared with Core.Tests. -->
+    <None Include="../ArcGISProMCP.Core.Tests/Fixtures/operation-input-schemas.json" Link="Fixtures/operation-input-schemas.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

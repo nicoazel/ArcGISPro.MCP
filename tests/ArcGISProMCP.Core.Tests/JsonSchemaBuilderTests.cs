@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
 using Xunit;
 
 namespace ArcGISProMCP.Core.Tests;
@@ -8,57 +9,29 @@ public sealed class JsonSchemaBuilderTests
 {
     private static readonly JsonSerializerOptions WireOptions = new(JsonSerializerDefaults.Web);
 
-    private static JsonElement FeatureQuerySchema() => JsonSchemas.Object(
-        [
-            ("layer", JsonSchemas.String(minLength: 1)),
-            ("map", JsonSchemas.String()),
-            ("where", JsonSchemas.String(maxLength: 4096)),
-            ("fields", JsonSchemas.Array(JsonSchemas.String(), maxItems: 64)),
-            ("envelope", JsonSchemas.Object(
-                [
-                    ("xmin", JsonSchemas.Number()),
-                    ("ymin", JsonSchemas.Number()),
-                    ("xmax", JsonSchemas.Number()),
-                    ("ymax", JsonSchemas.Number()),
-                ],
-                ["xmin", "ymin", "xmax", "ymax"])),
-            ("spatialRelationship", JsonSchemas.Enum("intersects", "envelopeIntersects", "contains", "within", "touches", "crosses", "overlaps")),
-            ("limit", JsonSchemas.Integer(minimum: 1, maximum: 500)),
-        ],
-        ["layer"]);
-
-    // The original hand-written input schemas, captured before migration (see OperationSchemaMigrationTests).
-    private static readonly Dictionary<string, JsonElement> Original = OperationSchemaMigrationTests.LoadFixture();
+    /// <summary>The production feature.query input schema, built with the typed builder.</summary>
+    private static JsonElement FeatureQuerySchema() => FeatureOperationSchemas.QueryInput;
 
     [Fact]
-    public void Object_matches_the_original_feature_layer_describe_schema()
+    public void Built_operation_schemas_are_exactly_the_shipped_descriptor_schemas()
     {
-        var built = JsonSchemas.Object(
-            [("layer", JsonSchemas.String(minLength: 1)), ("map", JsonSchemas.String())],
-            ["layer"]);
-        Assert.True(JsonElement.DeepEquals(Original["feature.layer.describe"], built), built.GetRawText());
-    }
-
-    [Fact]
-    public void Object_matches_the_original_feature_query_schema()
-    {
-        var built = FeatureQuerySchema();
-        Assert.True(JsonElement.DeepEquals(Original["feature.query"], built), built.GetRawText());
-    }
-
-    [Fact]
-    public void Object_matches_literal_arcpy_inspect_script_schema()
-    {
-        var expected = JsonSchemas.Parse("""
-            {
-              "type": "object",
-              "properties": { "scriptPath": { "type": "string", "minLength": 1, "maxLength": 512 } },
-              "required": ["scriptPath"],
-              "additionalProperties": false
-            }
-            """);
-        var built = JsonSchemas.Object([("scriptPath", JsonSchemas.String(minLength: 1, maxLength: 512))], ["scriptPath"]);
-        Assert.True(JsonElement.DeepEquals(expected, built), built.GetRawText());
+        // The descriptor dump is what the add-in's registry published (see DescriptorGuardTests).
+        // Every input and output schema the builder produces for an operation must equal it byte
+        // for byte in meaning: no normalization, so a builder change that spells a default
+        // differently is caught too.
+        var shipped = OperationSchemaMigrationTests.LoadDescriptorDump();
+        var compared = 0;
+        foreach (var (id, (schema, _)) in OperationSchemaMigrationTests.Migrated)
+        {
+            Assert.True(JsonElement.DeepEquals(shipped[id].GetProperty("inputSchema"), schema), $"{id} input schema: {schema.GetRawText()}");
+            compared++;
+        }
+        foreach (var (id, schema) in OperationOutputSchemaTests.OutputSchemas)
+        {
+            Assert.True(JsonElement.DeepEquals(shipped[id].GetProperty("outputSchema"), schema), $"{id} output schema: {schema.GetRawText()}");
+            compared++;
+        }
+        Assert.Equal(OperationSchemaMigrationTests.Migrated.Count + OperationOutputSchemaTests.OutputSchemas.Count, compared);
     }
 
     [Fact]

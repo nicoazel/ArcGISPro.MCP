@@ -19,7 +19,7 @@ From the repository root:
 ./tools/package-release.ps1
 ```
 
-The packager always runs `tools/verify-release.ps1` first. That performs the Release solution build, portable Core and Bridge tests, whitespace validation, add-in packaging, and exact add-in-content inspection. It then publishes the framework-dependent Windows x64 stdio server and creates:
+The packager always runs `tools/verify-release.ps1` first. That performs the Release solution build, every portable test project under `tests/`, whitespace validation, add-in packaging, and exact add-in-content inspection. It then publishes the framework-dependent Windows x64 stdio server and creates:
 
 ```text
 artifacts/releases/ArcGISProMCP-0.2.0-win-x64-development-preview.zip
@@ -106,7 +106,7 @@ A live acceptance pass of the ArcGIS-only build was run on the maintainer's work
 - Explicit remote cancellation of an accepted SDK geoprocessing call is not implemented. A client disconnect after acceptance is reported as `outcome_unknown`.
 - ArcGIS Pro shutdown was not perfectly repeatable across disposable instances; one instance needed a PID-scoped forced close after 75 seconds.
 
-The evidence from that pass (result JSON, hashes and images under `artifacts/`) is **local only**: `artifacts/` is git-ignored and nothing in this repository lets a reader verify those results. Treat them as the maintainer's notes, not as release evidence. Recording reproducible, committed acceptance evidence tied to a commit SHA, ArcGIS Pro version and DLL hashes is planned (see the [roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md)). Until then, every installation should run [manual acceptance](manual-acceptance.md) itself.
+The evidence from that pass (result JSON, hashes and images under `artifacts/`) is **local only**: `artifacts/` is git-ignored and nothing in this repository lets a reader verify those results. Treat them as the maintainer's notes, not as release evidence. Committed evidence goes in [`docs/acceptance/`](acceptance/README.md). Each entry is a `<yyyy-MM-dd>-<sha7>` folder written by `tools/run-acceptance.ps1 -Commit`, with a manifest tied to the commit SHA, ArcGIS Pro version, package hash and loaded DLL hashes, plus a summary and `SHA256SUMS`. A Core test validates every entry. Only the maintainer with a live ArcGIS Pro produces entries. An entry covers only the commit, Pro version and sections it names, and sections run in autonomous mode are marked as such. Until an entry exists for the build you install, and for anything an entry does not cover, run [manual acceptance](manual-acceptance.md) yourself.
 
 ## Known limits
 
@@ -130,6 +130,55 @@ The evidence from that pass (result JSON, hashes and images under `artifacts/`) 
 5. Restart ArcGIS Pro and repeat acceptance against a disposable project.
 
 Rollback does not undo map, geodatabase, layout, metadata, geoprocessing, or ArcPy mutations. Restore user data from its own backup/version history, and do not retry an uncertain mutation without checking its recorded outcome.
+
+## MCP registry package
+
+**Draft, not published.** The gateway can also be packed as a NuGet `McpServer` dotnet tool for the [MCP registry](https://github.com/modelcontextprotocol/registry) (`registryType: nuget`, `runtimeHint: dnx`). The zip bundle above stays the primary distribution: the NuGet package contains only the gateway, so the ArcGIS Pro add-in must still be installed from the GitHub release, and the gateway is Windows-only in practice.
+
+| Item | Value |
+| --- | --- |
+| Registry name | `io.github.nicoazel/arcgis-pro-mcp` |
+| NuGet package id | `ArcGISProMCP.Gateway` |
+| Tool command | `arcgis-pro-mcp` |
+| Registry metadata | `src/ArcGISProMCP.Server/.mcp/server.json`, packed at `/.mcp/server.json` |
+
+Build and verify the package locally:
+
+```powershell
+./tools/pack-gateway.ps1
+```
+
+This runs `dotnet pack` into `artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg` and fails unless the package declares the `McpServer` package type, contains `.mcp/server.json` identical to source, exposes the `arcgis-pro-mcp` command, and bundles every `skills/*.skill.json` byte-for-byte under the tool's `skills` directory. It also fails if either version in `server.json` differs from `Directory.Build.props`, so bump all three together. The package is framework-dependent and RID-agnostic (`tools/net10.0/any`) and needs the .NET 10 runtime; `PublishSingleFile` only affects `dotnet publish`, so `package-release.ps1` still produces the single-file executable.
+
+Try the package without publishing it:
+
+```powershell
+dotnet tool install --tool-path "$env:TEMP\arcgis-pro-mcp-tool" --add-source artifacts/packages ArcGISProMCP.Gateway --version 0.2.0
+# or, with .NET 10 (dnx asks before it downloads and runs the tool):
+# dnx ArcGISProMCP.Gateway --version 0.2.0 --add-source artifacts/packages
+```
+
+### Environment variables in `server.json`
+
+Registry clients set environment variables on the gateway process only. `server.json` therefore declares only the gateway-side variables; host-side variables must be set in the environment ArcGIS Pro starts in (see [reference](reference.md#environment-variables)).
+
+| Variable | Side | In `server.json` |
+| --- | --- | --- |
+| `ARCGIS_PRO_MCP_HOST_PID` | Gateway | Yes, optional |
+| `ARCGIS_PRO_MCP_PIPE` | Gateway and Pro (must match) | Yes, optional; set the same value for ArcGIS Pro |
+| `ARCGIS_PRO_MCP_AUTONOMOUS_MODE` | Pro | No |
+| `ARCGIS_PRO_MCP_ENABLE_ARCPY` and `ARCGIS_PRO_MCP_ARCPY_*` | Pro | No |
+
+### Publishing (maintainer, later)
+
+Not automated and not done by any script in this repository. It requires the maintainer's nuget.org account and GitHub identity:
+
+1. Bump `Version` in `Directory.Build.props` and both `version` fields in `.mcp/server.json`, then run `./tools/pack-gateway.ps1`.
+2. Push the package: `dotnet nuget push artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg --api-key <key> --source https://api.nuget.org/v3/index.json`, and wait for nuget.org validation and indexing.
+3. Install the registry publisher (`mcp-publisher`, from the modelcontextprotocol/registry releases), run `mcp-publisher login github` as `nicoazel`, then run `mcp-publisher validate` and `mcp-publisher publish` from `src/ArcGISProMCP.Server/.mcp` (both read `server.json` from the current directory).
+4. Confirm the entry at `https://registry.modelcontextprotocol.io/v0/servers?search=io.github.nicoazel/arcgis-pro-mcp`.
+
+The registry verifies NuGet ownership by finding `mcp-name: io.github.nicoazel/arcgis-pro-mcp` in the package README. The packed README is the repository `README.md`, which carries `<!-- mcp-name: io.github.nicoazel/arcgis-pro-mcp -->` on its own line (an HTML comment, so it does not render). Keep that line when editing the README.
 
 ## Release boundaries
 

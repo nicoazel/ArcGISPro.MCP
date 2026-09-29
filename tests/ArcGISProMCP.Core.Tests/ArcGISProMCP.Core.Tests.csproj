@@ -14,10 +14,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Update="Fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Every descriptor the add-in registry published, owned by Operations.Tests (DescriptorGuardTests). -->
+    <None Include="../ArcGISProMCP.Operations.Tests/Fixtures/operation-descriptors.json" Link="Fixtures/operation-descriptors.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/ArcGISProMCP.Core/ArcGISProMCP.Core.csproj" />
-    <!-- Add-in operation schemas depend only on Core, so the tests compile the exact production schemas. -->
-    <Compile Include="../../src/ArcGISProMCP.AddIn/Operations/Schemas/*.cs" Link="AddInSchemas/%(Filename)%(Extension)" />
+    <!-- Operation schemas depend only on Core, so the tests use the exact production schemas. -->
+    <ProjectReference Include="../../src/ArcGISProMCP.Operations/ArcGISProMCP.Operations.csproj" />
   </ItemGroup>
 </Project>

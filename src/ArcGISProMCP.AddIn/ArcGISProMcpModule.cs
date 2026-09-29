@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using ArcGIS.Desktop.Core;
 using ArcGISProMCP.AddIn.ArcGIS;
+using ArcGISProMCP.AddIn.ArcGIS.Services;
 using ArcGISProMCP.AddIn.Bridge;
 using ArcGISProMCP.AddIn.Operations;
 using ArcGISProMCP.AddIn.Services;
@@ -14,6 +15,7 @@ using ArcGISProMCP.Core.Infrastructure;
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Core.Registry;
 using ArcGISProMCP.Core.Workflows;
+using ArcGISProMCP.Operations.Services;
 
 namespace ArcGISProMCP.AddIn;
 
@@ -80,7 +82,14 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
         var audit = _audit = new JsonLineAuditLog(Path.Combine(appRoot, "audit", "operations.jsonl"));
         var approvals = _approvals = new LocalApprovalService();
 
-        foreach (var operation in ProOperationCatalog.Create(resources)) registry.Register(operation);
+        var services = new ArcGisServices(
+            new ProProjectService(),
+            new ProMapService(),
+            new ProLayerService(),
+            new ProViewCaptureService(),
+            new ProFeatureService(),
+            new ProGeoprocessingService());
+        foreach (var operation in ProOperationCatalog.Create(resources, services)) registry.Register(operation);
         SeedBundledWorkflows(workflows);
         Registry = registry;
         var context = new OperationContext(
@@ -142,7 +151,8 @@ internal sealed class ArcGISProMcpModule : global::ArcGIS.Desktop.Framework.Cont
                 _processStartedAtUtc,
                 DateTimeOffset.UtcNow,
                 projectName,
-                projectUri));
+                projectUri,
+                BridgeHostKinds.ArcGISPro));
             _hasPublishedHostDiscovery = true;
             _publishedProjectName = projectName;
             _publishedProjectUri = projectUri;

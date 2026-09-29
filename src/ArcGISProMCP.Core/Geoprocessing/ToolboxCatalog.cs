@@ -1,4 +1,5 @@
 using System.Globalization;
+using ArcGISProMCP.Core.Search;
 
 namespace ArcGISProMCP.Core.Geoprocessing;
 
@@ -64,13 +65,16 @@ public sealed class ToolboxCatalog
             : Path.GetFullPath(Path.Combine(processDirectory, "..", "Resources", "ArcToolBox", "toolboxes"));
     }
 
-    /// <summary>Ranks tools by name, display name, keywords, toolbox and description.</summary>
+    /// <summary>
+    /// Ranks tools by name, display name, keywords, toolbox and summary (see <see cref="SearchIndex{T}"/>),
+    /// with a small prior for the core system toolboxes (<see cref="GpToolboxPriority"/>).
+    /// </summary>
     public IReadOnlyList<GpSearchHit> Search(string? query, int limit = 20)
     {
         var index = GetIndex();
         var take = Math.Clamp(limit, 1, 200);
-        var terms = Tokenize(query);
-        if (terms.Length == 0)
+        var terms = SearchText.ParseQuery(query, GpStopWords);
+        if (terms.Count == 0)
         {
             return index.Tools
                 .Where(entry => !entry.Description.Tool.Deprecated)
@@ -81,8 +85,8 @@ public sealed class ToolboxCatalog
         }
 
         var normalizedQuery = query!.Trim();
-        return index.Tools
-            .Select(entry => Score(entry, normalizedQuery, terms))
+        return Enumerable.Range(0, index.Tools.Count)
+            .Select(i => Score(index, i, normalizedQuery, terms))
             .Where(hit => hit is not null)
             .Select(hit => hit!)
             .OrderByDescending(hit => hit.Score)
@@ -141,57 +145,50 @@ public sealed class ToolboxCatalog
             .Concat(UserToolboxPaths.Select(path => $"{path}={Stamp(path)}")));
     }
 
-    private static GpSearchHit? Score(IndexEntry entry, string query, string[] terms)
+    private static GpSearchHit? Score(ToolboxIndex index, int position, string query, IReadOnlyList<QueryTerm> terms)
     {
-        var tool = entry.Description.Tool;
-        double score = 0;
-        var matched = new List<string>();
+        var tool = index.Tools[position].Description.Tool;
+        var match = index.Search.Score(position, terms);
+        var score = match.Score;
         if (string.Equals(tool.ExecutionName, query, StringComparison.OrdinalIgnoreCase)) score += 100;
         if (string.Equals(tool.Name, query.Replace(" ", string.Empty, StringComparison.Ordinal), StringComparison.OrdinalIgnoreCase)) score += 30;
         if (string.Equals(tool.DisplayName, query, StringComparison.OrdinalIgnoreCase)) score += 25;
 
-        foreach (var term in terms)
-        {
-            double termScore = 0;
-            if (string.Equals(tool.Name, term, StringComparison.OrdinalIgnoreCase)) termScore = Math.Max(termScore, 20);
-            else if (tool.Name.StartsWith(term, StringComparison.OrdinalIgnoreCase)) termScore = Math.Max(termScore, 14);
-            else if (tool.Name.Contains(term, StringComparison.OrdinalIgnoreCase)) termScore = Math.Max(termScore, 12);
-            if (entry.DisplayWords.Contains(term)) termScore = Math.Max(termScore, 10);
-            else if (tool.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase)) termScore = Math.Max(termScore, 8);
-            if (entry.Keywords.Contains(term)) termScore = Math.Max(termScore, 7);
-            else if (entry.Description.Keywords.Any(keyword => keyword.Contains(term, StringComparison.OrdinalIgnoreCase))) termScore = Math.Max(termScore, 5);
-            if (string.Equals(tool.ToolboxAlias, term, StringComparison.OrdinalIgnoreCase) ||
-                tool.Toolbox.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                (tool.Toolset?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false))
-                termScore = Math.Max(termScore, 4);
-            if (tool.Summary?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) termScore = Math.Max(termScore, 3);
-            if (termScore <= 0) continue;
-            matched.Add(term);
-            score += termScore;
-        }
-
-        if (matched.Count == 0 && score <= 0) return null;
-        if (terms.Length > 1 && matched.Count == terms.Length) score += 5;
+        if (match.MatchedTerms.IsEmpty && score <= 0) return null;
+        if (terms.Count > 1 && match.AllTermsMatched) score += 5;
+        score *= GpToolboxPriority.Factor(tool);
         if (tool.Deprecated) score *= 0.5;
-        return new GpSearchHit(tool, score, matched);
+        return new GpSearchHit(tool, score, match.MatchedTerms);
     }
 
-    private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "a", "an", "the", "about", "at", "by", "for", "from", "in", "into", "of", "on", "onto", "to", "with", "tool"
-    };
+    // "tool" names the thing being searched for, so it discriminates nothing here.
+    private static readonly HashSet<string> GpStopWords = new(StringComparer.Ordinal) { "tool", "tools" };
 
-    private static string[] Tokenize(string? text)
+    // Field weights: the whole tool name (e.g. "getcount") ranks an exact name hit highest; words of the
+    // name and display name name the tool; keywords are curated; toolbox and toolset words place it;
+    // the summary is prose and matches incidentally.
+    private const double WholeNameWeight = 20;
+    private const double NameWeight = 12;
+    private const double DisplayNameWeight = 10;
+    private const double KeywordWeight = 7;
+    private const double ToolboxWeight = 4;
+    private const double SummaryWeight = 3;
+
+    private static IEnumerable<SearchField> Fields(IndexEntry entry)
     {
-        if (string.IsNullOrWhiteSpace(text)) return [];
-        var tokens = text.Split([' ', '\t', '\r', '\n', '.', '_', '-', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        var meaningful = tokens.Where(token => !StopWords.Contains(token)).ToArray();
-        return meaningful.Length == 0 ? tokens : meaningful;
+        var tool = entry.Description.Tool;
+        return
+        [
+            new SearchField(WholeNameWeight, tool.Name.ToLowerInvariant()),
+            new SearchField(NameWeight, tool.Name),
+            new SearchField(DisplayNameWeight, tool.DisplayName),
+            new SearchField(KeywordWeight, entry.Description.Keywords),
+            new SearchField(ToolboxWeight, tool.ToolboxAlias, tool.Toolbox, tool.Toolset),
+            new SearchField(SummaryWeight, tool.Summary)
+        ];
     }
 
-    private sealed record IndexEntry(GpToolDescription Description, HashSet<string> DisplayWords, HashSet<string> Keywords);
+    private sealed record IndexEntry(GpToolDescription Description);
 
     private sealed record ToolboxIndex(
         IReadOnlyList<GpToolboxInfo> Toolboxes,
@@ -200,6 +197,8 @@ public sealed class ToolboxCatalog
         IReadOnlyList<string> Warnings)
     {
         public IReadOnlyList<GpToolSummary> Summaries { get; } = Tools.Select(entry => entry.Description.Tool).ToArray();
+
+        public SearchIndex<IndexEntry> Search { get; } = new(Tools, Fields);
 
         public static ToolboxIndex Build(string? systemRoot, IReadOnlyList<string> userPaths)
         {
@@ -269,10 +268,7 @@ public sealed class ToolboxCatalog
                 toolboxes.Add(result.Toolbox);
                 foreach (var tool in result.Tools)
                 {
-                    var entry = new IndexEntry(
-                        tool,
-                        new HashSet<string>(Tokenize(tool.Tool.DisplayName), StringComparer.OrdinalIgnoreCase),
-                        new HashSet<string>(tool.Keywords, StringComparer.OrdinalIgnoreCase));
+                    var entry = new IndexEntry(tool);
                     if (!byName.TryAdd(tool.Tool.ExecutionName, entry))
                     {
                         warnings.Add($"Duplicate tool '{tool.Tool.ExecutionName}' in '{path}' ignored; the first toolbox with that alias wins.");

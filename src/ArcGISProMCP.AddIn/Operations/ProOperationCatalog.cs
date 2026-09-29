@@ -2,12 +2,14 @@ using System.Diagnostics;
 using ArcGISProMCP.AddIn.Services;
 using ArcGISProMCP.Core.Geoprocessing;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
+using ArcGISProMCP.Operations.Services;
 
 namespace ArcGISProMCP.AddIn.Operations;
 
 internal static class ProOperationCatalog
 {
-    public static IReadOnlyList<IOperation> Create(ProResourceStore resources)
+    public static IReadOnlyList<IOperation> Create(ProResourceStore resources, ArcGisServices services)
     {
         // One toolbox catalog shared by every gp.* operation and the approval-card warnings.
         var toolboxes = ToolboxCatalog.Default;
@@ -15,13 +17,13 @@ internal static class ProOperationCatalog
         var operations = new List<IOperation>
         {
         new ProjectGetOperation(),
-        new ProjectOpenOperation(),
-        new ProjectSaveOperation(),
-        new MapListOperation(),
-        new MapEnsureOperation(),
-        new MapActivateOperation(),
-        new MapClearSelectionOperation(),
-        new LayerListOperation(),
+        new ProjectOpenOperation(services.Project),
+        new ProjectSaveOperation(services.Project),
+        new MapListOperation(services.Maps),
+        new MapEnsureOperation(services.Maps),
+        new MapActivateOperation(services.Maps),
+        new MapClearSelectionOperation(services.Maps),
+        new LayerListOperation(services.Maps, services.Layers),
         new LayerAddOperation(),
         new LayerSetAppearanceOperation(),
         new LayerSetElevationOperation(),
@@ -32,12 +34,12 @@ internal static class ProOperationCatalog
         new LabelConfigureOperation(),
         new TableQueryOperation(),
         new TableStatisticsOperation(),
-        new FeatureLayerDescribeOperation(),
-        new FeatureQueryOperation(),
-        new FeatureSelectOperation(),
-        new FeatureCreateOperation(),
-        new FeatureUpdateOperation(),
-        new FeatureDeleteOperation(),
+        new FeatureLayerDescribeOperation(services.Features),
+        new FeatureQueryOperation(services.Features),
+        new FeatureSelectOperation(services.Features),
+        new FeatureCreateOperation(services.Features),
+        new FeatureUpdateOperation(services.Features),
+        new FeatureDeleteOperation(services.Features),
         new MetadataGetOperation(),
         new MetadataUpdateOperation(),
         new LayoutListOperation(),
@@ -50,9 +52,9 @@ internal static class ProOperationCatalog
         new LayoutActivateOperation(),
         new GeoprocessingSearchOperation(toolboxes),
         new GeoprocessingDescribeOperation(toolboxes),
-        new GeoprocessingQueryOperation(toolboxes),
-        new GeoprocessingRunOperation(toolboxes),
-            new ViewCaptureOperation(resources)
+        new GeoprocessingQueryOperation(toolboxes, services.Geoprocessing),
+        new GeoprocessingRunOperation(toolboxes, services.Geoprocessing),
+            new ViewCaptureOperation(resources, services.Views)
         };
 
         if (ArcPyCapabilityState.Settings is { } arcPySettings)

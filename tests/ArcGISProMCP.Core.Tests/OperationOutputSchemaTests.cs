@@ -1,16 +1,15 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using ArcGISProMCP.AddIn.Operations;
+using ArcGISProMCP.Operations;
 using ArcGISProMCP.Core.Operations;
 
 namespace ArcGISProMCP.Core.Tests;
 
 /// <summary>
 /// Output schemas describe OperationResult.data for operations with a stable payload shape.
-/// The add-in cannot run here, so each schema is checked against a hand-written payload that
-/// mirrors the operation's anonymous result object (serialized with default JsonSerializer
-/// options: declared member names, nulls written). Verifying against real ArcGIS Pro results
-/// needs the Phase 4 live-host seam.
+/// Each schema is checked against a hand-written payload that mirrors the operation's result
+/// object (serialized with default JsonSerializer options: declared member names, nulls written).
+/// Operations.Tests also validates results that portable operations produce over fake services.
 /// </summary>
 public sealed class OperationOutputSchemaTests
 {
@@ -19,6 +18,10 @@ public sealed class OperationOutputSchemaTests
     private const string Layer = "\"pro://layer/CIMPATH%3Dmap%2Fparcels.xml\"";
 
     public static TheoryData<string> OperationIds => new(Declared.Keys.Order(StringComparer.Ordinal));
+
+    /// <summary>Operation id to the production output schema object.</summary>
+    internal static IReadOnlyDictionary<string, JsonElement> OutputSchemas =>
+        Declared.ToDictionary(pair => pair.Key, pair => pair.Value.Schema, StringComparer.Ordinal);
 
     private static readonly Dictionary<string, (JsonElement Schema, string Reference, string Sample)> Declared = new(StringComparer.Ordinal)
     {
@@ -133,24 +136,32 @@ public sealed class OperationOutputSchemaTests
         Assert.NotEmpty(OperationArgumentValidator.Validate(JsonSerializer.SerializeToElement(node), schema));
     }
 
-    [Theory]
-    [MemberData(nameof(OperationIds))]
-    public void Descriptor_declares_the_output_schema(string id)
+    [Fact]
+    public void Only_listed_operations_ship_an_output_schema()
     {
-        var (_, reference, _) = Declared[id];
-        var descriptor = OperationSchemaMigrationTests.Descriptor(OperationSchemaMigrationTests.ReadOperationSources(), id);
+        // The descriptor dump is what the add-in's registry published; JsonSchemaBuilderTests
+        // requires each listed schema object to equal its entry.
+        var shipped = OperationSchemaMigrationTests.LoadDescriptorDump()
+            .Where(pair => pair.Value.GetProperty("outputSchema").ValueKind != JsonValueKind.Null)
+            .Select(pair => pair.Key)
+            .Order(StringComparer.Ordinal);
 
-        Assert.Contains($"outputSchema: {reference},", descriptor, StringComparison.Ordinal);
+        Assert.Equal(Declared.Keys.Order(StringComparer.Ordinal), shipped);
     }
 
     [Fact]
-    public void Only_listed_operations_declare_output_schemas()
+    public void Add_in_descriptors_declare_their_output_schema()
     {
-        var declared = OperationSchemaMigrationTests.ReadOperationSources()
-            .SelectMany(source => System.Text.RegularExpressions.Regex.Matches(source, @"outputSchema: (\w+\.\w+),"))
-            .Select(match => match.Groups[1].Value)
-            .Order(StringComparer.Ordinal);
-
-        Assert.Equal(Declared.Values.Select(entry => entry.Reference).Order(StringComparer.Ordinal), declared);
+        // Portable operations are compared with the dump in Operations.Tests; the add-in-only
+        // operations cannot be constructed here, so their source must name the schema object.
+        var sources = OperationSchemaMigrationTests.ReadAddInOperationSources();
+        var checkedIds = 0;
+        foreach (var (id, (_, reference, _)) in Declared)
+        {
+            if (OperationSchemaMigrationTests.FindDescriptor(sources, id) is not { } descriptor) continue;
+            Assert.Contains($"outputSchema: {reference},", descriptor, StringComparison.Ordinal);
+            checkedIds++;
+        }
+        Assert.True(checkedIds > 0);
     }
 }

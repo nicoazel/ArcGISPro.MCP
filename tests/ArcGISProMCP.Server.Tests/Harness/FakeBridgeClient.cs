@@ -7,8 +7,14 @@ namespace ArcGISProMCP.Server.Tests.Harness;
 
 /// <summary>
 /// Scriptable <see cref="IBridgeClient"/>: each bridge method maps to a handler that receives the
-/// serialized (web-cased) parameters. Unscripted methods fail like an absent ArcGIS Pro host.
+/// serialized parameters. Unscripted methods fail like an absent ArcGIS Pro host.
 /// </summary>
+/// <remarks>
+/// Parameters are serialized exactly as <c>NamedPipeBridgeClient</c> puts them on the wire (default
+/// <see cref="JsonSerializer"/> options, no naming policy), so recorded <see cref="Calls"/> are the
+/// real bridge contract: a PascalCase or renamed parameter shows up here as it would reach the host.
+/// Results are written with web defaults, like the host's responses.
+/// </remarks>
 public sealed class FakeBridgeClient : IBridgeClient
 {
     private static readonly JsonSerializerOptions WireOptions = new(JsonSerializerDefaults.Web);
@@ -41,7 +47,7 @@ public sealed class FakeBridgeClient : IBridgeClient
     public Task<JsonElement> CallAsync(string method, object? parameters, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var serialized = JsonSerializer.SerializeToElement(parameters, WireOptions);
+        var serialized = JsonSerializer.SerializeToElement(parameters);
         _calls.Enqueue(new BridgeCall(method, serialized));
         if (!_handlers.TryGetValue(method, out var handler))
             throw new BridgeException("arcgis_unavailable", $"Fake bridge has no response scripted for '{method}'.", true);

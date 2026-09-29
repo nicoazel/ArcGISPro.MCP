@@ -1,0 +1,142 @@
+{
+  "id": "e3-07-edit-then-save",
+  "task": "Record that parcel P-101 now has 3 floors, then save the project.",
+  "scenario": "riverton",
+  "steps": [
+    {
+      "tool": "system_get_state",
+      "arguments": {},
+      "capture": {
+        "revision": "$.workspace.revision"
+      }
+    },
+    {
+      "tool": "approval_request",
+      "arguments": {
+        "operationId": "feature.update",
+        "arguments": {
+          "layer": "Parcels",
+          "target": {
+            "objectId": 1
+          },
+          "attributes": {
+            "FLOORS": 3
+          }
+        },
+        "expectedRevision": "${revision}"
+      },
+      "capture": {
+        "requestId": "$.requestId"
+      },
+      "expectResult": {
+        "$.status": "pending"
+      }
+    },
+    {
+      "approve": "feature.update"
+    },
+    {
+      "tool": "approval_status",
+      "arguments": {
+        "requestId": "${requestId}"
+      },
+      "capture": {
+        "token": "$.confirmationToken"
+      },
+      "expectResult": {
+        "$.status": "approved"
+      }
+    },
+    {
+      "tool": "registry_invoke",
+      "arguments": {
+        "operationId": "feature.update",
+        "arguments": {
+          "layer": "Parcels",
+          "target": {
+            "objectId": 1
+          },
+          "attributes": {
+            "FLOORS": 3
+          }
+        },
+        "expectedRevision": "${revision}",
+        "confirmationToken": "${token}"
+      },
+      "expectResult": {
+        "$.success": true
+      }
+    },
+    {
+      "tool": "system_get_state",
+      "arguments": {},
+      "capture": {
+        "revision": "$.workspace.revision"
+      },
+      "expectResult": {
+        "$.workspace.project.isDirty": true
+      }
+    },
+    {
+      "tool": "registry_describe",
+      "arguments": {
+        "operationId": "project.save"
+      }
+    },
+    {
+      "tool": "approval_request",
+      "arguments": {
+        "operationId": "project.save",
+        "arguments": {},
+        "expectedRevision": "${revision}"
+      },
+      "capture": {
+        "requestId": "$.requestId"
+      },
+      "expectResult": {
+        "$.status": "pending"
+      }
+    },
+    {
+      "approve": "project.save"
+    },
+    {
+      "tool": "approval_status",
+      "arguments": {
+        "requestId": "${requestId}"
+      },
+      "capture": {
+        "token": "$.confirmationToken"
+      },
+      "expectResult": {
+        "$.status": "approved"
+      }
+    },
+    {
+      "tool": "registry_invoke",
+      "arguments": {
+        "operationId": "project.save",
+        "arguments": {},
+        "expectedRevision": "${revision}",
+        "confirmationToken": "${token}"
+      },
+      "expectResult": {
+        "$.success": true
+      }
+    }
+  ],
+  "expect": {
+    "values": [
+      {
+        "layer": "Parcels",
+        "objectId": 1,
+        "field": "FLOORS",
+        "equals": 3
+      }
+    ],
+    "dirty": false,
+    "hostCalls": [
+      "project.save"
+    ]
+  }
+}

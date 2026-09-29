@@ -1,0 +1,6 @@
+// E2 CI subset: searched against the synthetic toolboxes in tests/ArcGISProMCP.Core.Tests/Fixtures/toolboxes; needs no ArcGIS Pro.
+{"id":"gpf-01","group":"fixture","task":"draw zones around features at a set distance","expected":["fixture.BufferZones"]}
+{"id":"gpf-02","group":"fixture","task":"delete the selected rows from a table","expected":["fixture.EraseRows"]}
+{"id":"gpf-03","group":"fixture","task":"how many rows are in this table","expected":["management.GetCount","fixture.CountRecords"]}
+{"id":"gpf-04","group":"fixture","task":"append records into an existing target table","expected":["fixture.AppendRecords"]}
+{"id":"gpf-05","group":"fixture","task":"geocode addresses with an online service","expected":["fixture.GeocodeOnline"]}

@@ -32,7 +32,7 @@ Decisions already taken:
 - **Done** 2.1 Explicit read-only, destructive, idempotent and open-world annotations on every tool, enforced by a test.
 - **Done** 2.2 Typed results with structured content and an output schema on every tool, keeping the text block.
 - **Done** 2.3 `isError: true` on failures with a uniform error envelope (`code`, `message`, `revision`, `retryable`).
-- **Done** 2.4 Per-operation result schemas returned by `registry_describe`, with contract tests. `resultSchema` wraps the operation's `outputSchema`, declared by 15 stable-shape operations; the `gp.*` results stay unconstrained. The schemas are checked against representative payloads; checking them against live ArcGIS Pro results needs the Phase 4 service seam.
+- **Done** 2.4 Per-operation result schemas returned by `registry_describe`, with contract tests. `resultSchema` wraps the operation's `outputSchema`, declared by 15 stable-shape operations; the `gp.*` results stay unconstrained. The schemas are checked against representative payloads and, through the Phase 4 service seam, against fake-service results; checking them against live ArcGIS Pro results remains to be done once live evidence is recorded.
 - **Done** 2.5 MCP resources for project state, operations, skills, workflows and observations.
 - **Done** 2.6 MCP prompts generated from workflows and skills.
 - **Done** 2.7 (replaces the planned elicitation-based approval) `approval_status` can wait (`waitSeconds`, up to 120) for the dockpane decision instead of polling. Elicitation is not used for approval: it would make the client look like an approval authority, and many clients lack it. URL-mode elicitation that points at the dockpane decision remains a possible future addition.
@@ -47,16 +47,16 @@ Decisions already taken:
 
 ## Phase 4: behavioral tests and evaluations
 
-- 4.1 An ArcGIS service seam (geoprocessing, editing, map and layout services) with plain DTOs.
-- 4.2 Replace source-text tests with behavior tests against fakes.
-- 4.3 In-process MCP contract tests and a `tools/list` snapshot. Partly done in Phase 2: `tests/ArcGISProMCP.Server.Tests` runs tools, resources and prompts in process against a fake bridge, with `tools/list`, `resources/list` and `prompts/list` snapshots.
-- 4.4 An agent evaluation suite of 20 to 30 tasks with a scorecard.
-- 4.5 Use or remove the unused test data.
+- **Done** 4.1 An ArcGIS service seam with plain DTOs, by extraction: the Esri-free `ArcGISProMCP.Operations` project holds the operation base, every schema and 21 of the 41 operations (project, map, `layer.list`, view capture, features, geoprocessing, ArcPy) behind project, map, layer, view-capture, feature and geoprocessing services. Layout, symbology, table, metadata and the remaining layer operations stay in the add-in; moving `metadata.*` behind a metadata service is the next candidate.
+- **Partly done** 4.2 Replace source-text tests with behavior tests against fakes. The moved operations are tested through a fake ArcGIS Pro (real descriptors, registry and executor, fake services), and schema and descriptor checks compare against a dump of every descriptor the add-in registers. Source-text tests remain for code that still needs ArcGIS Pro (layout convergence, layer elevation, metadata rollback, ArcPy process handling, catalog wiring) or the WPF panel. Moving `metadata.*` behind an `IMetadataService` was deferred past the next preview: it touches the service record, the fake catalog, the descriptor guard and FakeHost's operation set, and is not needed for release.
+- **Done** 4.3 In-process MCP contract tests: `initialize`, `tools/list`, `resources/list` and `prompts/list` snapshots, the bridge method and parameters of every tool, and success, error and malformed-argument envelopes of every tool validated against its `outputSchema`. End-to-end tests drive an MCP client through the gateway into the add-in's real request handler, registry and executor over fake ArcGIS services (`tests/ArcGISProMCP.Testing`), and `tools/ArcGISProMCP.FakeHost` serves the same runtime over the real named pipe.
+- **Partly done** 4.4 An agent evaluation suite with a scorecard: registry and geoprocessing search suites (30 tasks each, plus held-out sets) run in every `dotnet test` and gate on a measured baseline; scorecards are committed under `evals/results`. Eight golden tool-call trajectories (E3) are replayed against the in-process end-to-end server on every run and graded on schema-valid arguments, approval discipline and task success; four of the eight exercise approval. After an ablation showed that search synonyms moved only the main suites' recall@5, synonyms fitted to single main-suite tasks were removed and the baselines lowered (see `evals/README.md`). The descriptor dump used by the registry suites is still edited by hand when a descriptor changes; a tool to regenerate it from the built add-in is not written yet. A live harness (against ArcGIS Pro or FakeHost) exists but is run by hand; no live-model scorecard is committed yet.
+- **Done** 4.5 The test data is kept and documented (`tests/data/README.md`), with a check that each shapefile set is complete.
 
 ## Phase 5: evidence and release
 
-- 5.1 A live acceptance script that records the commit, ArcGIS Pro version and DLL hashes into committed, reviewable evidence.
-- 5.2 Pin GitHub Actions to commit SHAs, enable Dependabot, and add PSScriptAnalyzer and ruff.
-- 5.3 0.3.0 release notes and checksums.
-- 5.4 An MCP registry listing.
-- 5.5 README additions: comparison with alternatives, architecture diagram, security model, and the evaluation scorecard.
+- **Tooling done, evidence pending** 5.1 A live acceptance script that records the commit, ArcGIS Pro version and DLL hashes into committed, reviewable evidence. `tools/run-acceptance.ps1`, the evidence folder contract and the manifest test are in place; the first committed evidence needs a maintainer run against live ArcGIS Pro.
+- **Done** 5.2 Pin GitHub Actions to commit SHAs, enable Dependabot, and add PSScriptAnalyzer and ruff.
+- 5.3 0.3.0 release notes and checksums. Pending the maintainer's release, after 5.1 evidence.
+- **Draft** 5.4 An MCP registry listing. The gateway packs as an `McpServer` NuGet tool with `server.json` (`tools/pack-gateway.ps1`); publishing needs the maintainer's NuGet and registry accounts and has not happened.
+- **Done** 5.5 README rewrite: comparison with alternative designs, architecture diagram, quick start, security model summary, quality and evaluation scorecard, and the acceptance evidence status.

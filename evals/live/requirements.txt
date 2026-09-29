@@ -1,0 +1,5 @@
+# Live eval harness (Python 3.11). Not installed or run in CI.
+# Use current releases: output_config/effort needs a recent anthropic SDK.
+anthropic>=0.64
+mcp>=1.9
+jsonschema>=4.17

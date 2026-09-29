@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using ArcGISProMCP.AddIn.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.Core.Tests;
 
@@ -9,15 +9,15 @@ namespace ArcGISProMCP.Core.Tests;
 /// Guards the migration of add-in operation input schemas from hand-written JSON strings
 /// (the since-removed <c>JsonSchemas.ObjectSchema</c>) to the typed builder. Fixtures/operation-input-schemas.json
 /// was generated from the original source strings before any call site changed. The migrated
-/// schemas live in src/ArcGISProMCP.AddIn/Operations/Schemas, which depends only on Core and is
-/// compiled into this test assembly, so the exact production schema objects are compared here.
+/// schemas live in src/ArcGISProMCP.Operations/Schemas, which depends only on Core and is
+/// referenced by this test assembly, so the exact production schema objects are compared here.
 /// </summary>
 public sealed class OperationSchemaMigrationTests
 {
     /// <summary>
     /// Operation id to (migrated schema, the member reference its descriptor must use).
     /// </summary>
-    private static readonly Dictionary<string, (JsonElement Schema, string Reference)> Migrated = new(StringComparer.Ordinal)
+    internal static readonly Dictionary<string, (JsonElement Schema, string Reference)> Migrated = new(StringComparer.Ordinal)
     {
         ["arcpy.inspect-script"] = (ArcPyOperationSchemas.InspectScriptInput, "ArcPyOperationSchemas.InspectScriptInput"),
         ["arcpy.run-script"] = (ArcPyOperationSchemas.RunScriptInput, "ArcPyOperationSchemas.RunScriptInput"),
@@ -70,29 +70,27 @@ public sealed class OperationSchemaMigrationTests
     }
 
     [Fact]
-    public void Migrated_descriptors_reference_their_typed_schema()
+    public void Add_in_descriptors_reference_their_typed_schema()
     {
-        var sources = ReadOperationSources();
+        // Portable operations are composed and compared with the shipped descriptors in
+        // Operations.Tests (DescriptorGuardTests). The operations that stay in the add-in cannot be
+        // constructed here, so their descriptor source must name the typed schema object that
+        // JsonSchemaBuilderTests compares with the descriptor dump.
+        var sources = ReadAddInOperationSources();
+        var checkedIds = 0;
         foreach (var (id, (_, reference)) in Migrated)
         {
-            var descriptor = Descriptor(sources, id);
-            Assert.DoesNotContain("JsonSchemas.ObjectSchema(", descriptor, StringComparison.Ordinal);
+            if (FindDescriptor(sources, id) is not { } descriptor) continue;
             Assert.Contains(reference, descriptor, StringComparison.Ordinal);
+            checkedIds++;
         }
+        Assert.True(checkedIds > 0);
     }
 
     [Fact]
     public void Every_captured_schema_is_migrated()
     {
         Assert.Equal(LoadFixture().Keys.Order(StringComparer.Ordinal), Migrated.Keys.Order(StringComparer.Ordinal));
-    }
-
-    [Fact]
-    public void No_operation_declares_a_string_schema()
-    {
-        // The string-based JsonSchemas.ObjectSchema helper was removed once gp.run migrated.
-        foreach (var path in Directory.GetFiles(OperationsDirectory(), "*.cs", SearchOption.AllDirectories))
-            Assert.DoesNotContain("ObjectSchema(", File.ReadAllText(path), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -141,7 +139,19 @@ public sealed class OperationSchemaMigrationTests
         return document.RootElement.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal);
     }
 
-    internal static string Descriptor(IReadOnlyList<string> sources, string id)
+    /// <summary>
+    /// Every descriptor the add-in's registry published, keyed by operation id. Owned by
+    /// Operations.Tests (Fixtures/operation-descriptors.json) and linked into this assembly.
+    /// </summary>
+    internal static Dictionary<string, JsonElement> LoadDescriptorDump()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "operation-descriptors.json");
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        return document.RootElement.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone(), StringComparer.Ordinal);
+    }
+
+    /// <summary>The source of the add-in operation declaring <paramref name="id"/>, or null when it is not an add-in operation.</summary>
+    internal static string? FindDescriptor(IReadOnlyList<string> sources, string id)
     {
         foreach (var source in sources)
         {
@@ -150,19 +160,16 @@ public sealed class OperationSchemaMigrationTests
             var end = source.IndexOf("protected override", match.Index, StringComparison.Ordinal);
             return source[match.Index..end];
         }
-        Assert.Fail($"Descriptor {id} not found.");
-        return string.Empty;
+        return null;
     }
 
-    internal static IReadOnlyList<string> ReadOperationSources() =>
-        Directory.GetFiles(OperationsDirectory(), "*.cs").Select(File.ReadAllText).ToArray();
-
-    internal static string OperationsDirectory()
+    /// <summary>Sources of the operations that stay in the add-in (they reference Esri and cannot be constructed in tests).</summary>
+    internal static IReadOnlyList<string> ReadAddInOperationSources()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
-            var candidate = Path.Combine(directory.FullName, "src", "ArcGISProMCP.AddIn", "Operations");
-            if (Directory.Exists(candidate)) return candidate;
+            var addIn = Path.Combine(directory.FullName, "src", "ArcGISProMCP.AddIn", "Operations");
+            if (Directory.Exists(addIn)) return Directory.GetFiles(addIn, "*.cs").Select(File.ReadAllText).ToArray();
         }
         throw new DirectoryNotFoundException("Could not locate src/ArcGISProMCP.AddIn/Operations from the test output tree.");
     }

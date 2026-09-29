@@ -1,0 +1,116 @@
+{
+  "id": "e3-02-update-attribute",
+  "task": "Parcel P-103 was rezoned. Set its ZONE to C1.",
+  "scenario": "riverton",
+  "steps": [
+    {
+      "tool": "system_get_state",
+      "arguments": {},
+      "capture": {
+        "revision": "$.workspace.revision"
+      }
+    },
+    {
+      "tool": "registry_search",
+      "arguments": {
+        "query": "update feature attributes",
+        "limit": 5
+      }
+    },
+    {
+      "tool": "registry_invoke",
+      "arguments": {
+        "operationId": "feature.query",
+        "arguments": {
+          "layer": "Parcels",
+          "where": "PARCEL_ID = 'P-103'",
+          "fields": [
+            "PARCEL_ID",
+            "ZONE"
+          ]
+        }
+      },
+      "capture": {
+        "objectId": "$.data.rows[0].objectId"
+      }
+    },
+    {
+      "tool": "registry_describe",
+      "arguments": {
+        "operationId": "feature.update"
+      }
+    },
+    {
+      "tool": "approval_request",
+      "arguments": {
+        "operationId": "feature.update",
+        "arguments": {
+          "layer": "Parcels",
+          "target": {
+            "objectId": "${objectId}"
+          },
+          "attributes": {
+            "ZONE": "C1"
+          }
+        },
+        "expectedRevision": "${revision}"
+      },
+      "capture": {
+        "requestId": "$.requestId"
+      },
+      "expectResult": {
+        "$.status": "pending"
+      }
+    },
+    {
+      "approve": "feature.update"
+    },
+    {
+      "tool": "approval_status",
+      "arguments": {
+        "requestId": "${requestId}",
+        "waitSeconds": 10
+      },
+      "capture": {
+        "token": "$.confirmationToken"
+      },
+      "expectResult": {
+        "$.status": "approved"
+      }
+    },
+    {
+      "tool": "registry_invoke",
+      "arguments": {
+        "operationId": "feature.update",
+        "arguments": {
+          "layer": "Parcels",
+          "target": {
+            "objectId": "${objectId}"
+          },
+          "attributes": {
+            "ZONE": "C1"
+          }
+        },
+        "expectedRevision": "${revision}",
+        "confirmationToken": "${token}"
+      },
+      "expectResult": {
+        "$.success": true
+      }
+    }
+  ],
+  "expect": {
+    "values": [
+      {
+        "layer": "Parcels",
+        "objectId": 3,
+        "field": "ZONE",
+        "equals": "C1"
+      }
+    ],
+    "rowCounts": {
+      "Parcels": 8
+    },
+    "dirty": true
+  }
+}

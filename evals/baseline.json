@@ -1,0 +1,10 @@
+{
+  "note": "Measured 2026-09-28 after removing eval-fitted synonyms (see evals/README.md, Search tuning), not aspirational; main-suite values went down on purpose. The eval tests fail when a suite regresses past the tolerance in EvalBaseline. gp-search suites were measured against ArcGIS Pro 3.7.1.1904 system toolboxes (2210 tools). The *-holdout suites were written before tuning and never tuned against. Change a value only in a commit that shows the new scorecard.",
+  "suites": {
+    "registry-search": { "recall@1": 0.6, "recall@5": 0.8667, "mrr": 0.7157, "tasks": 30 },
+    "registry-search-holdout": { "recall@1": 0.8125, "recall@5": 0.9375, "mrr": 0.8646, "tasks": 16 },
+    "gp-search": { "recall@1": 0.6667, "recall@5": 0.9, "mrr": 0.7511, "tasks": 30 },
+    "gp-search-holdout": { "recall@1": 0.6875, "recall@5": 0.875, "mrr": 0.7708, "tasks": 16 },
+    "gp-search-fixture": { "recall@1": 0.8, "recall@5": 1, "mrr": 0.8667, "tasks": 5 }
+  }
+}

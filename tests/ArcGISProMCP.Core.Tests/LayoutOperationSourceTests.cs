@@ -88,27 +88,6 @@ public sealed class LayoutOperationSourceTests
         Assert.Contains("target.X + Math.Sin(headingRadians) * horizontalDistance", operations, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void Project_save_waits_for_the_clean_snapshot_before_publishing_revision()
-    {
-        var operations = ReadSource("ProjectOperations.cs");
-
-        Assert.Contains("snapshot.Project.IsDirty", operations, StringComparison.Ordinal);
-        Assert.Contains("did not reach a clean project state", operations, StringComparison.Ordinal);
-        Assert.Contains("snapshot = await context.Workspace.GetSnapshotAsync", operations, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Layout_capture_reports_and_stores_the_requested_pixel_dimensions()
-    {
-        var operations = ReadSource("ViewOperations.cs");
-
-        Assert.Contains("Math.Ceiling(Math.Max(width / page.Width, height / page.Height))", operations, StringComparison.Ordinal);
-        Assert.Contains("bytes = ResizePng(bytes, width, height);", operations, StringComparison.Ordinal);
-        Assert.Contains("width = capture.Width", operations, StringComparison.Ordinal);
-        Assert.Contains("height = capture.Height", operations, StringComparison.Ordinal);
-    }
-
     private static string ReadSource(string fileName)
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);

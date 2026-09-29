@@ -1,0 +1,128 @@
+{
+  "id": "e3-03-buffer-dry-run-first",
+  "task": "Buffer the roads by 50 feet into memory\\RoadBuffer. Check the run before doing it.",
+  "scenario": "riverton",
+  "steps": [
+    {
+      "tool": "system_get_state",
+      "arguments": {},
+      "capture": {
+        "revision": "$.workspace.revision"
+      }
+    },
+    {
+      "tool": "registry_search",
+      "arguments": {
+        "query": "find a geoprocessing tool",
+        "limit": 5
+      }
+    },
+    {
+      "tool": "registry_invoke",
+      "arguments": {
+        "operationId": "gp.search",
+        "arguments": {
+          "query": "buffer",
+          "limit": 5
+        }
+      },
+      "expectResult": {
+        "$.data.tools[0].tool.executionName": "fixture.BufferZones"
+      }
+    },
+    {
+      "tool": "registry_invoke",
+      "arguments": {
+        "operationId": "gp.describe",
+        "arguments": {
+          "tool": "fixture.BufferZones"
+        }
+      },
+      "expectResult": {
+        "$.data.signature[0]": "in_features"
+      }
+    },
+    {
+      "tool": "registry_invoke",
+      "arguments": {
+        "operationId": "gp.run",
+        "arguments": {
+          "tool": "fixture.BufferZones",
+          "parameters": [
+            "Roads",
+            "memory\\RoadBuffer",
+            "50 Feet"
+          ]
+        },
+        "dryRun": true
+      },
+      "expectResult": {
+        "$.data.valid": true,
+        "$.data.dryRun": true
+      }
+    },
+    {
+      "tool": "approval_request",
+      "arguments": {
+        "operationId": "gp.run",
+        "arguments": {
+          "tool": "fixture.BufferZones",
+          "parameters": [
+            "Roads",
+            "memory\\RoadBuffer",
+            "50 Feet"
+          ]
+        },
+        "expectedRevision": "${revision}"
+      },
+      "capture": {
+        "requestId": "$.requestId"
+      },
+      "expectResult": {
+        "$.status": "pending"
+      }
+    },
+    {
+      "approve": "gp.run"
+    },
+    {
+      "tool": "approval_status",
+      "arguments": {
+        "requestId": "${requestId}"
+      },
+      "capture": {
+        "token": "$.confirmationToken"
+      },
+      "expectResult": {
+        "$.status": "approved"
+      }
+    },
+    {
+      "tool": "registry_invoke",
+      "arguments": {
+        "operationId": "gp.run",
+        "arguments": {
+          "tool": "fixture.BufferZones",
+          "parameters": [
+            "Roads",
+            "memory\\RoadBuffer",
+            "50 Feet"
+          ]
+        },
+        "expectedRevision": "${revision}",
+        "confirmationToken": "${token}"
+      },
+      "expectResult": {
+        "$.success": true
+      }
+    }
+  ],
+  "expect": {
+    "gpTools": [
+      "fixture.BufferZones"
+    ],
+    "layers": [
+      "RoadBuffer"
+    ]
+  }
+}

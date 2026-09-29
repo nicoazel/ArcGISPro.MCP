@@ -39,7 +39,8 @@ Every tool returns the same envelope as `structuredContent`, and the same JSON a
 - `ok: false` always comes with `isError: true` and an `error` (`code`, `message`, `retryable`, `revision`). `retryable` means the same call may succeed later, for example once ArcGIS Pro is running.
 - `registry_invoke` and `workflow_run` keep `result` on failure: the operation or workflow ran (or was refused) and reported `success: false`. `error.code` repeats its `errorCode` and `error.revision` is the workspace revision it reported.
 - Field names are camelCase and null members are written. `risk` and `executionTarget` are numbers: risk `0` ReadOnly, `1` SafeWrite, `2` Destructive, `3` ExternalSideEffect.
-- Exceptions that are not ArcGIS bridge errors are reported by the MCP SDK as a plain error result without an envelope.
+- Tool arguments that do not bind (a missing required argument, or a value of the wrong JSON type) return the envelope with `error.code` `invalid_arguments`, a message naming the argument, and `retryable: false`; nothing reaches ArcGIS Pro. An unknown tool name is a JSON-RPC `invalid params` error, not a tool result.
+- Any other unexpected gateway exception is reported by the MCP SDK as a plain error result without an envelope.
 
 ## Operations
 
@@ -47,7 +48,7 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 
 - **ReadOnly**: runs freely.
 - **SafeWrite**: requires the current workspace revision.
-- **Destructive** and **ExternalSideEffect**: require the current revision *and* a local-review token, unless the host was started in [autonomous mode](security.md).
+- **Destructive** and **ExternalSideEffect**: require the current revision *and* a local-review token, unless the host was started in [autonomous mode](security.md). A token sent to an autonomous host is still validated, and an invalid one fails with `confirmation_required` instead of falling back to the bypass.
 - **SafeWrite + approval**: `project.open`, `project.save` and `feature.update` are SafeWrite but also require a local-review token.
 
 `gp.run` and `arcpy.run-script` execute user code (`executesUserCode: true` in search, browse and describe results). A saved workflow may use them only when its `allowedOperations` lists them explicitly (see [security](security.md)). Allowlist entries are operation ids only; they do not pin an operation version.
@@ -114,7 +115,7 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 | `gp.search` | ReadOnly | Searches installed system toolbox metadata; returns `alias.ToolName` execution names with risk tiers. Never runs a tool. |
 | `gp.describe` | ReadOnly | One tool's parameters (types, required/optional/derived, defaults, coded values, ranges), positional `signature`, environments and risk tier with reasons. |
 | `gp.query` | ReadOnly | Runs one allowlisted read-only system tool (`management.GetCount`, `management.GetRasterProperties`, `management.GetCellValue`) without review; no map outputs, overwrite or history. |
-| `gp.run` | **ExternalSideEffect** | Runs a toolbox-qualified GP tool with bounded positional parameters, explicit environments, and overwrite behavior. Always reviewed; autonomous mode refuses Destructive and UserCode tools. Supports a static dry run. |
+| `gp.run` | **ExternalSideEffect** | Runs a toolbox-qualified GP tool with bounded positional parameters, explicit environments, and overwrite behavior. Always reviewed; autonomous mode refuses Destructive and UserCode tools unless the request carries a local-review token. Supports a static dry run. |
 | `arcpy.inspect-script` | ReadOnly | Size and SHA-256 of a script in the configured root, without running it. *Opt-in.* |
 | `arcpy.run-script` | **ExternalSideEffect** | Runs a hash-pinned script in ArcGIS Pro's Python environment. *Opt-in.* |
 
@@ -132,7 +133,8 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 
 | Variable | Set on | Effect |
 | --- | --- | --- |
-| `ARCGIS_PRO_MCP_HOST_PID` | Gateway | Selects one ArcGIS Pro process when several are running. |
+| `ARCGIS_PRO_MCP_HOST_PID` | Gateway | Selects one discovered host by process id when several are running. It is also the way to select a development FakeHost. |
+| `ARCGIS_PRO_MCP_ALLOW_FAKEHOST` | Gateway | Development only. `true` lets automatic host selection consider FakeHost records, which it otherwise ignores. |
 | `ARCGIS_PRO_MCP_PIPE` | Gateway and Pro | Explicit pipe name override. It must match on both sides. |
 | `ARCGIS_PRO_MCP_AUTONOMOUS_MODE` | Pro, before startup | `true` bypasses panel review for risky operations. Opt-in expert setting, not recommended; see [security](security.md). |
 | `ARCGIS_PRO_MCP_ENABLE_ARCPY` | Pro, before startup | `true` registers the `arcpy.*` operations. |
@@ -142,6 +144,8 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 | `ARCGIS_PRO_MCP_ARCPY_MAX_TIMEOUT_SECONDS` | Pro | Execution time ceiling (default 300). |
 | `ARCGIS_PRO_MCP_ARCPY_MAX_OUTPUT_CHARS` | Pro | Cap on stdout/stderr, applied to each (default 65536). |
 | `ARCGIS_PRO_MCP_ARCPY_MAX_SCRIPT_BYTES` | Pro | Maximum script size (default 1048576). |
+
+Each host publishes a discovery record under `%LOCALAPPDATA%\ArcGISProMCP\hosts` with a `hostKind` of `arcgis-pro` (the add-in; a record without `hostKind` is treated the same) or `fakehost` (`tools/ArcGISProMCP.FakeHost`, whose project name is also prefixed `[FakeHost] `). Without `ARCGIS_PRO_MCP_PIPE` or `ARCGIS_PRO_MCP_HOST_PID`, the gateway selects automatically among `arcgis-pro` records only, so an ordinary client configuration never attaches to a FakeHost; with only FakeHost records present it fails with `arcgis_host_not_found`.
 
 ## Bundled workflows and skills
 
@@ -191,7 +195,7 @@ Codes a client should handle. The message carries the details.
 | `operation_not_found` | describe, invoke | Unknown operation id. Invocations with unknown ids are audited. |
 | `idempotency_conflict` | invoke, workflow run | The `idempotencyKey` was already used with a different operation, arguments or revision in this Pro session. |
 | `dry_run_idempotency_conflict` | invoke | `dryRun` was combined with `idempotencyKey`. Nothing ran and the key was not recorded. |
-| `destructive_tool_requires_review` | `gp.run` result | Autonomous mode refused a Destructive or UserCode geoprocessing tool; it needs local review. |
+| `destructive_tool_requires_review` | `gp.run` result | Autonomous mode refused a Destructive, UserCode or unclassified geoprocessing tool sent without a token. Request local review with `approval_request` and retry with the token. |
 | `tool_not_found`, `tool_not_query_allowed`, `invalid_tool_name` | `gp.describe`, `gp.query` results | Unknown tool, a tool outside the `gp.query` allowlist, or a malformed `alias.ToolName`. |
 | `geoprocessing_failed`, `geoprocessing_cancelled` | `gp.run`, `gp.query` results | ArcGIS Pro reported a failed or cancelled tool run; its messages are in the result. |
 | `request_cancelled` | any bridge call | The caller cancelled the request before it completed. A write may already have been accepted; check state. |
@@ -207,9 +211,10 @@ Codes a client should handle. The message carries the details.
 
 | Script | Use |
 | --- | --- |
-| `tools/verify-release.ps1` | Release build, portable tests, whitespace, and package inspection. Add `-Live` for a real MCP probe. |
-| `tools/package-release.ps1` | Builds the full unsigned preview bundle after running the verification. |
-| `tools/pack-addin.ps1` | Packs the add-in and can install it (`-Install`). |
+| `tools/verify-release.ps1` | Release build, portable tests, whitespace, and package inspection. Add `-Live` for a real MCP probe. PowerShell 7. |
+| `tools/package-release.ps1` | Builds the full unsigned preview bundle after running the verification. `-SkipTests` (used by CI after its test job) builds and packages without re-running the tests. PowerShell 7. |
+| `tools/test-fakehost.ps1` | Starts FakeHost and the gateway and runs a short MCP session, as CI does. No ArcGIS Pro needed. |
+| `tools/pack-addin.ps1` | Packs the add-in and can install it (`-Install`). PowerShell 7. |
 | `tools/test-mcp.ps1` | Live handshake, tool discovery, state, registry search, and skill read. |
 | `tools/run-live-feature-gp-arcpy.ps1` | Live feature, geoprocessing, and ArcPy acceptance driver. |
 | `tools/run-urban-stress.ps1` | Repeats the urban layout workflows as a stress test. |
