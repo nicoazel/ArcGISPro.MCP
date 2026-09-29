@@ -93,9 +93,9 @@ Build: .NET 10 with `TreatWarningsAsErrors`; 0 warnings. Tests (xUnit v3), all p
 | `ArcGISProMCP.Core.Tests` | 432 | Executor policy, approvals, schemas, search, toolbox catalog and risk tiers, workflows, audit, acceptance manifests |
 | `ArcGISProMCP.Operations.Tests` | 130 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
 | `ArcGISProMCP.Server.Tests` | 123 | MCP contract snapshots, envelopes against output schemas, end-to-end runs through the real bridge handler, E3 trajectories |
-| `ArcGISProMCP.Bridge.Tests` | 54 | Pipe framing, discovery, host scheduling and the request handler |
+| `ArcGISProMCP.Bridge.Tests` | 67 | Pipe framing, discovery, host scheduling and the request handler |
 | `ArcGISProMCP.Evals.Tests` | 19 | Retrieval suites gated on a measured baseline, scorecard writing, descriptor dump checks |
-| **Total** | **758** | |
+| **Total** | **771** | |
 
 Eval scorecard ([evals/README.md](evals/README.md); gp suites measured against ArcGIS Pro 3.7.1, 2,210 system tools):
 

@@ -38,6 +38,7 @@ All notable changes to this project are documented here. The format is based on 
 - `tools/ArcGISProMCP.FakeHost` development and eval host that serves a scenario project over the real named pipe with a discovery record (interactive y/n approvals; `--auto-approve` for eval runs only; `--autonomous`, `--toolboxes`), plus the `tools/test-fakehost.ps1` smoke test. Not shipped.
 - E3 golden trajectories (`evals/trajectories`, 8 tasks, 4 of which exercise approval) replayed against the end-to-end server and graded on `schemaValidArgs`, `approvalDiscipline` (null for a trajectory with no gated invoke; one approval covers one invoke; gated invokes must carry `expectedRevision`) and `taskSuccess`; [evals/README.md](evals/README.md) explains how to run live evals against FakeHost.
 - `tests/data/README.md` documents the provenance, coordinate system and use of the test data; a Core test checks that each shapefile set is complete.
+- `-SkipTests` for `tools/verify-release.ps1` and `tools/package-release.ps1` (CI packages without re-running tests). `pack-addin.ps1`, `verify-release.ps1` and `package-release.ps1` declare `#Requires -Version 7.0`.
 
 ### Changed
 
@@ -64,6 +65,8 @@ All notable changes to this project are documented here. The format is based on 
 - `feature.query` and `feature.select` read a light layer schema (`IFeatureService.Schema`) instead of the full description, so they no longer evaluate editability before a read. Results are unchanged.
 - `tools/package-release.ps1` fails if development-only hosts (FakeHost) or test support (`ArcGISProMCP.Testing`, scenario files) reach the release archive.
 - CI: GitHub Actions are pinned to commit SHAs; the workflow is split into build-test, package and lint jobs with read-only permissions; test projects are discovered instead of listed, so new test projects run without editing the workflow; Dependabot updates NuGet packages and Actions weekly; PSScriptAnalyzer and ruff lint the `tools/` scripts.
+- `tools/run-acceptance.ps1` rejects an explicit `-PipeName` that is not a live ArcGIS Pro discovery record, reports ambiguous cached add-in DLLs, and records `-VisuallyInspected` in `manifest.json` (`visuallyInspected[]`).
+- CI: pushes run only for `main` and `v*` tags; the concurrency group uses the PR number; build-test runs the FakeHost smoke test; the package job no longer re-runs the tests; PSScriptAnalyzer is clean across `tools/`; ruff also lints `evals/`.
 
 ### Fixed
 
@@ -77,6 +80,7 @@ All notable changes to this project are documented here. The format is based on 
 - A failed audit log rotation (for example while another Pro process holds `operations.jsonl`) no longer drops the audit record; rotation is skipped and the record is appended. The log is appended through a handle that shares read, write and delete access with other processes, and rotation happens only once the file exceeds 16 MiB, as documented.
 - A request cancelled by ArcGIS Pro shutting down now fails with the retryable code `host_stopping` instead of the generic `bridge_request_failed`. `docs/security.md` states that keyed requests cannot be cancelled by callers once started.
 - Idempotent registry and workflow requests run under the host lifetime rather than the first caller's cancellation token, so cancelling one caller no longer cancels work another caller with the same key is waiting on.
+- FakeHost `--help` gave the wrong default pipe name (it is `ArcGISProMCP.v1.<pid>`).
 
 ### Security
 
@@ -88,6 +92,7 @@ All notable changes to this project are documented here. The format is based on 
 - User `.atbx` toolboxes are read as untrusted archives: each metadata entry is bounded to 16 MiB of decompressed bytes whatever size it declares, an archive may hold at most 10,000 entries and 64 MiB of metadata, and script (`.py`) entries are only checked for presence, never read. An archive over a limit is reported as unreadable.
 - Approvals stay in the ArcGIS Pro dockpane: MCP elicitation is intentionally not used, so the client UI cannot become the approval authority. `approval_status` `waitSeconds` only waits for the dockpane decision.
 - A dockpane button click (for example **Open project**) can no longer approve an identical request that an MCP client queued for review. The panel's self-approval always creates its own approval entry (`IApprovalService.Request(..., reuseExisting: false)`), and the transient entry no longer flashes in the approval cards.
+- The gateway never selects a development FakeHost automatically. Discovery records carry `hostKind` (`arcgis-pro` | `fakehost`; missing means `arcgis-pro`), and FakeHost records are used only when selected with `ARCGIS_PRO_MCP_HOST_PID`/`ARCGIS_PRO_MCP_PIPE` or the development opt-in `ARCGIS_PRO_MCP_ALLOW_FAKEHOST=true`. FakeHost prefixes its project name with `[FakeHost] ` and warns when ArcGIS Pro is running.
 
 ### Removed
 
