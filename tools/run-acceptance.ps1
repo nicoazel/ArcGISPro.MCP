@@ -514,7 +514,7 @@ try {
     else {
         $null = Invoke-Step 'verify' {
             Invoke-ChildScript -Name 'verify' -ScriptName 'verify-release.ps1' -ArgumentTokens @() -LogDirectory $logDirectory
-            @{ detail = 'Release build, Core/Bridge/Server tests, diff check and package contents passed'; evidence = @('logs/verify.stdout.log') }
+            @{ detail = 'Release build, every tests/*.Tests project, diff check and package contents passed'; evidence = @('logs/verify.stdout.log') }
         }
     }
 
@@ -709,7 +709,7 @@ function ConvertTo-SummaryMarkdown {
     $null = $lines.Add('')
     $null = $lines.Add('## Portable-tested')
     $null = $lines.Add('')
-    $null = $lines.Add("- verify ($(Get-StepStatus 'verify')): Release build, Core/Bridge/Server tests, package contents.")
+    $null = $lines.Add("- verify ($(Get-StepStatus 'verify')): Release build, every tests/*.Tests project, package contents.")
     $null = $lines.Add('')
     $null = $lines.Add('## Live-tested')
     $null = $lines.Add('')
