@@ -96,8 +96,9 @@ retrieval suites and filled in by the E3 trajectory tests and the live harness.
 dotnet test tests/ArcGISProMCP.Evals.Tests --filter "Category=eval"
 ```
 
-A suite fails when its recall@5 drops more than 0.05 below `baseline.json`, or when its task count
-no longer matches the baseline. Per-task results, including every failing task and its top 5, are in
+A suite fails when any task that met recall@5 at the baseline no longer does (recall@5 may not fall
+by even one task: the floor is `baseline - 0.5 / tasks`), when its MRR drops more than 0.05 below
+`baseline.json`, or when its task count no longer matches the baseline. Per-task results, including every failing task and its top 5, are in
 the test output.
 
 To write a scorecard for the current commit:
