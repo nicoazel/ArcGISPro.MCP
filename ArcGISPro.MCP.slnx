@@ -5,6 +5,7 @@
   <Folder Name="/src/">
     <Project Path="src/ArcGISProMCP.Core/ArcGISProMCP.Core.csproj" />
     <Project Path="src/ArcGISProMCP.Bridge/ArcGISProMCP.Bridge.csproj" />
+    <Project Path="src/ArcGISProMCP.Operations/ArcGISProMCP.Operations.csproj" />
     <Project Path="src/ArcGISProMCP.Server/ArcGISProMCP.Server.csproj" />
     <Project Path="src/ArcGISProMCP.AddIn/ArcGISProMCP.AddIn.csproj" />
   </Folder>
@@ -12,6 +13,7 @@
     <Project Path="tests/ArcGISProMCP.Core.Tests/ArcGISProMCP.Core.Tests.csproj" />
     <Project Path="tests/ArcGISProMCP.Bridge.Tests/ArcGISProMCP.Bridge.Tests.csproj" />
     <Project Path="tests/ArcGISProMCP.Evals.Tests/ArcGISProMCP.Evals.Tests.csproj" />
+    <Project Path="tests/ArcGISProMCP.Operations.Tests/ArcGISProMCP.Operations.Tests.csproj" />
     <Project Path="tests/ArcGISProMCP.Server.Tests/ArcGISProMCP.Server.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">

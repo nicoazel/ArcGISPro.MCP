@@ -4,66 +4,11 @@ using ArcGIS.Core.CIM;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Mapping;
 using ArcGISProMCP.AddIn.ArcGIS;
+using ArcGISProMCP.AddIn.ArcGIS.Services;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
-
-internal sealed class LayerListOperation() : ProOperationBase(OperationDescriptor.Create(
-    "layer.list", "List layers",
-    "Lists the flattened layer tree for a map with stable handles and appearance state.",
-    LayerOperationSchemas.ListInput,
-    outputSchema: LayerOperationSchemas.ListOutput,
-    capabilities: ["maps"], tags: ["layer", "map", "browse"], aliases: ["table of contents", "toc"],
-    related: ["layer.add", "layer.set-appearance", "layer.set-elevation", "symbology.set-simple"]))
-{
-    protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
-    {
-        var mapReference = OptionalString(arguments, "map");
-        var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
-        {
-            var map = ProHandles.ResolveMap(mapReference);
-            return new
-            {
-                map = ProHandles.ForMap(map),
-                layers = map.GetLayersAsFlattenedList().Select((layer, index) => new
-                {
-                    id = ProHandles.ForLayer(layer),
-                    layer.Name,
-                    type = layer.GetType().Name,
-                    layer.IsVisible,
-                    layer.Transparency,
-                    drawingOrder = index,
-                    isFeatureLayer = layer is FeatureLayer,
-                    elevation = layer is FeatureLayer featureLayer ? DescribeElevation(featureLayer) : null
-                }).ToArray()
-            };
-        }, cancellationToken).ConfigureAwait(false);
-        var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
-        return OperationResult.Ok(Json(data), snapshot.Revision);
-    }
-
-    private static object DescribeElevation(FeatureLayer layer)
-    {
-        var definition = layer.GetElevationTypeDefinition();
-        return new
-        {
-            mode = ToMode(definition.ElevationType),
-            offset = definition.CartographicOffset,
-            verticalExaggeration = definition.VerticalExaggeration
-        };
-    }
-
-    internal static string ToMode(LayerElevationType type) => type switch
-    {
-        LayerElevationType.OnGround => "on-ground",
-        LayerElevationType.RelativeToGround => "relative-to-ground",
-        LayerElevationType.RelativeToScene => "relative-to-scene",
-        LayerElevationType.AtAbsoluteHeight => "absolute-height",
-        LayerElevationType.OnCustomSurface => "on-custom-surface",
-        LayerElevationType.RelativeToCustomSurface => "relative-to-custom-surface",
-        _ => "none"
-    };
-}
 
 internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor.Create(
     "layer.add", "Add layer",
@@ -175,7 +120,7 @@ internal sealed class LayerSetElevationOperation() : ProOperationBase(OperationD
             if (hasOffset) definition.CartographicOffset = offset;
             if (hasVerticalExaggeration) definition.VerticalExaggeration = verticalExaggeration;
             if (!layer.CanSetElevationTypeDefinition(definition))
-                throw new InvalidOperationException($"Layer '{layer.Name}' cannot use elevation mode '{LayerListOperation.ToMode(mode)}'.");
+                throw new InvalidOperationException($"Layer '{layer.Name}' cannot use elevation mode '{ProLayerService.ToMode(mode)}'.");
             layer.SetElevationTypeDefinition(definition);
             var actual = layer.GetElevationTypeDefinition();
             if (actual.ElevationType != mode)
@@ -185,7 +130,7 @@ internal sealed class LayerSetElevationOperation() : ProOperationBase(OperationD
                 id = ProHandles.ForLayer(layer),
                 layer.Name,
                 map = ProHandles.ForMap(map),
-                mode = LayerListOperation.ToMode(actual.ElevationType),
+                mode = ProLayerService.ToMode(actual.ElevationType),
                 offset = actual.CartographicOffset,
                 verticalExaggeration = actual.VerticalExaggeration
             };
@@ -205,7 +150,7 @@ internal sealed class BasemapSetOperation() : ProOperationBase(OperationDescript
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
         var mapReference = OptionalString(arguments, "map");
-        var basemap = MapEnsureOperation.ParseBasemap(RequiredString(arguments, "basemap"));
+        var basemap = ProMapService.ParseBasemap(RequiredString(arguments, "basemap"));
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
             var map = ProHandles.ResolveMap(mapReference);

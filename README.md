@@ -42,6 +42,7 @@ Requires Windows, a licensed ArcGIS Pro 3.7.1 installation, and .NET SDK 10. Thi
 ```powershell
 dotnet build ArcGISPro.MCP.slnx -c Debug
 dotnet test tests/ArcGISProMCP.Core.Tests
+dotnet test tests/ArcGISProMCP.Operations.Tests
 dotnet test tests/ArcGISProMCP.Bridge.Tests
 dotnet test tests/ArcGISProMCP.Server.Tests
 ./tools/pack-addin.ps1 -Configuration Debug -Install

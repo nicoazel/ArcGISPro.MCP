@@ -19,7 +19,7 @@ try {
     $package = Join-Path $repoRoot 'artifacts/ArcGISProMCP.AddIn.esriAddinX'
     $zip = [IO.Compression.ZipFile]::OpenRead($package)
     try {
-        $expected = @('Config.daml', 'Install/ArcGISProMCP.AddIn.dll', 'Install/ArcGISProMCP.Core.dll', 'Install/ArcGISProMCP.Bridge.dll')
+        $expected = @('Config.daml', 'Install/ArcGISProMCP.AddIn.dll', 'Install/ArcGISProMCP.Core.dll', 'Install/ArcGISProMCP.Bridge.dll', 'Install/ArcGISProMCP.Operations.dll')
         $actual = @($zip.Entries.FullName | ForEach-Object { $_.Replace('\','/') })
         if (@(Compare-Object $expected $actual).Count -ne 0) { throw 'Unexpected add-in package contents.' }
     }

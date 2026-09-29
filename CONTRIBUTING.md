@@ -13,6 +13,7 @@ Thanks for your interest. ArcGIS Pro MCP Studio is a development preview maintai
 ```powershell
 dotnet build ArcGISPro.MCP.slnx -c Release
 dotnet test tests/ArcGISProMCP.Core.Tests -c Release
+dotnet test tests/ArcGISProMCP.Operations.Tests -c Release
 dotnet test tests/ArcGISProMCP.Bridge.Tests -c Release
 dotnet test tests/ArcGISProMCP.Server.Tests -c Release
 ```

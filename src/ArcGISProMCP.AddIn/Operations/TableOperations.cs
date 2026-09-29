@@ -4,6 +4,7 @@ using ArcGIS.Core.Data;
 using ArcGIS.Desktop.Mapping;
 using ArcGISProMCP.AddIn.ArcGIS;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.Operations;
 
@@ -157,17 +158,5 @@ internal sealed class TableStatisticsOperation() : ProOperationBase(OperationDes
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
-    }
-}
-
-internal static class QuerySafety
-{
-    private static readonly string[] ForbiddenTokens = [";", "--", "/*", "*/"];
-
-    public static void ValidateWhereClause(string where)
-    {
-        if (where.Length > 4096) throw new ArgumentException("where clause exceeds 4096 characters.", nameof(where));
-        if (ForbiddenTokens.Any(token => where.Contains(token, StringComparison.Ordinal)))
-            throw new ArgumentException("where clause contains a forbidden statement or comment token.", nameof(where));
     }
 }
