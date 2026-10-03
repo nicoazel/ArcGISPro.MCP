@@ -1,0 +1,35 @@
+{
+  "generator": "tools/create-synthetic-test-data.py",
+  "seed": 2272,
+  "layer": "Polygon_MixedMultiPart_Parcels",
+  "matched": 970,
+  "area_gross": 349.0941,
+  "pop": 7501,
+  "du": 3887,
+  "emp": 6004,
+  "counts": {
+    "Polygon_MixedMultiPart_Parcels": 970,
+    "Polyline_MultipartMix_Streets": 173,
+    "Polygons_Single_Buildings": 547,
+    "Point_Multi_Mixed": 2,
+    "Boundary_Multipart_Polygon": 1,
+    "ProposedBuildings": 9,
+    "ProposedMassing": 9,
+    "DesignSites": 1
+  },
+  "multipart": {
+    "Polygon_MixedMultiPart_Parcels": 10,
+    "Polyline_MultipartMix_Streets": 3,
+    "Polygons_Single_Buildings": 0
+  },
+  "land_use_1": {
+    "civic_facilities": 49,
+    "multifamily": 106,
+    "office": 44,
+    "parks_recreation": 2,
+    "retail_commercial": 66,
+    "single_family": 560,
+    "townhome": 129,
+    "vacant": 14
+  }
+}

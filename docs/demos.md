@@ -14,7 +14,7 @@ The standalone showcase is [`workflows/pittsburgh-block-mixed-use-showcase.workf
 
 ## Fixture data
 
-`tools/create-urban-massing-fixture.py` generates the synthetic urban massing data used by the stress workflows (`tools/run-urban-stress.ps1`). The committed test data and its provenance are described in [tests/data/README.md](../tests/data/README.md).
+Everything under `tests/data` is synthetic: `tools/create-synthetic-test-data.py` (ArcGIS Pro Python, fixed seed) generates the street grid, parcels, buildings, boundary, proposal footprints and the `DesignSites` editing fixture, runs `tools/create-urban-massing-fixture.py` to derive the proposal massing, and writes the parcel totals the stress workflows (`tools/run-urban-stress.ps1`) check to `tests/data/expected-statistics.json`. The data, its layout and how to regenerate it are described in [tests/data/README.md](../tests/data/README.md).
 
 ## Live probes
 

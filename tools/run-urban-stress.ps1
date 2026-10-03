@@ -43,11 +43,16 @@ if (-not (Test-Path -LiteralPath $proposalGeodatabase -PathType Container) -or
     @((Get-ChildItem -LiteralPath $proposalGeodatabase -Filter '*.gdbtable' -File -ErrorAction SilentlyContinue)).Count -eq 0) {
     throw "Standalone proposal geodatabase is missing or incomplete: $proposalGeodatabase"
 }
+# Written by tools/create-synthetic-test-data.py alongside the fixture it describes.
+$expectedStatisticsPath = Join-Path $repoRoot 'tests\data\expected-statistics.json'
+$expectedStatistics = Get-Content -LiteralPath $expectedStatisticsPath -Raw | ConvertFrom-Json
+$expectedMatched = [int]$expectedStatistics.matched
+if ($expectedMatched -le 0) { throw "Expected statistics have no matched parcel count: $expectedStatisticsPath" }
 $commonStats = @{
-    'stats-area'       = @{ matched = 1019; sum = 211.80126265300203 }
-    'stats-population' = @{ matched = 1019; sum = 2977.0 }
-    'stats-dwellings'  = @{ matched = 1019; sum = 1760.0 }
-    'stats-employment' = @{ matched = 1019; sum = 4716.0 }
+    'stats-area'       = @{ matched = $expectedMatched; sum = [double]$expectedStatistics.area_gross }
+    'stats-population' = @{ matched = $expectedMatched; sum = [double]$expectedStatistics.pop }
+    'stats-dwellings'  = @{ matched = $expectedMatched; sum = [double]$expectedStatistics.du }
+    'stats-employment' = @{ matched = $expectedMatched; sum = [double]$expectedStatistics.emp }
 }
 
 $cases = @(
