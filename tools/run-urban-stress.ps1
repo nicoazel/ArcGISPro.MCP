@@ -45,20 +45,35 @@ if (-not (Test-Path -LiteralPath $proposalGeodatabase -PathType Container) -or
 }
 
 # ArcGIS Pro locks data it has open (*.sr.lock next to shapefiles, *.lock inside the geodatabase).
-# Run against a stable, git-ignored copy so a live session never leaves locks in tests\data.
-$fixtureCopyRoot = Join-Path $repoRoot 'artifacts\urban-stress\fixtures'
-if (-not (Test-Path -LiteralPath (Join-Path $fixtureCopyRoot 'MasterPlan.gdb') -PathType Container)) {
-    $null = New-Item -ItemType Directory -Path $fixtureCopyRoot -Force
-    Copy-Item -LiteralPath $fixtureRoot -Destination (Join-Path $fixtureCopyRoot 'SHP') -Recurse -Force
-    Copy-Item -LiteralPath $proposalGeodatabase -Destination (Join-Path $fixtureCopyRoot 'MasterPlan.gdb') -Recurse -Force
+# Run against a git-ignored copy so a live session never leaves locks in tests\data. The copy is
+# keyed by the SHA-256 of tests\data\expected-statistics.json, which the generator rewrites with
+# every data version: a complete copy with a matching key is reused (a stable path, so layer.add
+# does not repair data sources on every run), and a data change gets a fresh folder, never stale data.
+$expectedStatisticsPath = Join-Path $repoRoot 'tests\data\expected-statistics.json'
+$fixtureKey = (Get-FileHash -LiteralPath $expectedStatisticsPath -Algorithm SHA256).Hash.Substring(0, 12).ToLowerInvariant()
+$fixtureCopyRoot = Join-Path $repoRoot "artifacts\urban-stress\fixtures\$fixtureKey"
+$fixtureCopyMarker = Join-Path $fixtureCopyRoot '.complete'
+if (-not (Test-Path -LiteralPath $fixtureCopyMarker -PathType Leaf)) {
+    if (Test-Path -LiteralPath $fixtureCopyRoot) {
+        # An interrupted copy: start over rather than run against a partial fixture.
+        Remove-Item -LiteralPath $fixtureCopyRoot -Recurse -Force
+    }
+    $shpCopy = Join-Path $fixtureCopyRoot 'SHP'
+    $gdbCopy = Join-Path $fixtureCopyRoot 'MasterPlan.gdb'
+    $null = New-Item -ItemType Directory -Path $shpCopy -Force
+    $null = New-Item -ItemType Directory -Path $gdbCopy -Force
+    # Copy the folder contents into the new folders, so the copy is never nested (SHP\SHP).
+    Copy-Item -Path (Join-Path $fixtureRoot '*') -Destination $shpCopy -Recurse -Force
+    Copy-Item -Path (Join-Path $proposalGeodatabase '*') -Destination $gdbCopy -Recurse -Force
     Get-ChildItem -LiteralPath $fixtureCopyRoot -Recurse -File -Filter '*.lock' | Remove-Item -Force
+    Set-Content -LiteralPath $fixtureCopyMarker -Value $fixtureKey -Encoding ASCII
 }
+Write-Verbose "Urban fixture copy: $fixtureCopyRoot"
 $fixtureRoot = Join-Path $fixtureCopyRoot 'SHP'
 $proposalGeodatabase = Join-Path $fixtureCopyRoot 'MasterPlan.gdb'
 $proposal = Join-Path $proposalGeodatabase 'ProposedBuildings'
 $massing = Join-Path $proposalGeodatabase 'ProposedMassing'
 # Written by tools/create-synthetic-test-data.py alongside the fixture it describes.
-$expectedStatisticsPath = Join-Path $repoRoot 'tests\data\expected-statistics.json'
 $expectedStatistics = Get-Content -LiteralPath $expectedStatisticsPath -Raw | ConvertFrom-Json
 $expectedMatched = [int]$expectedStatistics.matched
 if ($expectedMatched -le 0) { throw "Expected statistics have no matched parcel count: $expectedStatisticsPath" }
