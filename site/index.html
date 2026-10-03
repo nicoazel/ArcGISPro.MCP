@@ -14,8 +14,11 @@
 <meta property="og:title" content="ArcGIS Pro MCP Studio">
 <meta property="og:description" content="Let an MCP client work inside the ArcGIS Pro session you already have open: 41 typed operations, revision-checked writes, approvals a person gives in a Pro dockpane, and an audit log.">
 <meta property="og:url" content="https://nicoazel.github.io/ArcGISPro.MCP/">
-<!-- OG-IMAGE: once img/layout-tod.png is a live capture, restore og:image (https://nicoazel.github.io/ArcGISPro.MCP/img/layout-tod.png, 1200 x 776, with og:image:alt) and set twitter:card to summary_large_image. -->
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://nicoazel.github.io/ArcGISPro.MCP/img/layout-tod.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="776">
+<meta property="og:image:alt" content="An ArcGIS Pro layout produced by the transit-oriented corridor workflow on synthetic test data, captured in a live ArcGIS Pro 3.7.1 session.">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -244,8 +247,8 @@
         <p><code>gp.run</code> can execute arbitrary Python through Python toolboxes, script tools and expressions, with your GIS authority. Read <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/security.md">security and limits</a> before connecting a client you do not fully trust.</p>
       </div>
       <figure class="figure card-figure">
-        <img src="img/approval-card.png" width="720" height="900" alt="Placeholder illustration of an approval card in the MCP Studio dockpane, with the operation id, its arguments and the Approve and Deny buttons. A screenshot from a live ArcGIS Pro session will replace it.">
-        <figcaption>Placeholder illustration of an approval card in the MCP Studio dockpane; a live screenshot will replace it. The person reviewing sees the operation and its exact arguments.</figcaption>
+        <img src="img/approval-card.png" width="501" height="390" alt="The ArcGIS MCP dockpane in a live ArcGIS Pro session showing an approval card for arcpy.run-script, version 1.0.0, risk High, with the warning that the request runs a Python script in the ArcGIS Pro Python environment with your ArcGIS Pro permissions, the workspace revision it is bound to, and a link to review the full arguments.">
+        <figcaption>An approval card for <code>arcpy.run-script</code> in the dockpane during the live operation matrix. The card names the operation, its risk and the revision it is bound to, shows a "Runs user code" warning, and links to the full arguments.</figcaption>
       </figure>
     </div>
   </div>
@@ -255,7 +258,7 @@
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Quality</p>
-      <h2 id="quality-title">922 tests, measured search, pinned CI</h2>
+      <h2 id="quality-title">945 tests, measured search, pinned CI</h2>
       <p>Build: .NET 10 with <code>TreatWarningsAsErrors</code> and 0 warnings. Tests use xUnit v3; the portable tests do not need ArcGIS Pro.</p>
     </div>
     <div class="split">
@@ -264,12 +267,12 @@
           <thead><tr><th scope="col">Test project</th><th scope="col" class="num">Tests</th></tr></thead>
           <tbody>
             <tr><td><code>Core.Tests</code><br><span class="note">Executor policy, approvals, schemas, search, risk tiers, workflows, audit</span></td><td class="num">490</td></tr>
-            <tr><td><code>Operations.Tests</code><br><span class="note">Operation behaviour over fake ArcGIS services</span></td><td class="num">223</td></tr>
+            <tr><td><code>Operations.Tests</code><br><span class="note">Operation behaviour over fake ArcGIS services</span></td><td class="num">246</td></tr>
             <tr><td><code>Server.Tests</code><br><span class="note">MCP contract snapshots, end-to-end runs, trajectories</span></td><td class="num">123</td></tr>
             <tr><td><code>Bridge.Tests</code><br><span class="note">Pipe framing, discovery, host scheduling</span></td><td class="num">67</td></tr>
             <tr><td><code>Evals.Tests</code><br><span class="note">Retrieval suites gated on a measured baseline</span></td><td class="num">19</td></tr>
           </tbody>
-          <tfoot><tr><td>Total</td><td class="num">922</td></tr></tfoot>
+          <tfoot><tr><td>Total</td><td class="num">945</td></tr></tfoot>
         </table>
       </div>
       <div class="prose">
@@ -296,33 +299,32 @@
     <div class="section-head">
       <p class="eyebrow">Live evidence</p>
       <h2 id="evidence-title">Recorded on a real ArcGIS Pro 3.7.1 session</h2>
-      <!-- LIVE-RESULTS: after the live session, move the operation matrix item from "Not covered" to "Covered" with its result (operations covered, cases passed, cards approved/denied) from docs/acceptance/<date>-<sha7>/operations/summary.json. -->
-      <!-- EVIDENCE: when the new evidence run is committed, point these links at docs/acceptance/<date>-<sha7>/ and update the scope lists below to match its summary.md. -->
-      <p><code>tools/run-acceptance.ps1</code> records the commit, the ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into a dated folder under <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance">docs/acceptance</a>, and a test validates every committed folder against the evidence contract. The latest committed run covers the three bundled urban workflows on synthetic test data.</p>
-      <p class="note">The three images below are placeholders, not captures from that run. Layout captures from the live session will replace them.</p>
+      <p><code>tools/run-acceptance.ps1</code> records the commit, the ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into a dated folder under <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance">docs/acceptance</a>, and a test validates every committed folder against the evidence contract. The latest committed run, <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance/2026-10-03-e7deee2">docs/acceptance/2026-10-03-e7deee2</a> (version 0.3.0 at commit e7deee2, ArcGIS Pro 3.7.1.1904), covers the three bundled urban workflows and the full operation matrix on synthetic test data in default mode. The layouts below are its captures.</p>
+      <p class="note">The approval cards in that run were decided by Claude, operating the dockpane through computer use at the maintainer's direction, not clicked by the maintainer. The run shows that a card gates each risky call and that approve and deny behave as specified; it does not test a human reviewer's judgement. During the final <code>project.open</code> card, ArcGIS Pro's modal "Save all edits?" prompt appeared because feature edits were pending, and was answered the same way; that hang is fixed after the evidence commit (<code>project.open</code> now refuses with <code>pending_edits</code>).</p>
     </div>
     <div class="gallery">
       <figure>
-        <a href="img/layout-tod.png"><img src="img/layout-tod.png" width="1200" height="776" loading="lazy" alt="Placeholder for the layout from the transit-oriented corridor workflow, to be replaced by a live capture: land-use categories, development program, transit network and existing fabric."></a>
-        <figcaption>Transit-oriented corridor (placeholder)</figcaption>
+        <a href="img/layout-tod.png"><img src="img/layout-tod.png" width="1200" height="776" loading="lazy" alt="Layout URBAN TEST 01 from the transit-oriented corridor workflow, captured live: land-use categories, a labelled development program, the transit network and existing-fabric frames, with a legend and scale bar."></a>
+        <figcaption>Transit-oriented corridor</figcaption>
       </figure>
       <figure>
-        <a href="img/layout-green.png"><img src="img/layout-green.png" width="1200" height="776" loading="lazy" alt="Placeholder for the layout from the green loop workflow, to be replaced by a live capture: green infrastructure sites, loop corridors and neighborhood nodes."></a>
-        <figcaption>Green loop (placeholder)</figcaption>
+        <a href="img/layout-green.png"><img src="img/layout-green.png" width="900" height="582" loading="lazy" alt="Layout URBAN TEST 02 from the green loop workflow, captured live: green infrastructure sites, loop corridors, the development interface and neighborhood nodes."></a>
+        <figcaption>Green loop</figcaption>
       </figure>
       <figure>
-        <a href="img/layout-mixed.png"><img src="img/layout-mixed.png" width="1200" height="776" loading="lazy" alt="Placeholder for the layout from the mixed-use massing workflow, to be replaced by a live capture: 3D building massing over the public realm with mixed-use categories."></a>
-        <figcaption>Mixed-use massing, 3D scene (placeholder)</figcaption>
+        <a href="img/layout-mixed.png"><img src="img/layout-mixed.png" width="1200" height="776" loading="lazy" alt="Layout URBAN TEST 03 from the mixed-use massing workflow, captured live: 3D building massing extruded over the public realm with mixed-use categories in a scene frame."></a>
+        <figcaption>Mixed-use massing, 3D scene</figcaption>
       </figure>
     </div>
     <div class="scope">
       <div>
         <h3>Covered by the latest committed run</h3>
         <ul class="list">
-          <li>Release build and every test project</li>
-          <li>Loaded add-in DLLs match the package</li>
-          <li>Host probe and MCP smoke test</li>
-          <li>Three bundled workflows, three runs each, layouts inspected</li>
+          <li>Release build, every test project and the package contents</li>
+          <li>The four loaded add-in DLLs match the package</li>
+          <li>Host probe (41 operations) and the MCP smoke test (16 tools)</li>
+          <li>Three bundled workflows, three runs each, layouts inspected (cosmetic legend and scale-bar overlaps recorded)</li>
+          <li>The live operation matrix: 41 of 41 operations, 90 of 90 cases passed (58 happy paths, 32 negative cases), eight dockpane approval cards with 7 approved and 1 denied</li>
           <li>Default mode, no autonomous bypass</li>
         </ul>
       </div>
@@ -330,8 +332,8 @@
         <h3>Not covered</h3>
         <ul class="list">
           <li>Autonomous mode</li>
-          <li>The feature, geoprocessing and ArcPy section</li>
-          <li>The live operation matrix: all 41 operations, with negative cases and eight dockpane approval cards. The script exists; its first recorded run is pending.</li>
+          <li>The separate feature, geoprocessing and ArcPy section of the acceptance script (not selected for this run; the operation matrix exercises those operations one by one)</li>
+          <li>A person deciding the approval cards (see the note above)</li>
         </ul>
         <p class="note">For anything a run does not cover, use the <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/manual-acceptance.md">manual acceptance</a> checklist on your own installation.</p>
       </div>

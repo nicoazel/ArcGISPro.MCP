@@ -13,25 +13,25 @@
 
 ## Images
 
-The images in `img/` are placeholders until the next live evidence run, and the page says so: their `alt` text and captions read "placeholder", the evidence section carries a placeholder note, and `og:image` is left out so link previews do not present a placeholder as evidence. Replace each file with a PNG of the same name, then remove the placeholder wording and restore `og:image` (see the `OG-IMAGE:` comment in `index.html`). Keep each file under 500 KB and use only synthetic test data.
+The images in `img/` are captures from the live evidence run [`docs/acceptance/2026-10-03-e7deee2`](../docs/acceptance/2026-10-03-e7deee2/summary.md), on synthetic test data. `img/layout-tod.png` is also the `og:image`. Keep each file under 500 KB and use only synthetic test data.
 
-| File | Shown in | Source | Aspect |
+| File | Shown in | Source | Size |
 | --- | --- | --- | --- |
-| `img/layout-tod.png` | Live evidence; also the `og:image` once it is a live capture | `docs/acceptance/<new>/images/layout-tod.png` | 1200 x 776 |
-| `img/layout-green.png` | Live evidence | `docs/acceptance/<new>/images/layout-green.png` | 1200 x 776 |
-| `img/layout-mixed.png` | Live evidence | `docs/acceptance/<new>/images/layout-mixed.png` | 1200 x 776 |
-| `img/approval-card.png` | Safety model | Screenshot of one approval card in the MCP Studio dockpane | 720 x 900 (portrait; other sizes work, update `width`/`height` on the `<img>`) |
+| `img/layout-tod.png` | Live evidence; `og:image` | `docs/acceptance/2026-10-03-e7deee2/images/layout-tod.png` | 1200 x 776 |
+| `img/layout-green.png` | Live evidence | `docs/acceptance/2026-10-03-e7deee2/images/layout-green.png` | 900 x 582 |
+| `img/layout-mixed.png` | Live evidence | `docs/acceptance/2026-10-03-e7deee2/images/layout-mixed.png` | 1200 x 776 |
+| `img/approval-card.png` | Safety model | Screenshot of the `arcpy.run-script` approval card in the dockpane during the same run's operation matrix | 501 x 390 |
 
-The gallery crops to 1200:776, so a layout capture with a different aspect ratio is cropped, not distorted. If a replacement has different pixel dimensions, update the `width` and `height` attributes in `index.html` so the page does not shift while loading.
+The gallery crops to 1200:776, so a layout capture with a different aspect ratio is cropped, not distorted. If a replacement has different pixel dimensions, update the `width` and `height` attributes in `index.html` (and `og:image:width`/`og:image:height` for `layout-tod.png`) so the page does not shift while loading.
 
-## When the new evidence lands
+## When newer evidence lands
 
-In `index.html`, search for `EVIDENCE:` and:
+In `index.html`, in the `#evidence` section:
 
-1. Point the evidence text at `docs/acceptance/<date>-<sha7>/` (the folder link and, if wanted, each image link).
-2. Make the "Covered" and "Not covered" lists match that folder's `summary.md`.
+1. Point the evidence text at `docs/acceptance/<date>-<sha7>/` (the folder link, commit and ArcGIS Pro build).
+2. Make the "Covered" and "Not covered" lists match that folder's `summary.md` and `operations/summary.json` (operations covered, cases passed, cards approved and denied), and keep the note on who decided the approval cards accurate for that run.
 3. Recheck the test counts and eval numbers against `README.md` and `evals/README.md`.
-4. Once the images are live captures, drop "placeholder" from their `alt` text and captions, remove the placeholder note in the evidence section, and restore `og:image` (`OG-IMAGE:` comment).
+4. If the run produced new layout captures, copy them into `img/` under the same names and update the table above.
 
 ## Preview locally
 
