@@ -167,6 +167,40 @@ function Assert-Layout([string]$LayoutName, [string]$CaseDirectory) {
     if (@($inspect.data.elements | Where-Object type -eq 'scale-bar').Count -ne 1) { throw "$LayoutName scale bar count drifted." }
     if (@($inspect.data.elements | Where-Object type -eq 'legend').Count -ne 1) { throw "$LayoutName legend count drifted." }
     if (@($inspect.data.elements | Where-Object name -eq 'dynamic-status').Count -ne 1) { throw "$LayoutName dynamic status text is missing." }
+    Assert-SurroundPlacement $LayoutName $frames @($inspect.data.elements | Where-Object type -in @('legend', 'scale-bar', 'north-arrow'))
+}
+
+function Test-BoundsOverlap($A, $B) {
+    return [double]$A.x -lt [double]$B.xMax -and [double]$B.x -lt [double]$A.xMax -and
+           [double]$A.y -lt [double]$B.yMax -and [double]$B.y -lt [double]$A.yMax
+}
+
+function Assert-SurroundPlacement([string]$LayoutName, $Frames, $Surrounds) {
+    # Legends and scale bars must clear the basemap attribution drawn along the
+    # bottom edge of the frame that contains them, and no surround may overlap another.
+    $clearance = 0.35
+    $tolerance = 0.01
+    foreach ($surround in $Surrounds) {
+        $bounds = $surround.bounds
+        $container = @($Frames | Where-Object {
+            [double]$bounds.x -ge [double]$_.bounds.x - $tolerance -and
+            [double]$bounds.y -ge [double]$_.bounds.y - $tolerance -and
+            [double]$bounds.xMax -le [double]$_.bounds.xMax + $tolerance -and
+            [double]$bounds.yMax -le [double]$_.bounds.yMax + $tolerance
+        }) | Select-Object -First 1
+        if ($null -eq $container) { throw "$LayoutName $($surround.type) '$($surround.name)' is not inside any map frame." }
+        if ($surround.type -in @('legend', 'scale-bar') -and
+            [double]$bounds.y -lt [double]$container.bounds.y + $clearance - $tolerance) {
+            throw "$LayoutName $($surround.type) '$($surround.name)' bottom $($bounds.y) is less than $clearance in above frame '$($container.name)' bottom $($container.bounds.y)."
+        }
+    }
+    for ($i = 0; $i -lt $Surrounds.Count; $i++) {
+        for ($j = $i + 1; $j -lt $Surrounds.Count; $j++) {
+            if (Test-BoundsOverlap $Surrounds[$i].bounds $Surrounds[$j].bounds) {
+                throw "$LayoutName $($Surrounds[$i].type) '$($Surrounds[$i].name)' overlaps $($Surrounds[$j].type) '$($Surrounds[$j].name)'."
+            }
+        }
+    }
 }
 
 function Assert-Png([string]$Path) {
