@@ -367,6 +367,14 @@ Register-Case 'layout-ensure-surround-north-arrow' {
 }
 Register-Case 'layout-ensure-surround-scale-bar' {
     Invoke-Op 'layout.ensure-surround' @{ layout = $layout; frame = $frame; name = 'Scale Bar'; kind = 'scale-bar'; x = 12.9; y = 0.9; width = 2.5; height = 0.5 }
+} {
+    # Anchored where requested; the style decides the height, and a size that differs is reported.
+    param($Result)
+    $bounds = Get-Property $Result.Data 'bounds'
+    Assert-True ([Math]::Abs([double](Get-Property $bounds 'x') - 12.9) -le 0.02 -and [Math]::Abs([double](Get-Property $bounds 'y') - 0.9) -le 0.02) "Scale bar is anchored at $(Get-Property $bounds 'x'), $(Get-Property $bounds 'y'), expected 12.9, 0.9."
+    $resized = [Math]::Abs([double](Get-Property $bounds 'width') - 2.5) -gt 0.02 -or [Math]::Abs([double](Get-Property $bounds 'height') - 0.5) -gt 0.02
+    $notices = @($Result.Notices | Where-Object { (Get-Property $_ 'code') -eq 'surround_resized' }).Count
+    Assert-True ($notices -eq [int]$resized) "Scale bar bounds $(Get-Property $bounds 'width') x $(Get-Property $bounds 'height') with $notices surround_resized notice(s)."
 }
 Register-Case 'layout-inspect-overlaps' { Invoke-Op 'layout.inspect' @{ layout = $layout } } {
     param($Result)
@@ -395,6 +403,13 @@ Register-Case 'view-capture-layout' { Invoke-Op 'view.capture' @{ view = 'layout
 Register-Case 'layout-add-map-frame-off-page' {
     Invoke-Op 'layout.add-map-frame' @{ layout = $layout; map = $map; name = 'Off Page Frame'; x = 40; y = 40; width = 5; height = 5 }
 }
+Register-Case 'layout-ensure-surround-off-page' {
+    Invoke-Op 'layout.ensure-surround' @{ layout = $layout; frame = $frame; name = 'Off Page Bar'; kind = 'scale-bar'; x = 16; y = 1; width = 2.5; height = 0.5 }
+}
+Register-Case 'layout-ensure-surround-missing-frame' {
+    Invoke-Op 'layout.ensure-surround' @{ layout = $layout; frame = 'No Such Frame'; name = 'Orphan Arrow'; kind = 'north-arrow'; x = 14; y = 1; width = 0.7; height = 1.1 }
+}
+Register-Case 'layout-inspect-missing-layout' { Invoke-Op 'layout.inspect' @{ layout = 'No Such Layout' } }
 Register-Case 'layout-ensure-surround-unknown-kind' {
     Invoke-Op 'layout.ensure-surround' @{ layout = $layout; frame = $frame; name = 'Compass'; kind = 'compass'; x = 14; y = 1; width = 1; height = 1 }
 }

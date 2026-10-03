@@ -16,7 +16,7 @@
         { "key": "style-search-circle", "operation": "style.search", "kind": "happy", "description": "Point symbols matching 'circle', limit 5." },
         { "key": "gp-describe-unknown-tool", "operation": "gp.describe", "kind": "negative", "expectErrorCode": "tool_not_found", "expectMessageContains": ["nope.Tool"], "description": "Unknown execution name." },
         { "key": "gp-describe-bare-name", "operation": "gp.describe", "kind": "negative", "expectErrorCode": "tool_not_found", "expectMessageContains": ["Buffer"], "description": "A bare tool name is not an execution name; the reply suggests analysis.Buffer." },
-        { "key": "layer-list-missing-map", "operation": "layer.list", "kind": "negative", "expectMessageContains": ["No Such Map"], "description": "Missing map is named in the error." }
+        { "key": "layer-list-missing-map", "operation": "layer.list", "kind": "negative", "expectErrorCode": "map_not_found", "expectMessageContains": ["No Such Map"], "description": "Missing map is named in the error." }
       ]
     },
     {
@@ -25,7 +25,7 @@
       "cases": [
         { "key": "map-ensure-ops-map", "operation": "map.ensure", "kind": "happy", "description": "Create 'Ops Map' (2D, no basemap)." },
         { "key": "basemap-set-topographic", "operation": "basemap.set", "kind": "happy", "requires": ["online"], "description": "Topographic basemap (needs a portal connection)." },
-        { "key": "basemap-set-unknown", "operation": "basemap.set", "kind": "negative", "expectMessageContains": ["NotABasemap"], "description": "Unknown basemap name is rejected and named." },
+        { "key": "basemap-set-unknown", "operation": "basemap.set", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["NotABasemap"], "description": "Unknown basemap name is rejected and named." },
         { "key": "layer-add-parcels", "operation": "layer.add", "kind": "happy", "description": "Parcels shapefile copy as 'Parcels'." },
         { "key": "layer-add-streets", "operation": "layer.add", "kind": "happy", "description": "Streets shapefile copy as 'Streets'." },
         { "key": "layer-add-boundary", "operation": "layer.add", "kind": "happy", "description": "Boundary shapefile copy as 'Boundary'." },
@@ -46,8 +46,8 @@
         { "key": "feature-query-baseline", "operation": "feature.query", "kind": "happy", "description": "Design Sites holds exactly 'Baseline Site'." },
         { "key": "feature-layer-describe-design-sites", "operation": "feature.layer.describe", "kind": "happy", "description": "Design Sites is an editable polygon layer with a GlobalID field." },
         { "key": "metadata-get-design-sites", "operation": "metadata.get", "kind": "happy", "description": "Design Sites metadata with XML." },
-        { "key": "layer-set-appearance-missing-layer", "operation": "layer.set-appearance", "kind": "negative", "expectMessageContains": ["No Such Layer"], "description": "Missing layer is named in the error." },
-        { "key": "symbology-set-unique-values-polyline", "operation": "symbology.set-unique-values", "kind": "negative", "expectMessageContains": ["polygon"], "description": "Category renderer refuses the Streets polyline layer." },
+        { "key": "layer-set-appearance-missing-layer", "operation": "layer.set-appearance", "kind": "negative", "expectErrorCode": "layer_not_found", "expectMessageContains": ["No Such Layer"], "description": "Missing layer is named in the error." },
+        { "key": "symbology-set-unique-values-polyline", "operation": "symbology.set-unique-values", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["Streets", "polygon"], "description": "Category renderer refuses the Streets polyline layer." },
         { "key": "layer-set-appearance-stale-revision", "operation": "layer.set-appearance", "kind": "negative", "expectErrorCode": "workspace_revision_mismatch", "description": "Write with an outdated revision." },
         { "key": "layer-set-appearance-no-revision", "operation": "layer.set-appearance", "kind": "negative", "expectErrorCode": "workspace_revision_required", "description": "Write without a revision." },
         { "key": "layer-add-broken-source", "operation": "layer.add", "kind": "happy", "description": "Add a disposable shapefile copy as 'Broken' (its files are renamed next)." },
@@ -76,11 +76,14 @@
         { "key": "layout-set-text-dynamic", "operation": "layout.set-text", "kind": "happy", "description": "Dynamic text (<dyn> date tag)." },
         { "key": "layout-ensure-surround-legend", "operation": "layout.ensure-surround", "kind": "happy", "description": "Legend right of the frame." },
         { "key": "layout-ensure-surround-north-arrow", "operation": "layout.ensure-surround", "kind": "happy", "description": "North arrow, lower right." },
-        { "key": "layout-ensure-surround-scale-bar", "operation": "layout.ensure-surround", "kind": "happy", "description": "Scale bar, lower right." },
+        { "key": "layout-ensure-surround-scale-bar", "operation": "layout.ensure-surround", "kind": "happy", "description": "Scale bar, lower right, anchored at the request; its height follows the style (bounds are the actual size, surround_resized when it differs)." },
         { "key": "layout-inspect-overlaps", "operation": "layout.inspect", "kind": "happy", "description": "Legend does not overlap scale bar or north arrow; legend and scale bar sit at least 0.35 in above the frame bottom." },
         { "key": "layout-activate", "operation": "layout.activate", "kind": "happy", "description": "Open and activate 'Ops Layout'." },
         { "key": "view-capture-layout", "operation": "view.capture", "kind": "happy", "description": "Layout PNG; dimensions match the request." },
-        { "key": "layout-add-map-frame-off-page", "operation": "layout.add-map-frame", "kind": "negative", "description": "A frame placed entirely outside the 17 x 11 page is refused." },
+        { "key": "layout-add-map-frame-off-page", "operation": "layout.add-map-frame", "kind": "negative", "expectErrorCode": "element_outside_page", "expectMessageContains": ["Off Page Frame", "17 x 11"], "description": "A frame placed entirely outside the 17 x 11 page is refused." },
+        { "key": "layout-ensure-surround-off-page", "operation": "layout.ensure-surround", "kind": "negative", "expectErrorCode": "element_outside_page", "expectMessageContains": ["Off Page Bar"], "description": "A scale bar running past the right page edge is refused before it is created." },
+        { "key": "layout-ensure-surround-missing-frame", "operation": "layout.ensure-surround", "kind": "negative", "expectErrorCode": "frame_not_found", "expectMessageContains": ["No Such Frame"], "description": "Missing map frame is named in the error." },
+        { "key": "layout-inspect-missing-layout", "operation": "layout.inspect", "kind": "negative", "expectErrorCode": "layout_not_found", "expectMessageContains": ["No Such Layout"], "description": "Missing layout is named in the error." },
         { "key": "layout-ensure-surround-unknown-kind", "operation": "layout.ensure-surround", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["kind"], "description": "Kind 'compass' is not in the schema." },
         { "key": "layout-ensure-surround-zero-width", "operation": "layout.ensure-surround", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["width"], "description": "Width 0 is not allowed." }
       ]
