@@ -16,14 +16,23 @@ namespace ArcGISProMCP.AddIn.ArcGIS;
 internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher) : IRevisionPublishingWorkspace
 {
     private long _mutationSequence;
-    public void AdvanceRevision() => AdvanceRevision(static () => "operation");
+    private long _lastHostEventTimestamp;
+
+    /// <summary>Advances the revision for an MCP write.</summary>
+    public void AdvanceRevision()
+    {
+        var sequence = Interlocked.Increment(ref _mutationSequence);
+        if (RevisionLog.Enabled) RevisionLog.Append($"advance\t{sequence}\toperation");
+    }
 
     /// <summary>
-    /// Advances the revision. <paramref name="reason"/> is evaluated only when revision logging is
-    /// on, so event handlers pay nothing for it otherwise.
+    /// Advances the revision for an ArcGIS host event and records when it arrived, so a settle can
+    /// wait for the host to stop raising events. <paramref name="reason"/> is evaluated only when
+    /// revision logging is on, so event handlers pay nothing for it otherwise.
     /// </summary>
     public void AdvanceRevision(Func<string> reason)
     {
+        Interlocked.Exchange(ref _lastHostEventTimestamp, Stopwatch.GetTimestamp());
         var sequence = Interlocked.Increment(ref _mutationSequence);
         if (RevisionLog.Enabled) RevisionLog.Append($"advance\t{sequence}\t{reason()}");
     }
@@ -31,7 +40,28 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
     /// <summary>Records a host event that deliberately does not advance the revision.</summary>
     public void NoteIgnoredEvent(Func<string> reason)
     {
+        Interlocked.Exchange(ref _lastHostEventTimestamp, Stopwatch.GetTimestamp());
         if (RevisionLog.Enabled) RevisionLog.Append($"ignored\t{Interlocked.Read(ref _mutationSequence)}\t{reason()}");
+    }
+
+    /// <summary>
+    /// How long ArcGIS must raise no workspace events before a settle samples the revision. Live
+    /// acceptance showed a layout element echo arriving a few milliseconds after a 150 ms
+    /// revision-quiet window following a data-source swap; waiting on event timestamps costs no
+    /// extra snapshots.
+    /// </summary>
+    internal static readonly TimeSpan HostEventQuietWindow = TimeSpan.FromMilliseconds(300);
+
+    private async Task WaitForHostEventQuietAsync(CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            var last = Interlocked.Read(ref _lastHostEventTimestamp);
+            if (last == 0) return;
+            var since = Stopwatch.GetElapsedTime(last);
+            if (since >= HostEventQuietWindow) return;
+            await Task.Delay(HostEventQuietWindow - since, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public Task<WorkspaceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken) =>
@@ -51,7 +81,7 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
     {
         if (RevisionLog.Enabled) return await GetSettledSnapshotLoggedAsync(cancellationToken).ConfigureAwait(false);
         var result = await WorkspaceSnapshotSettler.SettleWithinBudgetAsync(
-            DrainHostAsync, GetSnapshotAsync, SettleBudget, cancellationToken).ConfigureAwait(false);
+            DrainAndWaitForQuietAsync, GetSnapshotAsync, SettleBudget, cancellationToken).ConfigureAwait(false);
         return result.Snapshot;
     }
 
@@ -65,7 +95,7 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
     /// </summary>
     private async Task<WorkspaceSnapshot> GetSettledSnapshotLoggedAsync(CancellationToken cancellationToken)
     {
-        var timing = new SettleTiming();
+        var timing = new SettleTiming(DrainAndWaitForQuietAsync);
         var started = Stopwatch.GetTimestamp();
         var result = await WorkspaceSnapshotSettler.SettleWithinBudgetAsync(
             timing.DrainAsync, GetSnapshotAsync, SettleBudget, cancellationToken).ConfigureAwait(false);
@@ -82,7 +112,7 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
     }
 
     /// <summary>Records when the host drain of one settle finished (a <see cref="Stopwatch"/> timestamp).</summary>
-    private sealed class SettleTiming
+    private sealed class SettleTiming(Func<CancellationToken, Task> drain)
     {
         private long _drainedAt;
 
@@ -90,9 +120,16 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
 
         public async Task DrainAsync(CancellationToken cancellationToken)
         {
-            await DrainHostAsync(cancellationToken).ConfigureAwait(false);
+            await drain(cancellationToken).ConfigureAwait(false);
             Interlocked.Exchange(ref _drainedAt, Stopwatch.GetTimestamp());
         }
+    }
+
+    /// <summary>The host drain followed by the host-event quiet window; both count against the budget.</summary>
+    private async Task DrainAndWaitForQuietAsync(CancellationToken cancellationToken)
+    {
+        await DrainHostAsync(cancellationToken).ConfigureAwait(false);
+        await WaitForHostEventQuietAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task DrainHostAsync(CancellationToken cancellationToken)
