@@ -95,7 +95,7 @@ public sealed class FeatureOperationTests
         Assert.True(fields[0].GetProperty("isObjectId").GetBoolean());
         Assert.True(fields[1].GetProperty("isGlobalId").GetBoolean());
         Assert.True(fields[2].GetProperty("isGeometry").GetBoolean());
-        Assert.Equal(8, fields[3].GetProperty("Length").GetInt32());
+        Assert.Equal(8, fields[3].GetProperty("length").GetInt32());
         AssertMatchesOutputSchema(pro, "feature.layer.describe", data);
     }
 

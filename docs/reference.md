@@ -2,6 +2,8 @@
 
 This page lists everything a client or operator can use. The live registry is authoritative. Call `registry_browse` or `registry_describe` for exact schemas, examples, and related operations.
 
+**Contents:** [Gateway tools](#gateway-tools) ([tool results](#tool-results)) · [Operations](#operations) ([dry runs](#dry-runs)) · [Environment variables](#environment-variables) · [Bundled workflows and skills](#bundled-workflows-and-skills) · [Resources and prompts](#resources-and-prompts) · [Error codes](#error-codes) · [Scripts](#scripts)
+
 ## Gateway tools
 
 The stdio gateway (`ArcGISProMCP.Server`) exposes exactly these 16 MCP tools.
@@ -71,7 +73,7 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 | Id | Risk | Does |
 | --- | --- | --- |
 | `layer.list` | ReadOnly | Flattened layer tree with handles and appearance state. |
-| `layer.add` | SafeWrite | Adds a dataset, layer file, or service URL. With `name`, a same-named layer whose data connection is healthy is never removed: it is reused when it reads the requested source (paths compared ignoring case, trailing separators, `/` vs `\` and an optional `.shp`, then by workspace plus dataset name, so a file geodatabase feature class matches with or without its feature dataset), reused with a `source_unverified` warning when ArcGIS reports no dataset path for it (for example some service layers), and otherwise only repaired in place (feature class swapped, symbology kept; `Repaired: true`) or, when ArcGIS cannot swap it, left unchanged with a `layer_source_mismatch` warning. Only a layer whose connection is broken is repaired in place or, as a last resort, removed and re-added at the same position (`Replaced: true`, symbology not kept), with a `layer_repaired` notice. `Source` is what the layer actually reads, `RequestedSource` echoes the request, and `DataSourceStatus` is `ok`, `broken`, `unverified` or `mismatch`. A UNC path and a mapped drive for the same share are not recognized as equal; such a layer is repaired in place. A same-named group layer is never replaced. |
+| `layer.add` | SafeWrite | Adds a dataset, layer file, or service URL. With `name`, a same-named layer whose data connection is healthy is never removed: it is reused when it reads the requested source (paths compared ignoring case, trailing separators, `/` vs `\` and an optional `.shp`, then by workspace plus dataset name, so a file geodatabase feature class matches with or without its feature dataset), reused with a `source_unverified` warning when ArcGIS reports no dataset path for it (for example some service layers), and otherwise only repaired in place (feature class swapped, symbology kept; `repaired: true`) or, when ArcGIS cannot swap it, left unchanged with a `layer_source_mismatch` warning. Only a layer whose connection is broken is repaired in place or, as a last resort, removed and re-added at the same position (`replaced: true`, symbology not kept), with a `layer_repaired` notice. `source` is what the layer actually reads, `requestedSource` echoes the request, and `dataSourceStatus` is `ok`, `broken`, `unverified` or `mismatch`. A UNC path and a mapped drive for the same share are not recognized as equal; such a layer is repaired in place. A same-named group layer is never replaced. |
 | `layer.set-appearance` | SafeWrite | Visibility and transparency (0–100 %). |
 | `layer.set-elevation` | SafeWrite | Scene elevation mode, offset, and vertical exaggeration. |
 | `symbology.set-simple` | SafeWrite | Single-symbol renderer for a point, line, or polygon layer. |
@@ -203,6 +205,10 @@ Codes a client should handle. The message carries the details.
 | `host_stopping` | any bridge call | ArcGIS Pro is shutting down and cancelled the request, including keyed work shared by several callers. Retryable against a new host; a write may already have been accepted, so check state first. |
 | `outcome_unknown` | gateway | The connection failed after the request was sent. Inspect state before repeating. |
 | `arcgis_unavailable` | gateway | No ArcGIS Pro host accepted the connection. Retryable. |
+| `arcgis_host_ambiguous` | gateway | Several ArcGIS Pro hosts are running and none was selected; the message lists each PID and project. Set `ARCGIS_PRO_MCP_HOST_PID` (or `ARCGIS_PRO_MCP_PIPE`) for the gateway process, for example in the client entry's `env`. |
+| `arcgis_host_not_found` | gateway | `ARCGIS_PRO_MCP_HOST_PID` names no discovered live host (for example ArcGIS Pro restarted with a new PID), or only FakeHost development hosts are running, which automatic selection ignores. Retryable. |
+| `arcgis_host_selector_invalid` | gateway | `ARCGIS_PRO_MCP_HOST_PID` is not a positive integer process id. |
+| `bridge_disabled` | any bridge call except state | MCP access was turned off with **Stop** in the ArcGIS MCP pane, before or while the request was queued. Click **Connect** in the pane. |
 | `approval_not_found` | approval status | Unknown or no longer retained approval id. Fails closed. |
 | `bridge_contract_mismatch` | gateway | The add-in returned a result this gateway cannot read. Install matching add-in and gateway versions. |
 | `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped), and the code of an operation failure without a more specific code. |

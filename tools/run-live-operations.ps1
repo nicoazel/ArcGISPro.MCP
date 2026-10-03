@@ -49,9 +49,9 @@
 .EXAMPLE
     ./tools/run-live-operations.ps1 -PlanOnly
 .EXAMPLE
-    ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot D:\scratch\mcp-acceptance
+    ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot C:\MCP-scratch\mcp-acceptance
 .EXAMPLE
-    ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot D:\scratch\mcp-acceptance -SkipCards
+    ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot C:\MCP-scratch\mcp-acceptance -SkipCards
 #>
 # An operator console script: the coloured prompts are for the person at the dockpane, and every
 # result that matters is written to summary.json, errors.md and console.log, so Write-Host is intended.
@@ -538,6 +538,8 @@ Register-Case 'feature-delete-without-token' {
     Invoke-Op 'feature.delete' @{ map = $map; layer = 'Design Sites'; target = @{ globalId = (Assert-Context 'createdGlobalId') } }
 }
 Register-Case 'project-save-without-token' { Invoke-Op 'project.save' @{} }
+Register-Case 'project-open-pending-edits' { Invoke-Op 'project.open' @{ path = (Assert-Context 'reopenPath') } }
+# Runs after project-save-approved: only a clean project reaches the token check (ArcGIS Pro marks a project changed on open).
 Register-Case 'project-open-without-token' { Invoke-Op 'project.open' @{ path = (Assert-Context 'reopenPath') } }
 
 # --- approval cards

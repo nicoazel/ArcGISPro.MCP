@@ -202,12 +202,13 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
             return await dryRunnable.DryRunAsync(request.Arguments, context, cancellationToken).ConfigureAwait(false);
         }
 
+        // camelCase like every operation result; risk and executionTarget stay numeric, as on the descriptor wire.
         using var dryRun = JsonDocument.Parse(JsonSerializer.Serialize(new
         {
             valid = true,
             operation = descriptor.Id,
-            descriptor.Risk,
-            descriptor.ExecutionTarget,
+            risk = descriptor.Risk,
+            executionTarget = descriptor.ExecutionTarget,
             workspaceRevision = revision
         }));
         return OperationResult.Ok(dryRun.RootElement, revision);

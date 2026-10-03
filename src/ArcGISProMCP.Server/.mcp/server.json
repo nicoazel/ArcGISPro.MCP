@@ -3,7 +3,7 @@
   "name": "io.github.nicoazel/arcgis-pro-mcp",
   "title": "ArcGIS Pro MCP",
   "description": "Windows-only ArcGIS Pro gateway. Requires the ArcGIS Pro add-in from the GitHub release.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "websiteUrl": "https://github.com/nicoazel/ArcGISPro.MCP/releases",
   "repository": {
     "url": "https://github.com/nicoazel/ArcGISPro.MCP",
@@ -14,7 +14,7 @@
       "registryType": "nuget",
       "registryBaseUrl": "https://api.nuget.org/v3/index.json",
       "identifier": "ArcGISProMCP.Gateway",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "runtimeHint": "dnx",
       "transport": {
         "type": "stdio"

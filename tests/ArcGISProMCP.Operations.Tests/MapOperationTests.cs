@@ -20,13 +20,13 @@ public sealed class MapOperationTests
         Assert.True(result.Success);
         Assert.Equal(1, pro.Dispatcher.MainCimCalls);
         var maps = result.Data!.Value.EnumerateArray().ToArray();
-        Assert.Equal(["Buildings", "Zoning"], maps.Select(map => map.GetProperty("Name").GetString()));
+        Assert.Equal(["Buildings", "Zoning"], maps.Select(map => map.GetProperty("name").GetString()));
         Assert.Equal("pro://map/CIMPATH%3Dmap%2Fzoning.xml", maps[1].GetProperty("id").GetString());
         Assert.Equal("Scene", maps[0].GetProperty("type").GetString());
         Assert.Equal(2, maps[1].GetProperty("layerCount").GetInt32());
         Assert.True(maps[1].GetProperty("isActive").GetBoolean());
         Assert.False(maps[0].GetProperty("isActive").GetBoolean());
-        Assert.Equal(["id", "Name", "type", "layerCount", "isActive"], maps[0].EnumerateObject().Select(property => property.Name));
+        Assert.Equal(["id", "name", "type", "layerCount", "isActive"], maps[0].EnumerateObject().Select(property => property.Name));
     }
 
     [Fact]
@@ -38,8 +38,8 @@ public sealed class MapOperationTests
         var result = await pro.RunAsync("map.ensure", """{"name": "transit", "type": "scene"}""");
 
         Assert.True(result.Success);
-        Assert.False(result.Data!.Value.GetProperty("Created").GetBoolean());
-        Assert.Equal("Transit", result.Data!.Value.GetProperty("Name").GetString());
+        Assert.False(result.Data!.Value.GetProperty("created").GetBoolean());
+        Assert.Equal("Transit", result.Data!.Value.GetProperty("name").GetString());
         Assert.Single(pro.State.Maps);
         Assert.Empty(pro.State.Calls);
     }
@@ -58,8 +58,8 @@ public sealed class MapOperationTests
         var result = await pro.RunAsync("map.ensure", arguments);
 
         Assert.True(result.Success);
-        Assert.True(result.Data!.Value.GetProperty("Created").GetBoolean());
-        Assert.Equal(["Id", "Name", "Created"], result.Data!.Value.EnumerateObject().Select(property => property.Name));
+        Assert.True(result.Data!.Value.GetProperty("created").GetBoolean());
+        Assert.Equal(["id", "name", "created"], result.Data!.Value.EnumerateObject().Select(property => property.Name));
         var created = Assert.Single(pro.State.Maps);
         Assert.Equal(Enum.Parse<MapViewKind>(expected), created.CreatedAs);
         Assert.Equal("None", created.Basemap);
@@ -120,7 +120,7 @@ public sealed class MapOperationTests
         Assert.Equal(2, pro.Dispatcher.MainCimCalls);
         Assert.Equal(2, pro.Dispatcher.UiCalls);
         Assert.Equal(FakeProState.MapHandle(transit), activated.Data!.Value.GetProperty("id").GetString());
-        Assert.Equal("Transit", activated.Data!.Value.GetProperty("Name").GetString());
+        Assert.Equal("Transit", activated.Data!.Value.GetProperty("name").GetString());
         Assert.Equal("Transit", pro.State.ActiveMapName);
     }
 

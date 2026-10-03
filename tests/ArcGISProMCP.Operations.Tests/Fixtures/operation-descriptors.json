@@ -411,7 +411,7 @@
         "layer": {
           "type": "string"
         },
-        "Name": {
+        "name": {
           "type": "string"
         },
         "editable": {
@@ -437,20 +437,20 @@
           "items": {
             "type": "object",
             "properties": {
-              "Name": {
+              "name": {
                 "type": "string"
               },
-              "AliasName": {},
+              "aliasName": {},
               "type": {
                 "type": "string"
               },
-              "IsNullable": {
+              "isNullable": {
                 "type": "boolean"
               },
-              "IsEditable": {
+              "isEditable": {
                 "type": "boolean"
               },
-              "Length": {
+              "length": {
                 "type": "integer"
               },
               "isObjectId": {
@@ -464,12 +464,12 @@
               }
             },
             "required": [
-              "Name",
-              "AliasName",
+              "name",
+              "aliasName",
               "type",
-              "IsNullable",
-              "IsEditable",
-              "Length",
+              "isNullable",
+              "isEditable",
+              "length",
               "isObjectId",
               "isGlobalId",
               "isGeometry"
@@ -481,7 +481,7 @@
       "required": [
         "map",
         "layer",
-        "Name",
+        "name",
         "editable",
         "objectIdField",
         "globalIdField",
@@ -1332,16 +1332,16 @@
               "id": {
                 "type": "string"
               },
-              "Name": {
+              "name": {
                 "type": "string"
               },
               "type": {
                 "type": "string"
               },
-              "IsVisible": {
+              "isVisible": {
                 "type": "boolean"
               },
-              "Transparency": {
+              "transparency": {
                 "type": "number"
               },
               "drawingOrder": {
@@ -1357,10 +1357,10 @@
             },
             "required": [
               "id",
-              "Name",
+              "name",
               "type",
-              "IsVisible",
-              "Transparency",
+              "isVisible",
+              "transparency",
               "drawingOrder",
               "isFeatureLayer",
               "elevation"
@@ -1791,7 +1791,7 @@
         "id": {
           "type": "string"
         },
-        "Name": {
+        "name": {
           "type": "string"
         },
         "page": {
@@ -1819,7 +1819,7 @@
           "items": {
             "type": "object",
             "properties": {
-              "Name": {
+              "name": {
                 "type": "string"
               },
               "type": {
@@ -1866,7 +1866,7 @@
               }
             },
             "required": [
-              "Name",
+              "name",
               "type",
               "drawingOrder",
               "bounds",
@@ -1878,7 +1878,7 @@
       },
       "required": [
         "id",
-        "Name",
+        "name",
         "page",
         "elements"
       ],
@@ -1927,7 +1927,7 @@
           "id": {
             "type": "string"
           },
-          "Name": {
+          "name": {
             "type": "string"
           },
           "mapFrames": {
@@ -1935,7 +1935,7 @@
             "items": {
               "type": "object",
               "properties": {
-                "Name": {
+                "name": {
                   "type": "string"
                 },
                 "map": {
@@ -1943,7 +1943,7 @@
                 }
               },
               "required": [
-                "Name",
+                "name",
                 "map"
               ],
               "additionalProperties": false
@@ -1952,7 +1952,7 @@
         },
         "required": [
           "id",
-          "Name",
+          "name",
           "mapFrames"
         ],
         "additionalProperties": false
@@ -2284,7 +2284,7 @@
           "id": {
             "type": "string"
           },
-          "Name": {
+          "name": {
             "type": "string"
           },
           "type": {
@@ -2300,7 +2300,7 @@
         },
         "required": [
           "id",
-          "Name",
+          "name",
           "type",
           "layerCount",
           "isActive"
@@ -2432,25 +2432,25 @@
         "metadata": {
           "type": "object",
           "properties": {
-            "Title": {},
-            "Summary": {},
-            "Description": {},
-            "Tags": {
+            "title": {},
+            "summary": {},
+            "description": {},
+            "tags": {
               "type": "array",
               "items": {
                 "type": "string"
               }
             },
-            "Credits": {},
-            "UseLimitations": {}
+            "credits": {},
+            "useLimitations": {}
           },
           "required": [
-            "Title",
-            "Summary",
-            "Description",
-            "Tags",
-            "Credits",
-            "UseLimitations"
+            "title",
+            "summary",
+            "description",
+            "tags",
+            "credits",
+            "useLimitations"
           ],
           "additionalProperties": false
         },
@@ -2593,42 +2593,42 @@
     "outputSchema": {
       "type": "object",
       "properties": {
-        "Project": {
+        "project": {
           "type": "object",
           "properties": {
-            "Name": {
+            "name": {
               "description": "Project name; null when no project is open."
             },
-            "Uri": {
+            "uri": {
               "description": "Project path; null when no project is open."
             },
-            "IsDirty": {
+            "isDirty": {
               "type": "boolean"
             },
-            "IsOpen": {
+            "isOpen": {
               "type": "boolean"
             }
           },
           "required": [
-            "Name",
-            "Uri",
-            "IsDirty",
-            "IsOpen"
+            "name",
+            "uri",
+            "isDirty",
+            "isOpen"
           ],
           "additionalProperties": false
         },
-        "Revision": {
+        "revision": {
           "type": "string"
         },
-        "CapturedAt": {
+        "capturedAt": {
           "description": "ISO 8601 date-time.",
           "type": "string"
         }
       },
       "required": [
-        "Project",
-        "Revision",
-        "CapturedAt"
+        "project",
+        "revision",
+        "capturedAt"
       ],
       "additionalProperties": false
     }

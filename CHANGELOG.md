@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-03
+
+Patch release: installation that works for a first-time user, and documentation and landing-page accessibility fixes. Operation results now use camelCase keys consistently, which changes some result key names; the gateway tools and the approval model are unchanged.
+
+### Changed
+
+- **Breaking for clients:** Operation results use camelCase keys throughout `data`, at every depth, on success, on failure and in dry runs. Results built from member shorthand or records were serialized with .NET default names and mixed PascalCase into otherwise camelCase payloads (previously `gp.run` returned `IsFailed`, `IsCanceled`, `ErrorCode`, `ReturnValue` and messages with `Text`/`ErrorCode` where `gp.query` returned `isFailed`, `project.open` and `project.save` returned `Name`, and `project.get` returned `Project`/`Revision`/`CapturedAt`). Also renamed: `map.list`, `map.activate`, `layer.list`, `layer.set-appearance`, `layer.set-elevation`, `basemap.set`, `layout.list`, `layout.inspect`, `layout.activate`, `layout.set-text`, `symbology.set-simple` and `label.configure` (`name`, plus `isVisible`/`transparency` on layers); `map.ensure`, `layout.ensure` and `layout.add-map-frame` (`id`, `name`, `created`, ...); `layer.add` (`id`, `name`, `map`, `source`, `requestedSource`, `created`, `repaired`, `replaced`, `dataSourceStatus`); `feature.layer.describe` (`name`, and `name`, `aliasName`, `isNullable`, `isEditable`, `length` per field); `metadata.get`/`metadata.update` (`metadata.title`, `summary`, `description`, `tags`, `credits`, `useLimitations`, and `changed`); `layout.set-frame-extent` (`scale`, `heading`, `pitch`, `x`, `y`, `z`, `viewportWidth`, `viewportHeight`); `style.search` (`name`, `category`, `tags`); `arcpy.inspect-script` (`sha256`); `arcpy.run-script` (`exitCode`); and the generic dry run (`risk`, `executionTarget`). The declared output schemas changed to match. Keys that are user data are unchanged: attribute field names in `feature.query` and `table.query` rows. Clients that read the PascalCase keys must switch.
+
+### Fixed
+
+- Install instructions used a server path that did not exist in the bundle (`C:\ArcGISProMCP\0.3.0\server\...`; the zip has a single `ArcGISProMCP-<version>-win-x64-development-preview` root folder). README, the landing page and the deployment guide now say to extract into `C:\ArcGISProMCP\` and use `C:\ArcGISProMCP\ArcGISProMCP-<version>-win-x64-development-preview\server\arcgis-pro-mcp.exe`.
+- The runtime requirement is now exact: the ".NET Runtime 10.x (x64)" (not the SDK) from the .NET download page, checked with `dotnet --list-runtimes`.
+- Client setup covers Claude Desktop (where the config file is, merging into an existing `mcpServers` block, quitting from the tray), Claude Code (`claude mcp add --scope user`, `claude mcp list`), VS Code (`.vscode/mcp.json` with `servers`) and other MCP clients, with a warning not to set `ARCGIS_PRO_MCP_AUTONOMOUS_MODE` in the client entry.
+- New install steps: verify the downloaded zip against the release `SHA256SUMS` with `Get-FileHash`, unblock it before extracting, allow unsigned add-ins (Project > Add-In Manager > Options), and a verify step (dockpane status, 16 tools, a first question).
+- Troubleshooting for `arcgis_unavailable`, `arcgis_host_not_found`, `arcgis_host_ambiguous`, `arcgis_host_selector_invalid` and `bridge_disabled`, a missing add-in or runtime, and a client that reports the server failed; the `arcgis_host_*` and `bridge_disabled` codes are added to the reference error table. Upgrade and uninstall steps are documented.
+- `docs/deployment.md` is split into "Install (users)" and "Build and release (maintainers)", with a table of contents; maintainer history moved to the acceptance evidence page.
+- The release bundle now contains `INSTALL.txt`, plain-text install steps with absolute links, so the steps work offline after extraction.
+- Docs name the add-in UI as it appears: the **MCP Studio** button on the **Add-In** tab opens the **ArcGIS MCP** pane. The supported ArcGIS Pro version is stated as ArcGIS Pro 3.7 (tested on 3.7.1).
+- Machine-specific paths in examples (`docs/arcpy.md`, `docs/acceptance/README.md`, script help) are replaced with placeholders.
+- Readability and accessibility: a plain-language README introduction, a terms box in the documentation hub, text alternatives before the Mermaid diagrams, `docs/security.md` and `docs/reference.md` split into sections with a table of contents, and on the landing page a list role for the install steps, a focusable `main` landmark, a navigation link to "What the model gets" and a download button that names the asset.
+- References to the private-history commit `e7deee2` now also give the public commit `c976c51`.
+
 ## [0.3.0] - 2026-10-03
 
 Second development preview: typed MCP results with output schemas, resources and prompts; geoprocessing discovery, risk tiers and dry runs; approval for project and feature edits; deterministic agent evaluations; synthetic CC0 test data; a live operation matrix over every operation; and committed live ArcGIS Pro acceptance evidence, including the first full operation matrix run. Unsigned; not a production release.
@@ -144,6 +166,7 @@ First tagged development preview of the standalone ArcGIS-only product. Unsigned
 - Bounded image observation store with opaque `arcgis://` handles.
 - Release tooling: `tools/verify-release.ps1`, `tools/package-release.ps1` (unsigned bundle with checksums and offline MCP smoke test), `tools/test-mcp.ps1`, and a Windows CI build.
 
-[Unreleased]: https://github.com/nicoazel/ArcGISPro.MCP/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/nicoazel/ArcGISPro.MCP/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/nicoazel/ArcGISPro.MCP/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/nicoazel/ArcGISPro.MCP/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/nicoazel/ArcGISPro.MCP/releases/tag/v0.2.0

@@ -30,6 +30,7 @@
     <nav aria-label="Sections">
       <ul>
         <li><a href="#how">How it works</a></li>
+        <li><a href="#surface">What the model gets</a></li>
         <li><a href="#safety">Safety</a></li>
         <li><a href="#quality">Quality</a></li>
         <li><a href="#evidence">Evidence</a></li>
@@ -40,7 +41,7 @@
   </div>
 </header>
 
-<main id="main">
+<main id="main" tabindex="-1">
 
 <section class="hero" id="top" aria-labelledby="hero-title">
   <svg class="contours" viewBox="0 0 1200 520" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
@@ -57,12 +58,13 @@
     <p class="eyebrow">MCP server for ArcGIS Pro 3.7</p>
     <h1 id="hero-title">Let a model work in the ArcGIS Pro session you already have open</h1>
     <p class="lede">An ArcGIS Pro add-in and a small stdio MCP gateway. Claude Desktop, Claude Code or any other MCP client calls typed, schema-validated operations by stable id. Every write is checked against the current workspace revision, every risky write waits for a person to approve the exact arguments in a Pro dockpane, and every invocation is audited.</p>
-    <p class="status"><span class="pill">development preview 0.3.0 &middot; unsigned</span> <span>Windows x64, licensed ArcGIS Pro 3.7.1, .NET 10 runtime</span></p>
+    <p class="status"><span class="pill">development preview 0.3.1 &middot; unsigned</span> <span>Windows x64, licensed ArcGIS Pro 3.7 (tested on 3.7.1), .NET Runtime 10.x (x64)</span></p>
     <div class="ctas">
-      <a class="btn primary" href="https://github.com/nicoazel/ArcGISPro.MCP/releases">Download a release</a>
+      <a class="btn primary" href="https://github.com/nicoazel/ArcGISPro.MCP/releases/latest">Download the latest release</a>
       <a class="btn secondary" href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/README.md">Read the docs</a>
       <a class="btn secondary" href="https://github.com/nicoazel/ArcGISPro.MCP">View on GitHub</a>
     </div>
+    <p class="note">The download is <code>ArcGISProMCP-&lt;version&gt;-win-x64-development-preview.zip</code>, for example <code>ArcGISProMCP-0.3.1-win-x64-development-preview.zip</code>, with <code>SHA256SUMS</code> next to it. See the <a href="#start">quick start</a>.</p>
   </div>
 </section>
 
@@ -75,7 +77,7 @@
     <figure class="figure">
       <svg class="diagram diagram-wide" viewBox="0 0 960 360" role="img" aria-labelledby="arch-wide-title arch-wide-desc">
         <title id="arch-wide-title">Architecture</title>
-        <desc id="arch-wide-desc">An MCP client talks to the arcgis-pro-mcp gateway over stdio. The gateway exposes 16 tools and connects over a same-user named pipe to the add-in inside the ArcGIS Pro process. There, the operation registry of 41 operations hands calls to the executor, which checks schema, revision and approval and writes the audit log. Approvals go through a queue that only a person in the MCP Studio dockpane can resolve. The executor calls the ArcGIS Pro SDK.</desc>
+        <desc id="arch-wide-desc">An MCP client talks to the arcgis-pro-mcp gateway over stdio. The gateway exposes 16 tools and connects over a same-user named pipe to the add-in inside the ArcGIS Pro process. There, the operation registry of 41 operations hands calls to the executor, which checks schema, revision and approval and writes the audit log. Approvals go through a queue that only a person in the ArcGIS MCP pane can resolve. The executor calls the ArcGIS Pro SDK.</desc>
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow" d="M0 0 L10 5 L0 10 Z"/></marker>
         </defs>
@@ -106,7 +108,7 @@
         <text class="s" x="510" y="294">MCT / UI thread</text>
 
         <rect class="box person" x="735" y="240" width="190" height="80" rx="4"/>
-        <text class="t" x="750" y="272">MCP Studio dockpane</text>
+        <text class="t" x="750" y="272">ArcGIS MCP pane</text>
         <text class="s" x="750" y="294">a person approves</text>
 
         <path class="edge" d="M190 110 H 238" marker-end="url(#ah)"/>
@@ -122,7 +124,7 @@
 
       <svg class="diagram diagram-narrow" viewBox="0 0 360 660" role="img" aria-labelledby="arch-narrow-title arch-narrow-desc">
         <title id="arch-narrow-title">Architecture</title>
-        <desc id="arch-narrow-desc">Same architecture, stacked: MCP client, stdio, gateway with 16 tools, same-user named pipe, then inside the ArcGIS Pro process the operation registry of 41 operations, the executor, and below it the ArcGIS Pro SDK and the MCP Studio dockpane where a person approves.</desc>
+        <desc id="arch-narrow-desc">Same architecture, stacked: MCP client, stdio, gateway with 16 tools, same-user named pipe, then inside the ArcGIS Pro process the operation registry of 41 operations, the executor, and below it the ArcGIS Pro SDK and the ArcGIS MCP pane where a person approves.</desc>
         <defs>
           <marker id="ahn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow" d="M0 0 L10 5 L0 10 Z"/></marker>
         </defs>
@@ -163,8 +165,8 @@
         <text class="s" x="38" y="602">MCT / UI thread</text>
 
         <rect class="box person" x="186" y="532" width="150" height="100" rx="4"/>
-        <text class="t" x="200" y="560">MCP Studio</text>
-        <text class="t" x="200" y="580">dockpane</text>
+        <text class="t" x="200" y="560">ArcGIS MCP</text>
+        <text class="t" x="200" y="580">pane</text>
         <text class="s" x="200" y="602">a person approves</text>
       </svg>
       <figcaption>FakeHost runs the add-in's real handler, registry and executor over fake ArcGIS services, so the end-to-end tests and evals exercise production code without ArcGIS Pro. Details: <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/architecture.md">architecture</a>.</figcaption>
@@ -258,7 +260,7 @@
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Quality</p>
-      <h2 id="quality-title">945 tests, measured search, pinned CI</h2>
+      <h2 id="quality-title">982 tests, measured search, pinned CI</h2>
       <p>Build: .NET 10 with <code>TreatWarningsAsErrors</code> and 0 warnings. Tests use xUnit v3; the portable tests do not need ArcGIS Pro.</p>
     </div>
     <div class="split">
@@ -266,13 +268,13 @@
         <table>
           <thead><tr><th scope="col">Test project</th><th scope="col" class="num">Tests</th></tr></thead>
           <tbody>
-            <tr><td><code>Core.Tests</code><br><span class="note">Executor policy, approvals, schemas, search, risk tiers, workflows, audit</span></td><td class="num">490</td></tr>
-            <tr><td><code>Operations.Tests</code><br><span class="note">Operation behaviour over fake ArcGIS services</span></td><td class="num">246</td></tr>
+            <tr><td><code>Core.Tests</code><br><span class="note">Executor policy, approvals, schemas, search, risk tiers, workflows, audit</span></td><td class="num">495</td></tr>
+            <tr><td><code>Operations.Tests</code><br><span class="note">Operation behaviour over fake ArcGIS services</span></td><td class="num">278</td></tr>
             <tr><td><code>Server.Tests</code><br><span class="note">MCP contract snapshots, end-to-end runs, trajectories</span></td><td class="num">123</td></tr>
             <tr><td><code>Bridge.Tests</code><br><span class="note">Pipe framing, discovery, host scheduling</span></td><td class="num">67</td></tr>
             <tr><td><code>Evals.Tests</code><br><span class="note">Retrieval suites gated on a measured baseline</span></td><td class="num">19</td></tr>
           </tbody>
-          <tfoot><tr><td>Total</td><td class="num">945</td></tr></tfoot>
+          <tfoot><tr><td>Total</td><td class="num">982</td></tr></tfoot>
         </table>
       </div>
       <div class="prose">
@@ -299,7 +301,7 @@
     <div class="section-head">
       <p class="eyebrow">Live evidence</p>
       <h2 id="evidence-title">Recorded on a real ArcGIS Pro 3.7.1 session</h2>
-      <p><code>tools/run-acceptance.ps1</code> records the commit, the ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into a dated folder under <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance">docs/acceptance</a>, and a test validates every committed folder against the evidence contract. The latest committed run, <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance/2026-10-03-e7deee2">docs/acceptance/2026-10-03-e7deee2</a> (version 0.3.0 at commit e7deee2, ArcGIS Pro 3.7.1.1904), covers the three bundled urban workflows and the full operation matrix on synthetic test data in default mode. The layouts below are its captures.</p>
+      <p><code>tools/run-acceptance.ps1</code> records the commit, the ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into a dated folder under <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance">docs/acceptance</a>, and a test validates every committed folder against the evidence contract. The latest committed run, <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance/2026-10-03-e7deee2">docs/acceptance/2026-10-03-e7deee2</a> (version 0.3.0 at commit e7deee2, a private-history SHA; public commit c976c51, see <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/acceptance/README.md#public-history">Public history</a>; ArcGIS Pro 3.7.1.1904), covers the three bundled urban workflows and the full operation matrix on synthetic test data in default mode. The layouts below are its captures.</p>
       <p class="note">The approval cards in that run were decided by Claude, operating the dockpane through computer use at the maintainer's direction, not clicked by the maintainer. The run shows that a card gates each risky call and that approve and deny behave as specified; it does not test a human reviewer's judgement. During the final <code>project.open</code> card, ArcGIS Pro's modal "Save all edits?" prompt appeared because feature edits were pending, and was answered the same way; that hang is fixed after the evidence commit (<code>project.open</code> now refuses with <code>pending_edits</code>).</p>
     </div>
     <div class="gallery">
@@ -346,37 +348,61 @@
     <div class="section-head">
       <p class="eyebrow">Quick start</p>
       <h2 id="start-title">Install the add-in, point your client at the gateway</h2>
-      <p>Requirements: Windows x64, a licensed ArcGIS Pro 3.7.1 and the .NET 10 x64 runtime.</p>
+      <p>Requirements: Windows x64, a licensed ArcGIS Pro 3.7 (tested on 3.7.1), and the <strong>.NET Runtime 10.x (x64)</strong> from <a href="https://dotnet.microsoft.com/download/dotnet/10.0">dotnet.microsoft.com</a> (the Runtime, not the SDK). To check, run <code>dotnet --list-runtimes</code> and look for a <code>Microsoft.NETCore.App 10.</code> line. The steps use version 0.3.1 as the example; the same steps ship as <code>INSTALL.txt</code> in the zip.</p>
     </div>
-    <ol class="steps">
+    <ol class="steps" role="list">
       <li><div>
-        <h3>Get the bundle</h3>
-        <p>Download <code>ArcGISProMCP-&lt;version&gt;-win-x64-development-preview.zip</code> from <a href="https://github.com/nicoazel/ArcGISPro.MCP/releases">Releases</a>, check <code>checksums.sha256</code>, and extract it, for example to <code>C:\ArcGISProMCP\0.3.0</code>.</p>
+        <h3>Download and verify</h3>
+        <p>From <a href="https://github.com/nicoazel/ArcGISPro.MCP/releases/latest">the latest release</a>, download <code>ArcGISProMCP-0.3.1-win-x64-development-preview.zip</code> and <code>SHA256SUMS</code>. In PowerShell, in that folder, check the zip before extracting it:</p>
+<pre><code>$zip = 'ArcGISProMCP-0.3.1-win-x64-development-preview.zip'
+$expected = (Select-String -Path .\SHA256SUMS -SimpleMatch $zip).Line.Split(' ')[0]
+if ((Get-FileHash $zip -Algorithm SHA256).Hash -eq $expected) { 'OK' } else { 'MISMATCH - do not install' }</code></pre>
+      </div></li>
+      <li><div>
+        <h3>Unblock and extract into <code>C:\ArcGISProMCP\</code></h3>
+<pre><code>Unblock-File $zip
+Expand-Archive $zip -DestinationPath C:\ArcGISProMCP</code></pre>
+        <p>Or right-click the zip &gt; Properties &gt; Unblock, then Extract All to <code>C:\ArcGISProMCP</code>, removing the folder name Explorer suggests so the folder is not nested twice. The zip has one root folder, so the gateway is at <code>C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview\server\arcgis-pro-mcp.exe</code>.</p>
       </div></li>
       <li><div>
         <h3>Install the add-in</h3>
-        <p>Close ArcGIS Pro and double-click <code>ArcGISProMCP.AddIn.esriAddinX</code>. The add-in is unsigned, so your organization's add-in policy may block it.</p>
+        <p>Close ArcGIS Pro and double-click <code>ArcGISProMCP.AddIn.esriAddinX</code> in that folder. The add-in is unsigned: if ArcGIS Pro reports it as blocked or <strong>MCP Studio</strong> does not appear, go to <strong>Project</strong> &gt; <strong>Add-In Manager</strong> &gt; <strong>Options</strong>, choose <strong>Load all Add-Ins without restrictions</strong> and restart ArcGIS Pro. If the option is greyed out, ask your IT department.</p>
       </div></li>
       <li><div>
-        <h3>Open a disposable project</h3>
-        <p>Start ArcGIS Pro, open a <strong>disposable copy</strong> of a project, and open <strong>Add-In &gt; ArcGIS MCP &gt; MCP Studio</strong>.</p>
+        <h3>Open a disposable project and the pane</h3>
+        <p>Open a <strong>disposable copy</strong> of a project. On the <strong>Add-In</strong> tab, click <strong>MCP Studio</strong> to open the <strong>ArcGIS MCP</strong> pane; its status should read <strong>Ready</strong>. Keep it open: approval cards appear there.</p>
       </div></li>
       <li><div>
         <h3>Connect your MCP client</h3>
-        <p class="snippet-label">Claude Desktop, <code>claude_desktop_config.json</code></p>
+        <p class="snippet-label">Claude Desktop: Settings &gt; Developer &gt; Edit Config (<code>%APPDATA%\Claude\claude_desktop_config.json</code>). Add the entry inside <code>mcpServers</code>, keeping any servers already there, then quit Claude Desktop from its tray icon and start it again.</p>
 <pre><code>{
   "mcpServers": {
     "arcgis-pro": {
-      "command": "C:\\ArcGISProMCP\\0.3.0\\server\\arcgis-pro-mcp.exe"
+      "command": "C:\\ArcGISProMCP\\ArcGISProMCP-0.3.1-win-x64-development-preview\\server\\arcgis-pro-mcp.exe"
     }
   }
 }</code></pre>
         <p class="snippet-label">Claude Code</p>
-<pre><code>claude mcp add arcgis-pro -- C:\ArcGISProMCP\0.3.0\server\arcgis-pro-mcp.exe</code></pre>
-        <p>Then ask: <em>"Read the ArcGIS Pro project state and list the layers in the active map."</em> Ask for an edit, such as updating one attribute, and approve the card that appears in the dockpane.</p>
+<pre><code>claude mcp add --scope user arcgis-pro -- "C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview\server\arcgis-pro-mcp.exe"
+claude mcp list</code></pre>
+        <p class="snippet-label">VS Code: <code>.vscode\mcp.json</code>, or <strong>MCP: Open User Configuration</strong></p>
+<pre><code>{
+  "servers": {
+    "arcgis-pro": {
+      "type": "stdio",
+      "command": "C:\\ArcGISProMCP\\ArcGISProMCP-0.3.1-win-x64-development-preview\\server\\arcgis-pro-mcp.exe"
+    }
+  }
+}</code></pre>
+        <p>Any other MCP client: run the same path as a stdio server. <strong>Do not set <code>ARCGIS_PRO_MCP_AUTONOMOUS_MODE</code></strong>: it skips the approval cards.</p>
+      </div></li>
+      <li><div>
+        <h3>Verify</h3>
+        <p>The client lists the <code>arcgis-pro</code> server with 16 tools. Ask <em>"What project is open in ArcGIS Pro?"</em>, then ask for a small edit, such as updating one attribute, and approve the card in the ArcGIS MCP pane.</p>
+        <p>Trouble? <code>arcgis_unavailable</code> means ArcGIS Pro is not running or the add-in did not load. <code>arcgis_host_ambiguous</code> means several ArcGIS Pro windows are open: close the extra ones, or add <code>"env": { "ARCGIS_PRO_MCP_HOST_PID": "&lt;pid&gt;" }</code> to the client entry with the PID shown in the pane. If the client says the server failed, check the path and the .NET runtime.</p>
       </div></li>
     </ol>
-    <p class="note">Full install, verification and rollback steps: <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/deployment.md">deployment</a>. All settings: <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/reference.md#environment-variables">reference</a>.</p>
+    <p class="note">Every client, troubleshooting, upgrade and uninstall: <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/deployment.md#install-users">install guide</a>. All settings: <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/reference.md#environment-variables">reference</a>.</p>
   </div>
 </section>
 

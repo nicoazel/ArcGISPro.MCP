@@ -44,22 +44,22 @@ internal static class LayerOperationSchemas
             ("limit", S.Integer(minimum: 1, maximum: 100)),
         ]);
 
-    // Describes OperationResult.data for layer.list (default JsonSerializer names; nulls written).
+    // Describes OperationResult.data for layer.list (camelCase names; nulls written).
     public static JsonElement ListOutput { get; } = S.Object(
         [
             ("map", S.String()),
             ("layers", S.Array(S.Object(
                 [
                     ("id", S.String()),
-                    ("Name", S.String()),
+                    ("name", S.String()),
                     ("type", S.String()),
-                    ("IsVisible", S.Boolean()),
-                    ("Transparency", S.Number()),
+                    ("isVisible", S.Boolean()),
+                    ("transparency", S.Number()),
                     ("drawingOrder", S.Integer(minimum: 0)),
                     ("isFeatureLayer", S.Boolean()),
                     ("elevation", S.Any("{ mode, offset, verticalExaggeration } for feature layers; null otherwise.")),
                 ],
-                ["id", "Name", "type", "IsVisible", "Transparency", "drawingOrder", "isFeatureLayer", "elevation"]))),
+                ["id", "name", "type", "isVisible", "transparency", "drawingOrder", "isFeatureLayer", "elevation"]))),
         ],
         ["map", "layers"]);
 }

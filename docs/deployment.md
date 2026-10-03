@@ -1,88 +1,210 @@
 # Deployment, status and rollback
 
+The first half of this page is for people installing the release: a GIS analyst who wants Claude Desktop, Claude Code, VS Code or another MCP client to work with ArcGIS Pro. The second half is for maintainers who build and publish releases.
+
+**Contents**
+
+- [Status](#status)
+- [Install (users)](#install-users)
+  - [Prerequisites](#prerequisites) · [1. Download and verify](#1-download-and-verify) · [2. Unblock and extract](#2-unblock-and-extract) · [3. Install the add-in](#3-install-the-add-in) · [4. Open the ArcGIS MCP pane](#4-open-the-arcgis-mcp-pane) · [5. Connect your MCP client](#5-connect-your-mcp-client) · [6. Verify](#6-verify)
+  - [Troubleshooting](#troubleshooting) · [Upgrade](#upgrade) · [Uninstall](#uninstall) · [Roll back](#roll-back) · [More on configuration](#more-on-configuration) · [Diagnostics](#diagnostics) · [Implemented surface](#implemented-surface) · [Known limits](#known-limits)
+- [Build and release (maintainers)](#build-and-release-maintainers)
+  - [Build the bundle](#build-the-bundle) · [Verify before installation](#verify-before-installation) · [Acceptance evidence](#acceptance-evidence) · [MCP registry package](#mcp-registry-package) · [Release process](#release-process) · [Release boundaries](#release-boundaries)
+
 ## Status
 
 **Development preview.** Supported: interactive same-user workstation with dockpane approvals. Autonomous mode is an opt-in expert setting, not recommended.
 
-- Target: ArcGIS Pro 3.7.1 on Windows x64, one signed-in user, a model client running as that same user.
+- Target: ArcGIS Pro 3.7 (tested on 3.7.1) on Windows x64, one signed-in user, a model client running as that same user.
 - The add-in and bundle are unsigned. This is not a signed public release and must not be deployed as an unattended or organization-wide service.
-- By default, confirmation-gated operations (destructive and external-side-effect operations, plus `project.open`, `project.save` and `feature.update`) require a short-lived approval issued by a person in the ArcGIS Pro dockpane, and the gateway cannot approve its own request.
+- By default, confirmation-gated operations (destructive and external-side-effect operations, plus `project.open`, `project.save` and `feature.update`) require a short-lived approval issued by a person in the ArcGIS MCP pane, and the gateway cannot approve its own request.
 - `ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true` bypasses dockpane review for the whole host session and effectively grants the connected client the user's ArcGIS authority. It exists for trusted experimentation and is not a supported deployment mode. See [security](security.md).
 
-## Build the bundle
+## Install (users)
 
-Prerequisites are Windows x64, .NET SDK 10, a licensed ArcGIS Pro 3.7.1 installation, and access to the referenced ArcGIS Pro 3.7 SDK package.
+The release is one zip, `ArcGISProMCP-<version>-win-x64-development-preview.zip`. These steps use version 0.3.1 as the example; replace `0.3.1` with the version you downloaded. The same steps are in `INSTALL.txt` inside the zip.
 
-From the repository root:
+### Prerequisites
 
-```powershell
-./tools/package-release.ps1
-```
+- Windows x64 and a licensed **ArcGIS Pro 3.7** (tested on 3.7.1).
+- The **.NET Runtime 10.x (x64)**. The gateway is framework-dependent, so it needs the runtime; the SDK is not needed. Download ".NET Runtime 10.x", Windows x64 installer, from <https://dotnet.microsoft.com/download/dotnet/10.0>. To check, run this in PowerShell and look for a line that starts with `Microsoft.NETCore.App 10.`:
 
-The packager always runs `tools/verify-release.ps1` first. That performs the Release solution build, every portable test project under `tests/`, whitespace validation, add-in packaging, and exact add-in-content inspection. It then publishes the framework-dependent Windows x64 stdio server and creates:
+  ```powershell
+  dotnet --list-runtimes
+  ```
 
-```text
-artifacts/releases/ArcGISProMCP-0.3.0-win-x64-development-preview.zip
-```
+- An MCP client: Claude Desktop, Claude Code, VS Code, or any other client that can start a stdio server.
+- A **disposable copy** of an ArcGIS Pro project to try it on.
 
-The archive has one versioned root directory containing:
+### 1. Download and verify
 
-```text
-ArcGISProMCP.AddIn.esriAddinX
-server/arcgis-pro-mcp.exe
-server/skills/*.skill.json
-docs/*.md
-workflows/*.workflow.json
-README.md
-LICENSE
-release.json
-checksums.sha256
-```
-
-The server is framework-dependent and requires the .NET 10 x64 runtime on the target workstation. Bundled skills load from `server/skills` relative to the executable, so keep that directory with the executable.
-
-Packaging also launches the actual published executable for an offline MCP initialize, 16-tool discovery, and bundled skill-read smoke test. It does not report live state, registry search, images or local approval as tested when ArcGIS Pro is not connected.
-
-## Verify before installation
-
-Extract the zip into a new version-specific directory. From the extracted version root, verify every listed payload before installing or configuring anything:
+From [the latest release](https://github.com/nicoazel/ArcGISPro.MCP/releases/latest), download both `ArcGISProMCP-0.3.1-win-x64-development-preview.zip` and `SHA256SUMS` into the same folder. Before extracting, check the zip against `SHA256SUMS`. In PowerShell, in that folder:
 
 ```powershell
-$failures = foreach ($line in Get-Content -LiteralPath ./checksums.sha256) {
-    if ($line -notmatch '^([0-9a-f]{64})  (.+)$') { throw "Malformed checksum line: $line" }
-    $expected = $Matches[1]
-    $path = $Matches[2].Replace('/', [IO.Path]::DirectorySeparatorChar)
-    $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($actual -ne $expected) { $path }
-}
-if ($failures) { throw "Checksum failure: $($failures -join ', ')" }
+$zip = 'ArcGISProMCP-0.3.1-win-x64-development-preview.zip'
+$expected = (Select-String -Path .\SHA256SUMS -SimpleMatch $zip).Line.Split(' ')[0]
+if ((Get-FileHash $zip -Algorithm SHA256).Hash -eq $expected) { 'OK' } else { 'MISMATCH - do not install' }
 ```
 
-Inspect `release.json` too. It records compatibility, framework dependency, unsigned status, and manual acceptance gates. Checksums detect accidental corruption; they do not establish publisher trust.
+Anything other than `OK` means the download is damaged or not the published file: download it again. A checksum detects corruption; it does not prove who published the file.
 
-## Install and configure
+### 2. Unblock and extract
 
-1. Keep the previously accepted bundle and add-in package for rollback.
-2. Close ArcGIS Pro. Do not replace an add-in while its assemblies are loaded.
-3. Install `ArcGISProMCP.AddIn.esriAddinX` with the normal ArcGIS Pro add-in installation flow. Organization policy may prohibit unsigned add-ins.
-4. Start ArcGIS Pro, open MCP Studio, and confirm the expected pipe and project before connecting a model client.
-5. Configure the MCP client to launch the extracted absolute path to `server\arcgis-pro-mcp.exe`. A single discovered Pro host is selected automatically. With several hosts, set `ARCGIS_PRO_MCP_HOST_PID` for the gateway process. `ARCGIS_PRO_MCP_PIPE` remains an explicit override and must match host and gateway.
+Windows marks downloaded files as coming from the internet, and files extracted from a marked zip inherit the mark, which can make Windows or ArcGIS Pro block or warn about them. Unblock the zip **before** extracting it, then extract it into `C:\ArcGISProMCP\`. In the same PowerShell window:
 
-New hosts default to a unique `ArcGISProMCP.v1.<pid>` pipe and publish discovery records under LocalAppData. The gateway refuses ambiguous automatic selection and lists PID/project choices. Do not deliberately configure multiple hosts with the same explicit pipe: Windows can distribute successive client connections across different projects, making state and revision checks appear inconsistent.
+```powershell
+Unblock-File $zip
+Expand-Archive $zip -DestinationPath C:\ArcGISProMCP
+```
 
-A generic MCP client entry is:
+Or in Explorer: right-click the zip > **Properties** > tick **Unblock** > **OK**, then **Extract All** with the destination set to `C:\ArcGISProMCP` (remove the folder name Explorer suggests, or you get a nested folder).
+
+The zip has one root folder, so you end up with:
+
+```text
+C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview\
+    INSTALL.txt
+    ArcGISProMCP.AddIn.esriAddinX
+    server\arcgis-pro-mcp.exe        <- the command your MCP client runs
+    server\*.pdb                     (debug symbols)
+    server\skills\*.skill.json
+    docs\  workflows\  README.md  LICENSE  release.json  checksums.sha256
+```
+
+Keep `server\skills` next to `arcgis-pro-mcp.exe`. The rest of this page calls `C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview\server\arcgis-pro-mcp.exe` the **gateway path**.
+
+### 3. Install the add-in
+
+1. Close ArcGIS Pro.
+2. Double-click `ArcGISProMCP.AddIn.esriAddinX` in the extracted folder and click **Install Add-In**.
+3. The add-in is unsigned. ArcGIS Pro loads unsigned add-ins only when its add-in security allows it: start ArcGIS Pro, go to **Project** > **Add-In Manager** > **Options**, choose **Load all Add-Ins without restrictions**, and restart ArcGIS Pro. If the options are greyed out, your organization manages this setting: ask your IT department.
+
+### 4. Open the ArcGIS MCP pane
+
+Start ArcGIS Pro and open a **disposable copy** of a project. On the **Add-In** tab, click **MCP Studio**. The **ArcGIS MCP** pane opens. Its status should read **Ready**, with the ArcGIS Pro process id (PID) and the workspace revision underneath.
+
+The connection to MCP clients starts with ArcGIS Pro; the pane does not need to be open for it. Keep the pane open anyway: approval cards appear there, and a risky request waits until you approve or deny its card.
+
+### 5. Connect your MCP client
+
+Every client starts the gateway path as a stdio server. JSON needs every backslash doubled.
+
+> **Do not set `ARCGIS_PRO_MCP_AUTONOMOUS_MODE`** in a client configuration or anywhere else: it skips the approval cards.
+
+#### Claude Desktop
+
+1. Open **Settings** > **Developer** > **Edit Config**. This opens `claude_desktop_config.json` (normally `%APPDATA%\Claude\claude_desktop_config.json`).
+2. Add the `arcgis-pro` entry inside `mcpServers`. If the file already has an `mcpServers` block, add the entry next to the servers already there instead of adding a second block:
+
+   ```json
+   {
+     "mcpServers": {
+       "arcgis-pro": {
+         "command": "C:\\ArcGISProMCP\\ArcGISProMCP-0.3.1-win-x64-development-preview\\server\\arcgis-pro-mcp.exe"
+       }
+     }
+   }
+   ```
+
+3. Save the file, then quit Claude Desktop completely: right-click its icon in the Windows notification area (system tray) and choose **Quit**. Closing the window is not enough. Start Claude Desktop again.
+
+#### Claude Code
+
+```powershell
+claude mcp add --scope user arcgis-pro -- "C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview\server\arcgis-pro-mcp.exe"
+claude mcp list
+```
+
+`--scope user` makes the server available in every project. `claude mcp list` should show `arcgis-pro` as connected; inside Claude Code, `/mcp` shows the same.
+
+#### VS Code
+
+Create `.vscode\mcp.json` in your workspace, or run **MCP: Open User Configuration** from the Command Palette to make it available in every workspace, and add:
 
 ```json
 {
-  "mcpServers": {
+  "servers": {
     "arcgis-pro": {
-      "command": "C:\\ArcGISProMCP\\0.3.0\\server\\arcgis-pro-mcp.exe"
+      "type": "stdio",
+      "command": "C:\\ArcGISProMCP\\ArcGISProMCP-0.3.1-win-x64-development-preview\\server\\arcgis-pro-mcp.exe"
     }
   }
 }
 ```
 
-Keep the dockpane open and review each approval request. Run the procedures in [manual acceptance](manual-acceptance.md) against a disposable project, including local review, reconnect, revision rejection, feature/metadata/geoprocessing mutations, and host shutdown. Portable verification is not host acceptance.
+Start the server when VS Code offers to, then use the tools from Chat in agent mode.
+
+#### Any other MCP client
+
+Configure a stdio server whose command is the gateway path, with no arguments. Settings are environment variables on that server (see the [reference](reference.md#environment-variables)); none is needed for a single ArcGIS Pro window.
+
+#### Several ArcGIS Pro windows
+
+With one ArcGIS Pro process running, the gateway finds it automatically. With several, it refuses to guess (`arcgis_host_ambiguous`). Pick one by its process id, which the ArcGIS MCP pane shows under its status, by adding an `env` block to the client entry:
+
+```json
+"arcgis-pro": {
+  "command": "C:\\ArcGISProMCP\\ArcGISProMCP-0.3.1-win-x64-development-preview\\server\\arcgis-pro-mcp.exe",
+  "env": { "ARCGIS_PRO_MCP_HOST_PID": "12345" }
+}
+```
+
+In Claude Code, add `-e ARCGIS_PRO_MCP_HOST_PID=12345` after `--scope user`. A PID changes every time ArcGIS Pro starts, so update or remove it afterwards.
+
+### 6. Verify
+
+1. The ArcGIS MCP pane says **Ready**.
+2. The client lists the `arcgis-pro` server with **16 tools** (Claude Code: `/mcp`; Claude Desktop: the tools menu in the message box; VS Code: the tools picker in Chat).
+3. Ask: *"What project is open in ArcGIS Pro?"* The answer names your disposable project.
+4. Ask for a small edit, such as updating one attribute. A card appears in the ArcGIS MCP pane; approve it and check the change in ArcGIS Pro.
+
+### Troubleshooting
+
+| Symptom | Cause and fix |
+| --- | --- |
+| The client says the server failed, or shows no ArcGIS tools | Check the command path: it must point to `server\arcgis-pro-mcp.exe` inside the `ArcGISProMCP-<version>-win-x64-development-preview` folder, with doubled backslashes in JSON. Run it once in PowerShell (`& "<gateway path>"`): if it reports that .NET is missing, install the runtime (next row); otherwise it waits silently for a client, which is correct (press Ctrl+C). Claude Desktop writes a log per server to `%APPDATA%\Claude\logs`. Restart the client completely after any change. |
+| .NET runtime missing | `dotnet --list-runtimes` shows no `Microsoft.NETCore.App 10.` line, or `dotnet` is not found. Install ".NET Runtime 10.x (x64)" (the SDK is not needed) from <https://dotnet.microsoft.com/download/dotnet/10.0>, then restart the client. |
+| No **MCP Studio** button on the **Add-In** tab | The add-in did not load. Check **Project** > **Add-In Manager**: if ArcGIS Pro MCP Studio is listed with a security message, allow unsigned add-ins (**Options** > **Load all Add-Ins without restrictions**, or ask IT if managed) and restart ArcGIS Pro. If it is not listed, install the `.esriAddinX` again with ArcGIS Pro closed. The add-in needs ArcGIS Pro 3.7. If you did not unblock the zip before extracting, unblock the `.esriAddinX` (Properties > Unblock) and install again. |
+| `arcgis_unavailable` | No ArcGIS Pro accepted the connection: ArcGIS Pro is not running, it is still starting, or the add-in did not load. Start ArcGIS Pro, open a project, check that the pane says **Ready**, and ask again. Retryable. |
+| `bridge_disabled` | Someone clicked **Stop** in the ArcGIS MCP pane. Click **Connect**. |
+| `arcgis_host_ambiguous` | Several ArcGIS Pro processes are running. Close the extra ones, or set `ARCGIS_PRO_MCP_HOST_PID` in the client entry to the PID shown in the pane ([several ArcGIS Pro windows](#several-arcgis-pro-windows)). |
+| `arcgis_host_not_found` | `ARCGIS_PRO_MCP_HOST_PID` names a process that is not a running ArcGIS Pro with the add-in, usually because ArcGIS Pro restarted with a new PID. Update the PID or remove the setting, then restart the client. |
+| `arcgis_host_selector_invalid` | `ARCGIS_PRO_MCP_HOST_PID` is not a positive whole number. Fix or remove it. |
+| A risky request waits and nothing happens | It is waiting for its card. Open the ArcGIS MCP pane (**Add-In** > **MCP Studio**) and approve or deny it. A card expires after two minutes; the client can then request a new one. |
+| `workspace_revision_mismatch` or `workspace_changed` | The project changed since the client last read it (for example you edited it in ArcGIS Pro). Ask the client to read the state again and retry. |
+
+Other error codes are in the [reference](reference.md#error-codes).
+
+### Upgrade
+
+1. Close ArcGIS Pro and quit the MCP client.
+2. Download, verify, unblock and extract the new zip into `C:\ArcGISProMCP\` ([steps 1 and 2](#1-download-and-verify)). Each version has its own folder, so the old one stays for [rollback](#roll-back).
+3. Double-click the new `ArcGISProMCP.AddIn.esriAddinX`. It has the same add-in id, so it replaces the installed version.
+4. Change the client's command to the new gateway path (Claude Code: `claude mcp remove --scope user arcgis-pro`, then add it again).
+5. Start ArcGIS Pro, then restart the client completely, and [verify](#6-verify).
+
+### Uninstall
+
+1. In ArcGIS Pro: **Project** > **Add-In Manager**, select **ArcGIS Pro MCP Studio**, click **Delete this Add-In**, and restart ArcGIS Pro.
+2. Remove the client entry: delete `arcgis-pro` from `claude_desktop_config.json` or `mcp.json`, or run `claude mcp remove --scope user arcgis-pro`. Restart the client.
+3. Delete `C:\ArcGISProMCP\`.
+4. Optional: `%LOCALAPPDATA%\ArcGISProMCP` holds the audit log, saved workflows, captured images and discovery records. Delete it if you do not need them.
+
+### Roll back
+
+1. Close ArcGIS Pro and stop the MCP client.
+2. Preserve logs, the failing bundle, and any ArcGIS crash report or dump.
+3. Remove the preview add-in with the normal ArcGIS Pro add-in flow.
+4. Reinstall the previously accepted add-in and point the client to that version's server executable.
+5. Restart ArcGIS Pro and repeat acceptance against a disposable project.
+
+Rollback does not undo map, geodatabase, layout, metadata, geoprocessing, or ArcPy mutations. Restore user data from its own backup/version history, and do not retry an uncertain mutation without checking its recorded outcome.
+
+### More on configuration
+
+New hosts default to a unique `ArcGISProMCP.v1.<pid>` pipe and publish discovery records under `%LOCALAPPDATA%`. `ARCGIS_PRO_MCP_PIPE` is an explicit override and must match host and gateway. Do not deliberately configure multiple hosts with the same explicit pipe: Windows can distribute successive client connections across different projects, making state and revision checks appear inconsistent.
+
+Run the procedures in [manual acceptance](manual-acceptance.md) against a disposable project, including local review, reconnect, revision rejection, feature/metadata/geoprocessing mutations, and host shutdown, before relying on a build.
 
 ArcPy is absent from the operation registry unless explicitly enabled before ArcGIS Pro starts. Follow [ArcPy configuration and trust boundaries](arcpy.md); do not enable it on a workstation that accepts untrusted scripts or untrusted MCP clients.
 
@@ -106,7 +228,7 @@ python tools/analyze-revision-log.py revisions-1234.log --audit operations.jsonl
 
 The log contains project paths and map and layout names, so treat it like the project itself when sharing it. Writing stops once the file reaches 50 MB (a final `capped` line says so); delete the file to start again. Nothing rotates or deletes it automatically.
 
-## Implemented surface
+### Implemented surface
 
 - Searchable registry with curated project, map, scene, layer, cartography, feature, table, metadata, geoprocessing, layout, observation, workflow and optional ArcPy operations. See the [reference](reference.md).
 - Geoprocessing discovery (`gp.search`, `gp.describe`) from installed toolbox metadata, allowlisted read-only `gp.query`, per-tool risk tiers with an autonomous-mode refusal for Destructive and UserCode tools, and static `gp.run` dry runs.
@@ -119,20 +241,12 @@ The log contains project paths and map and layout names, so treat it like the pr
 - Workflow operation allowlists: user-code operations (`gp.run`, `arcpy.run-script`) must be listed explicitly in a workflow's `allowedOperations`.
 - Audit log of operations, unknown operation ids, autonomous bypasses and approval decisions, rotated at 16 MiB (five rotated files kept).
 
-## Acceptance evidence
+### Known limits
 
-**Committed evidence:** [`docs/acceptance/2026-10-03-e7deee2`](acceptance/2026-10-03-e7deee2/summary.md) (the latest; the two earlier runs used the previous third-party test data and are kept in the private development archive only, see [Public history](acceptance/README.md#public-history)) records commit `e7deee2` on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0): release verify, the loaded add-in DLLs matching the package, host probe, the MCP smoke test, the three bundled urban workflows x 3 runs with layouts visually inspected, and the live operation matrix (41/41 operations, 90/90 cases, 7 approved and 1 denied card), all in default (review-required) mode. Its approval cards were decided by Claude through computer use at the maintainer's direction, not by a person reviewing them ([details](acceptance/README.md)). It does not cover autonomous mode or the separate feature/GP/ArcPy section.
-
-A live acceptance pass of the ArcGIS-only build was run on the maintainer's workstation on 2026-09-09. It covered MCP protocol and reconnect, multi-instance discovery, feature editing, layer metadata, SDK geoprocessing, the optional ArcPy runner (in autonomous mode), the urban layout workflows and the Pittsburgh showcase, and idle/shutdown behavior. Two findings are retained:
-
-- Explicit remote cancellation of an accepted SDK geoprocessing call is not implemented. A client disconnect after acceptance is reported as `outcome_unknown`.
-- ArcGIS Pro shutdown was not perfectly repeatable across disposable instances; one instance needed a PID-scoped forced close after 75 seconds.
-
-The evidence from that pass (result JSON, hashes and images under `artifacts/`) is **local only**: `artifacts/` is git-ignored and nothing in this repository lets a reader verify those results. Treat them as the maintainer's notes, not as release evidence. Committed evidence goes in [`docs/acceptance/`](acceptance/README.md). Each entry is a `<yyyy-MM-dd>-<sha7>` folder written by `tools/run-acceptance.ps1 -Commit`, with a manifest tied to the commit SHA, ArcGIS Pro version, package hash and loaded DLL hashes, plus a summary and `SHA256SUMS`. A Core test validates every entry. Only the maintainer with a live ArcGIS Pro produces entries. An entry covers only the commit, Pro version and sections it names, and sections run in autonomous mode are marked as such. Until an entry exists for the build you install, and for anything an entry does not cover, run [manual acceptance](manual-acceptance.md) yourself.
-
-## Known limits
-
-- The post-write settle budget is 3 s. It bounds the host's own waiting: the drain of the main CIM thread and UI dispatcher, the 300 ms host-event quiet wait and the quiet revision samples. It does not bound how long a write takes to return: every snapshot, including the plain one published when the budget runs out, is read on ArcGIS Pro's main CIM thread, so while Pro is busy (for example loading a newly added layer) the write waits for it. One write after `layer.add` took about 30 s in a live run. In the 2026-09-29 evidence run, before the host-event quiet wait existed, the operator's revision log (`ARCGIS_PRO_MCP_REVISION_LOG`, not committed) recorded 26 of 324 writes (8%, heavy layout and 3D steps) reaching the cap because ArcGIS Pro did not go idle within 3 s. No revision drift followed in that run, but a late ArcGIS event echo after a capped settle can still surface as `workspace_changed` on the next workflow step. Rerun the workflow after refreshing state. Measure settles on your own workstation with the revision log and `tools/analyze-revision-log.py` (see [diagnostics](#diagnostics)).
+- **Post-write settle budget (3 s).** After each write the host waits for ArcGIS Pro to go quiet: the drain of the main CIM thread and UI dispatcher, the 300 ms host-event quiet wait and the quiet revision samples, at most 3 s in total.
+  - The budget does not bound how long a write takes to return. Every snapshot, including the plain one published when the budget runs out, is read on ArcGIS Pro's main CIM thread, so while Pro is busy (for example loading a newly added layer) the write waits for it. One write after `layer.add` took about 30 s in a live run.
+  - In the 2026-09-29 evidence run, before the host-event quiet wait existed, the operator's revision log recorded 26 of 324 writes (8%, heavy layout and 3D steps) reaching the cap because ArcGIS Pro did not go idle within 3 s. No revision drift followed in that run.
+  - A late ArcGIS event echo after a capped settle can still surface as `workspace_changed` on the next workflow step. Rerun the workflow after refreshing state. Measure settles on your own workstation with the revision log and `tools/analyze-revision-log.py` (see [diagnostics](#diagnostics)).
 - **Workflows cannot execute confirmation-gated steps in default mode.** `workflow_run` invokes each step without an approval token, and there is no per-step approval yet. A step such as `gp.run`, `metadata.update`, `feature.update`, `feature.delete`, `project.save` or `arcpy.run-script` fails with `confirmation_required` unless the host runs in autonomous mode. Run such operations individually through `approval_request` and `registry_invoke`.
 - Workflows are not transactional or resumable after a crash. There is no automatic rollback. A run that detects a mid-run workspace change stops with `workspace_changed` and leaves its completed steps in place.
 - Feature editing excludes batch edits, multipoint construction, multipart construction and complete subtype/domain/range validation.
@@ -144,17 +258,76 @@ The evidence from that pass (result JSON, hashes and images under `artifacts/`) 
 - The package is unsigned. Wider distribution requires an organizational signing certificate, publisher policy and another installed-package verification pass over the signed artifact.
 - Automation that closes ArcGIS Pro must keep PID-scoped ownership, save first, request a normal close, wait, and only terminate a verified disposable process as a last resort.
 
-## Roll back
+## Build and release (maintainers)
 
-1. Close ArcGIS Pro and stop the MCP client.
-2. Preserve logs, the failing bundle, and any ArcGIS crash report or dump.
-3. Remove the preview add-in with the normal ArcGIS Pro add-in flow.
-4. Reinstall the previously accepted add-in and point the client to that version's server executable.
-5. Restart ArcGIS Pro and repeat acceptance against a disposable project.
+### Build the bundle
 
-Rollback does not undo map, geodatabase, layout, metadata, geoprocessing, or ArcPy mutations. Restore user data from its own backup/version history, and do not retry an uncertain mutation without checking its recorded outcome.
+Prerequisites are Windows x64, .NET SDK 10, a licensed ArcGIS Pro 3.7 installation (tested on 3.7.1), and access to the referenced ArcGIS Pro 3.7 SDK package.
 
-## MCP registry package
+From the repository root:
+
+```powershell
+./tools/package-release.ps1
+```
+
+The packager always runs `tools/verify-release.ps1` first. That performs the Release solution build, every portable test project under `tests/`, whitespace validation, add-in packaging, and exact add-in-content inspection. It then publishes the framework-dependent Windows x64 stdio server and creates:
+
+```text
+artifacts/releases/ArcGISProMCP-<version>-win-x64-development-preview.zip
+```
+
+The archive has one versioned root directory, `ArcGISProMCP-<version>-win-x64-development-preview/`, containing:
+
+```text
+INSTALL.txt
+ArcGISProMCP.AddIn.esriAddinX
+server/arcgis-pro-mcp.exe
+server/*.pdb
+server/skills/*.skill.json
+docs/*.md
+workflows/*.workflow.json
+README.md
+LICENSE
+release.json
+checksums.sha256
+```
+
+`INSTALL.txt` is generated from `tools/bundle/INSTALL.txt` with the version filled in and CRLF line endings; keep its steps in line with [Install (users)](#install-users). The server is framework-dependent and requires the .NET 10 x64 runtime on the target workstation. Bundled skills load from `server/skills` relative to the executable, so keep that directory with the executable.
+
+Packaging also launches the actual published executable for an offline MCP initialize, 16-tool discovery, and bundled skill-read smoke test. It does not report live state, registry search, images or local approval as tested when ArcGIS Pro is not connected.
+
+### Verify before installation
+
+Besides the release `SHA256SUMS` for the zip ([step 1](#1-download-and-verify)), every bundle carries `checksums.sha256` for its contents. From the extracted version root (for example `C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview`), verify every listed payload:
+
+```powershell
+$failures = foreach ($line in Get-Content -LiteralPath ./checksums.sha256) {
+    if ($line -notmatch '^([0-9a-f]{64})  (.+)$') { throw "Malformed checksum line: $line" }
+    $expected = $Matches[1]
+    $path = $Matches[2].Replace('/', [IO.Path]::DirectorySeparatorChar)
+    $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actual -ne $expected) { $path }
+}
+if ($failures) { throw "Checksum failure: $($failures -join ', ')" }
+```
+
+Inspect `release.json` too. It records compatibility, framework dependency, unsigned status, and manual acceptance gates. Checksums detect accidental corruption; they do not establish publisher trust.
+
+### Acceptance evidence
+
+**Committed evidence:** [`docs/acceptance/2026-10-03-e7deee2`](acceptance/2026-10-03-e7deee2/summary.md) is the latest. It records commit `e7deee2` (private-history SHA; public commit `c976c51`, see [Public history](acceptance/README.md#public-history)) on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0), all in default (review-required) mode:
+
+- release verify, the loaded add-in DLLs matching the package, host probe and the MCP smoke test;
+- the three bundled urban workflows x 3 runs, with layouts visually inspected;
+- the live operation matrix: 41/41 operations, 90/90 cases, 7 approved and 1 denied card.
+
+Its approval cards were decided by Claude through computer use at the maintainer's direction, not by a person reviewing them ([details](acceptance/README.md#run-notes)). It does not cover autonomous mode or the separate feature/GP/ArcPy section. The two earlier runs used the previous third-party test data and are kept in the private development archive only.
+
+Each entry is a `<yyyy-MM-dd>-<sha7>` folder written by `tools/run-acceptance.ps1 -Commit`, with a manifest tied to the commit SHA, ArcGIS Pro version, package hash and loaded DLL hashes, plus a summary and `SHA256SUMS`. A Core test validates every entry.
+
+Only the maintainer with a live ArcGIS Pro produces entries. An entry covers only the commit, Pro version and sections it names, and sections run in autonomous mode are marked as such. Until an entry exists for the build you install, and for anything an entry does not cover, run [manual acceptance](manual-acceptance.md) yourself. Earlier live passes that are not committed evidence are listed in [acceptance/README.md](acceptance/README.md#earlier-live-passes-not-evidence).
+
+### MCP registry package
 
 **Draft, not published.** The gateway can also be packed as a NuGet `McpServer` dotnet tool for the [MCP registry](https://github.com/modelcontextprotocol/registry) (`registryType: nuget`, `runtimeHint: dnx`). The zip bundle above stays the primary distribution: the NuGet package contains only the gateway, so the ArcGIS Pro add-in must still be installed from the GitHub release, and the gateway is Windows-only in practice.
 
@@ -176,12 +349,12 @@ This runs `dotnet pack` into `artifacts/packages/ArcGISProMCP.Gateway.<version>.
 Try the package without publishing it:
 
 ```powershell
-dotnet tool install --tool-path "$env:TEMP\arcgis-pro-mcp-tool" --add-source artifacts/packages ArcGISProMCP.Gateway --version 0.3.0
+dotnet tool install --tool-path "$env:TEMP\arcgis-pro-mcp-tool" --add-source artifacts/packages ArcGISProMCP.Gateway --version 0.3.1
 # or, with .NET 10 (dnx asks before it downloads and runs the tool):
-# dnx ArcGISProMCP.Gateway --version 0.3.0 --add-source artifacts/packages
+# dnx ArcGISProMCP.Gateway --version 0.3.1 --add-source artifacts/packages
 ```
 
-### Environment variables in `server.json`
+#### Environment variables in `server.json`
 
 Registry clients set environment variables on the gateway process only. `server.json` therefore declares only the gateway-side variables; host-side variables must be set in the environment ArcGIS Pro starts in (see [reference](reference.md#environment-variables)).
 
@@ -192,7 +365,7 @@ Registry clients set environment variables on the gateway process only. `server.
 | `ARCGIS_PRO_MCP_AUTONOMOUS_MODE` | Pro | No |
 | `ARCGIS_PRO_MCP_ENABLE_ARCPY` and `ARCGIS_PRO_MCP_ARCPY_*` | Pro | No |
 
-### Publishing (maintainer, later)
+#### Publishing (maintainer, later)
 
 Not automated and not done by any script in this repository. It requires the maintainer's nuget.org account and GitHub identity:
 
@@ -203,7 +376,7 @@ Not automated and not done by any script in this repository. It requires the mai
 
 The registry verifies NuGet ownership by finding `mcp-name: io.github.nicoazel/arcgis-pro-mcp` in the package README. The packed README is the repository `README.md`, which carries `<!-- mcp-name: io.github.nicoazel/arcgis-pro-mcp -->` on its own line (an HTML comment, so it does not render). Keep that line when editing the README.
 
-## Release process
+### Release process
 
 The maintainer pushes a tag `vX.Y.Z`; `.github/workflows/release.yml` builds, tests and packages that commit and creates a **draft** GitHub release; the maintainer reviews the draft and publishes it. Nothing is published, signed or pushed to nuget.org or the MCP registry automatically.
 
@@ -215,7 +388,7 @@ The maintainer pushes a tag `vX.Y.Z`; `.github/workflows/release.yml` builds, te
 
 Preview the notes locally with `./tools/extract-release-notes.ps1 -Version X.Y.Z -Ref vX.Y.Z -OutputPath artifacts/release-notes.md`.
 
-## Release boundaries
+### Release boundaries
 
 - The packaging script does not install, sign, or upload anything. The release workflow only creates a draft release; publishing it is the maintainer's decision.
 - Live ArcGIS-host acceptance of the exact installed build, including the dockpane approval flow, is required before relying on a build.

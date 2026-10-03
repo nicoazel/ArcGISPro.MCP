@@ -12,8 +12,8 @@ body:
     id: bundle-version
     attributes:
       label: Bundle version or commit
-      description: The release bundle you installed (for example `0.3.0`) or the commit you built from.
-      placeholder: 0.3.0
+      description: The release bundle you installed (for example `0.3.1`) or the commit you built from.
+      placeholder: 0.3.1
     validations:
       required: true
   - type: input

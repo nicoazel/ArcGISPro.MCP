@@ -49,9 +49,9 @@
 .EXAMPLE
     ./tools/run-acceptance.ps1 -PipeName ArcGISProMCP.v1.12345
 .EXAMPLE
-    ./tools/run-acceptance.ps1 -Sections smoke,feature-gp-arcpy,stress -AllowProjectMutation -AllowAutonomous -DisposableRoot D:\scratch\mcp-acceptance -Commit
+    ./tools/run-acceptance.ps1 -Sections smoke,feature-gp-arcpy,stress -AllowProjectMutation -AllowAutonomous -DisposableRoot C:\MCP-scratch\mcp-acceptance -Commit
 .EXAMPLE
-    ./tools/run-acceptance.ps1 -Sections smoke,stress,operations -AllowProjectMutation -DisposableRoot D:\scratch\mcp-acceptance -Commit
+    ./tools/run-acceptance.ps1 -Sections smoke,stress,operations -AllowProjectMutation -DisposableRoot C:\MCP-scratch\mcp-acceptance -Commit
 #>
 # An operator console script: coloured progress is for the person at the workstation, and every
 # result that matters is written to manifest.json and summary.md, so Write-Host is intended here.
