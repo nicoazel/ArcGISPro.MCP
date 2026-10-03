@@ -94,12 +94,12 @@ Build: .NET 10 with `TreatWarningsAsErrors`; 0 warnings. Tests (xUnit v3), all p
 
 | Project | Tests | What it covers |
 | --- | ---: | --- |
-| `ArcGISProMCP.Core.Tests` | 453 | Executor policy, approvals, schemas, search, toolbox catalog and risk tiers, workflows, audit, acceptance manifests |
-| `ArcGISProMCP.Operations.Tests` | 192 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
+| `ArcGISProMCP.Core.Tests` | 482 | Executor policy, approvals, schemas, search, toolbox catalog and risk tiers, workflows and their layout placement, audit, acceptance manifests and the operation matrix plan, synthetic test data |
+| `ArcGISProMCP.Operations.Tests` | 223 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
 | `ArcGISProMCP.Server.Tests` | 123 | MCP contract snapshots, envelopes against output schemas, end-to-end runs through the real bridge handler, E3 trajectories |
 | `ArcGISProMCP.Bridge.Tests` | 67 | Pipe framing, discovery, host scheduling and the request handler |
 | `ArcGISProMCP.Evals.Tests` | 19 | Retrieval suites gated on a measured baseline, scorecard writing, descriptor dump checks |
-| **Total** | **854** | |
+| **Total** | **914** | |
 
 Eval scorecard ([evals/README.md](evals/README.md); gp suites measured against ArcGIS Pro 3.7.1, 2,210 system tools):
 
@@ -115,7 +115,13 @@ CI (GitHub Actions, pinned to commit SHAs, read-only permissions): a Windows bui
 
 ## Verification and acceptance evidence
 
-Portable tests are not host acceptance. The live acceptance tooling exists: `tools/run-acceptance.ps1` records the commit, ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into `docs/acceptance/<date>-<sha7>/`, and a Core test validates every committed folder against the [evidence contract](docs/acceptance/README.md). The latest committed evidence is [`docs/acceptance/2026-09-29-96f6a5b`](docs/acceptance/2026-09-29-96f6a5b/summary.md): verify, the loaded-DLL match, host probe, the MCP smoke test and the three bundled urban workflows x 3 runs on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0) in default mode, with the layouts visually inspected (cosmetic legend/scale-bar overlaps are recorded). It does not cover autonomous mode or the feature/GP/ArcPy section. For anything an evidence folder does not cover, run the [manual acceptance](docs/manual-acceptance.md) checklist on your own installation and read the [known limits](docs/deployment.md#known-limits).
+Portable tests are not host acceptance. The live acceptance tooling exists: `tools/run-acceptance.ps1` records the commit, ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into `docs/acceptance/<date>-<sha7>/`, and a Core test validates every committed folder against the [evidence contract](docs/acceptance/README.md). The latest committed evidence is [`docs/acceptance/2026-09-29-96f6a5b`](docs/acceptance/2026-09-29-96f6a5b/summary.md): verify, the loaded-DLL match, host probe, the MCP smoke test and the three bundled urban workflows x 3 runs on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0) in default mode, with the layouts visually inspected (cosmetic legend/scale-bar overlaps are recorded). It does not cover autonomous mode or the feature/GP/ArcPy section.
+
+The live operation matrix, `tools/run-live-operations.ps1` (the `operations` section of `run-acceptance.ps1`), exercises all 41 operations against a disposable project in default mode, with happy paths, negative cases and eight review cards that the operator approves or denies in the dockpane. Its first recorded run is pending the next live session; until then, the committed evidence above exercises only the operations the smoke test and the bundled workflows use.
+
+<!-- LIVE-RESULTS: after the live session, replace the paragraph above with the operation matrix result from the new evidence folder (docs/acceptance/<date>-<sha7>/operations/summary.json): operations covered, cases passed/failed/skipped, cards approved/denied, and the link. -->
+
+For anything an evidence folder does not cover, run the [manual acceptance](docs/manual-acceptance.md) checklist on your own installation and read the [known limits](docs/deployment.md#known-limits).
 
 ## Build from source
 

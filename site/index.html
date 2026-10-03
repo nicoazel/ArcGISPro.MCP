@@ -261,7 +261,7 @@
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Quality</p>
-      <h2 id="quality-title">771 tests, measured search, pinned CI</h2>
+      <h2 id="quality-title">914 tests, measured search, pinned CI</h2>
       <p>Build: .NET 10 with <code>TreatWarningsAsErrors</code> and 0 warnings. Tests use xUnit v3; the portable tests do not need ArcGIS Pro.</p>
     </div>
     <div class="split">
@@ -269,13 +269,13 @@
         <table>
           <thead><tr><th scope="col">Test project</th><th scope="col" class="num">Tests</th></tr></thead>
           <tbody>
-            <tr><td><code>Core.Tests</code><br><span class="note">Executor policy, approvals, schemas, search, risk tiers, workflows, audit</span></td><td class="num">432</td></tr>
-            <tr><td><code>Operations.Tests</code><br><span class="note">Operation behaviour over fake ArcGIS services</span></td><td class="num">130</td></tr>
+            <tr><td><code>Core.Tests</code><br><span class="note">Executor policy, approvals, schemas, search, risk tiers, workflows, audit</span></td><td class="num">482</td></tr>
+            <tr><td><code>Operations.Tests</code><br><span class="note">Operation behaviour over fake ArcGIS services</span></td><td class="num">223</td></tr>
             <tr><td><code>Server.Tests</code><br><span class="note">MCP contract snapshots, end-to-end runs, trajectories</span></td><td class="num">123</td></tr>
             <tr><td><code>Bridge.Tests</code><br><span class="note">Pipe framing, discovery, host scheduling</span></td><td class="num">67</td></tr>
             <tr><td><code>Evals.Tests</code><br><span class="note">Retrieval suites gated on a measured baseline</span></td><td class="num">19</td></tr>
           </tbody>
-          <tfoot><tr><td>Total</td><td class="num">771</td></tr></tfoot>
+          <tfoot><tr><td>Total</td><td class="num">914</td></tr></tfoot>
         </table>
       </div>
       <div class="prose">
@@ -302,6 +302,7 @@
     <div class="section-head">
       <p class="eyebrow">Live evidence</p>
       <h2 id="evidence-title">Recorded on a real ArcGIS Pro 3.7.1 session</h2>
+      <!-- LIVE-RESULTS: after the live session, move the operation matrix item from "Not covered" to "Covered" with its result (operations covered, cases passed, cards approved/denied) from docs/acceptance/<date>-<sha7>/operations/summary.json. -->
       <!-- EVIDENCE: when the new evidence run is committed, point these links at docs/acceptance/<date>-<sha7>/ and update the scope lists below to match its summary.md. -->
       <p><code>tools/run-acceptance.ps1</code> records the commit, the ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into a dated folder under <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance">docs/acceptance</a>, and a test validates every committed folder against the evidence contract. These layouts were produced by the three bundled urban workflows from synthetic test data.</p>
     </div>
@@ -335,7 +336,7 @@
         <ul class="list">
           <li>Autonomous mode</li>
           <li>The feature, geoprocessing and ArcPy section</li>
-          <li>Several operations have not been exercised live yet</li>
+          <li>The live operation matrix: all 41 operations, with negative cases and eight dockpane approval cards. The script exists; its first recorded run is pending.</li>
         </ul>
         <p class="note">For anything a run does not cover, use the <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/manual-acceptance.md">manual acceptance</a> checklist on your own installation.</p>
       </div>
