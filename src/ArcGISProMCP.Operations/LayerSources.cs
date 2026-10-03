@@ -170,6 +170,35 @@ internal static class LayerSources
         return false;
     }
 
+    /// <summary>
+    /// Whether a layer's local data is known to be gone, for classifying a geodatabase failure on
+    /// a layer ArcGIS has not (yet) flagged as broken. True when neither the dataset path (with or
+    /// without ".shp") nor any enclosing file geodatabase exists; false when the dataset path
+    /// exists; null when it cannot be told from the file system: no path, a service URL, or a
+    /// dataset inside an existing geodatabase, GeoPackage or connection file.
+    /// </summary>
+    public static bool? LocalSourceMissing(Uri? path, Func<string, bool> fileExists, Func<string, bool> directoryExists)
+    {
+        ArgumentNullException.ThrowIfNull(fileExists);
+        ArgumentNullException.ThrowIfNull(directoryExists);
+        if (path is not { IsAbsoluteUri: true, IsFile: true }) return null;
+        var local = path.LocalPath.TrimEnd('\\', '/');
+        if (local.Length == 0) return null;
+        if (fileExists(local) || directoryExists(local)) return false;
+        if (!local.EndsWith(".shp", StringComparison.OrdinalIgnoreCase) && fileExists(local + ".shp")) return false;
+
+        // Walk up to the first existing ancestor. A geodatabase directory or a container file
+        // (.gpkg, .sqlite, .sde) holds datasets that are not file-system entries: undecidable.
+        // A plain folder means the file-based dataset itself is gone.
+        for (var ancestor = Path.GetDirectoryName(local); !string.IsNullOrEmpty(ancestor); ancestor = Path.GetDirectoryName(ancestor))
+        {
+            if (fileExists(ancestor)) return null;
+            if (directoryExists(ancestor))
+                return ancestor.EndsWith(GeodatabaseSuffix, StringComparison.OrdinalIgnoreCase) ? null : true;
+        }
+        return true;
+    }
+
     private static string StripShp(string name) =>
         name.EndsWith(".shp", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name;
 }
