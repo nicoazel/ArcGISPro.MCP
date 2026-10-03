@@ -104,7 +104,7 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 | `layout.add-map-frame` | SafeWrite | Adds a map frame at page coordinates in inches. |
 | `layout.set-frame-extent` | SafeWrite | Fits a frame to a layer, with padding and heading/pitch overrides. |
 | `layout.set-text` | SafeWrite | Creates or updates a named point-text element. |
-| `layout.ensure-surround` | SafeWrite | Legend, north arrow, or scale bar linked to a map frame. |
+| `layout.ensure-surround` | SafeWrite | Legend, north arrow, or scale bar linked to a map frame, anchored at `x`, `y`. ArcGIS Pro may size it from its style (a scale bar takes its height from the style); `bounds` is the actual size and `surround_resized` says when it differs. |
 | `layout.activate` | SafeWrite | Opens or activates a layout view. |
 | `view.capture` | ReadOnly | PNG of the active map view or a named layout, returned as a resource handle. |
 
@@ -205,9 +205,12 @@ Codes a client should handle. The message carries the details.
 | `arcgis_unavailable` | gateway | No ArcGIS Pro host accepted the connection. Retryable. |
 | `approval_not_found` | approval status | Unknown or no longer retained approval id. Fails closed. |
 | `bridge_contract_mismatch` | gateway | The add-in returned a result this gateway cannot read. Install matching add-in and gateway versions. |
-| `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped). |
+| `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped), and the code of an operation failure without a more specific code. |
 | `skill_not_found` | skill get | Unknown bundled skill id. |
 | `layer_data_source_unavailable` | invoke, workflow step | The target layer's data source is broken or cannot be opened (for example relative paths after a project was copied). The message names the layer; repair its data source in ArcGIS Pro, or re-add it with `layer.add` using the same name and a valid source. |
+| `map_not_found`, `layer_not_found`, `layout_not_found`, `frame_not_found` | invoke, workflow step | The named map, layer (in the resolved map), layout or map frame (on the resolved layout) does not exist. The message names it. Nothing ran. |
+| `element_outside_page` | `layout.add-map-frame`, `layout.ensure-surround`, `layout.set-text` | The requested frame or surround box, or the text anchor, is not on the layout page (0.01 in tolerance). The message names the element and the page size. Nothing was created. |
+| `invalid_arguments` (from an operation) | invoke, workflow step | Besides schema failures, an operation reports an argument value the project does not accept: an unknown basemap, a layer of the wrong kind or geometry type, an unknown field. Raised before anything changes. An unexpected `ArgumentException` inside an operation stays `operation_failed`. |
 
 ## Scripts
 
