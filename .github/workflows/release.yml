@@ -1,0 +1,104 @@
+name: Release
+# A maintainer pushes a tag vX.Y.Z (or vX.Y.Z-rc.N for a release candidate). This workflow checks the
+# tag against the product version, builds, tests and packages the bundle, and creates a DRAFT GitHub
+# release with the zip, SHA256SUMS and notes from CHANGELOG.md. Nothing is published until the
+# maintainer reviews the draft and publishes it by hand.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  draft-release:
+    name: Draft release
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Check tag against product version
+        id: version
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ($env:TAG -notmatch '^v(?<version>[0-9]+\.[0-9]+\.[0-9]+)(?<rc>-rc\.[0-9]+)?$') {
+            throw "Tag '$env:TAG' is not vX.Y.Z or vX.Y.Z-rc.N."
+          }
+          $version = $Matches['version']
+          $prerelease = $Matches.ContainsKey('rc')
+          $props = ([xml](Get-Content -LiteralPath Directory.Build.props -Raw)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText.Trim()
+          if ($props -ne $version) { throw "Tag '$env:TAG' does not match Directory.Build.props version '$props'." }
+          $serverJson = Get-Content -LiteralPath src/ArcGISProMCP.Server/.mcp/server.json -Raw | ConvertFrom-Json
+          $serverVersions = @($serverJson.version) + @($serverJson.packages | ForEach-Object version)
+          if (@($serverVersions | Where-Object { $_ -ne $version }).Count -gt 0) {
+            throw "server.json versions ($($serverVersions -join ', ')) do not all equal '$version'."
+          }
+          $daml = [xml](Get-Content -LiteralPath src/ArcGISProMCP.AddIn/Config.daml -Raw)
+          $addInVersion = $daml.ArcGIS.AddInInfo.version
+          if ($addInVersion -ne $version) { throw "Config.daml add-in version '$addInVersion' does not match '$version'." }
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+          if ($LASTEXITCODE -ne 0) { throw "Tag '$env:TAG' ($env:GITHUB_SHA) is not on main." }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "prerelease=$($prerelease.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          Write-Output "Releasing $env:TAG (version $version, prerelease: $prerelease)."
+      - name: Release notes from CHANGELOG.md
+        # A final release needs a dated changelog heading; a release candidate may still say "unreleased".
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          ./tools/extract-release-notes.ps1 -Version $env:VERSION -Ref $env:TAG `
+            -OutputPath artifacts/release-notes.md -RequireReleaseDate:($env:PRERELEASE -ne 'true')
+          Get-Content -LiteralPath artifacts/release-notes.md
+      - name: Package release bundle
+        # Runs tools/verify-release.ps1 with the full test suite, then publishes and packages the bundle.
+        shell: pwsh
+        run: ./tools/package-release.ps1
+      - name: SHA256SUMS
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $bundle = Get-Item -LiteralPath "artifacts/releases/ArcGISProMCP-$env:VERSION-win-x64-development-preview.zip"
+          $hash = (Get-FileHash -LiteralPath $bundle.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText((Join-Path $bundle.DirectoryName 'SHA256SUMS'), "$hash  $($bundle.Name)`n", [Text.UTF8Encoding]::new($false))
+          Get-Content -LiteralPath artifacts/releases/SHA256SUMS
+      - name: Create draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          $releaseArgs = @(
+            'release', 'create', $env:TAG,
+            '--draft', '--verify-tag',
+            '--title', "ArcGIS Pro MCP Studio $env:TAG",
+            '--notes-file', 'artifacts/release-notes.md'
+          )
+          if ($env:PRERELEASE -eq 'true') { $releaseArgs += '--prerelease' }
+          $releaseArgs += "artifacts/releases/ArcGISProMCP-$env:VERSION-win-x64-development-preview.zip"
+          $releaseArgs += 'artifacts/releases/SHA256SUMS'
+          gh @releaseArgs
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE." }

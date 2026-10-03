@@ -209,8 +209,8 @@ operations in the ArcGIS Pro panel; the harness never approves. Each task is gra
 ```powershell
 py -3.11 -m pip install -r evals/live/requirements.txt
 $env:ANTHROPIC_API_KEY = '...'
-py -3.11 evals/live/run_live_eval.py --server C:\ArcGISProMCP\0.2.0\server\arcgis-pro-mcp.exe
-py -3.11 evals/live/run_live_eval.py --server C:\ArcGISProMCP\0.2.0\server\arcgis-pro-mcp.exe --model claude-opus-5-5
+py -3.11 evals/live/run_live_eval.py --server C:\ArcGISProMCP\0.3.0\server\arcgis-pro-mcp.exe
+py -3.11 evals/live/run_live_eval.py --server C:\ArcGISProMCP\0.3.0\server\arcgis-pro-mcp.exe --model claude-opus-5-5
 ```
 
 The default model is `claude-sonnet-5`. Results go to `evals/results/<date>-<sha7>/live-<model>.json`
@@ -232,7 +232,7 @@ dotnet build tools/ArcGISProMCP.FakeHost
 tools/ArcGISProMCP.FakeHost/bin/Debug/net10.0/ArcGISProMCP.FakeHost.exe --scenario riverton --auto-approve
 # Terminal 2: point the gateway at that host (FakeHost prints its PID) and run the harness.
 $env:ARCGIS_PRO_MCP_HOST_PID = '<pid printed by FakeHost>'
-py -3.11 evals/live/run_live_eval.py --server C:\ArcGISProMCP\0.2.0\server\arcgis-pro-mcp.exe --host fakehost --task live-01 --task live-03
+py -3.11 evals/live/run_live_eval.py --server C:\ArcGISProMCP\0.3.0\server\arcgis-pro-mcp.exe --host fakehost --task live-01 --task live-03
 ```
 
 `--host fakehost` labels the scorecard so FakeHost runs are never mistaken for live ArcGIS Pro runs.

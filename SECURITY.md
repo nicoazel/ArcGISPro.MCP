@@ -6,8 +6,8 @@ ArcGIS Pro MCP Studio is a **development preview**. The supported configuration 
 
 | Version | Supported |
 | --- | --- |
-| 0.2.x (development preview) | Yes, best effort |
-| < 0.2 | No |
+| 0.3.x (development preview) | Yes, best effort |
+| < 0.3 | No |
 
 Fixes land on `main` and ship in the next preview release. There are no backports.
 
