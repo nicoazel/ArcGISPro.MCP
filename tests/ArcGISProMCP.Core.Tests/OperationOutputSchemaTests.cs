@@ -8,7 +8,7 @@ namespace ArcGISProMCP.Core.Tests;
 /// <summary>
 /// Output schemas describe OperationResult.data for operations with a stable payload shape.
 /// Each schema is checked against a hand-written payload that mirrors the operation's result
-/// object (serialized with default JsonSerializer options: declared member names, nulls written).
+/// object (serialized as ProOperationBase.Json writes it: camelCase member names, nulls written).
 /// Operations.Tests also validates results that portable operations produce over fake services.
 /// </summary>
 public sealed class OperationOutputSchemaTests
@@ -26,11 +26,11 @@ public sealed class OperationOutputSchemaTests
     private static readonly Dictionary<string, (JsonElement Schema, string Reference, string Sample)> Declared = new(StringComparer.Ordinal)
     {
         ["feature.layer.describe"] = (FeatureOperationSchemas.LayerDescribeOutput, "FeatureOperationSchemas.LayerDescribeOutput", $$$"""
-            {"map": {{{Map}}}, "layer": {{{Layer}}}, "Name": "Parcels", "editable": true, "objectIdField": "OBJECTID",
+            {"map": {{{Map}}}, "layer": {{{Layer}}}, "name": "Parcels", "editable": true, "objectIdField": "OBJECTID",
              "globalIdField": null, "shapeField": "Shape", "geometryType": "Polygon",
              "spatialReference": {"wkid": 2272, "name": "NAD_1983_StatePlane_Pennsylvania_South_FIPS_3702_Feet"},
-             "fields": [{"Name": "OBJECTID", "AliasName": "OBJECTID", "type": "OID", "IsNullable": false, "IsEditable": false,
-                         "Length": 4, "isObjectId": true, "isGlobalId": false, "isGeometry": false}]}
+             "fields": [{"name": "OBJECTID", "aliasName": "OBJECTID", "type": "OID", "isNullable": false, "isEditable": false,
+                         "length": 4, "isObjectId": true, "isGlobalId": false, "isGeometry": false}]}
             """),
         ["feature.query"] = (FeatureOperationSchemas.QueryOutput, "FeatureOperationSchemas.QueryOutput", $$$"""
             {"map": {{{Map}}}, "layer": {{{Layer}}}, "where": "1=1", "spatialRelationship": null, "fields": ["ZONE"],
@@ -50,18 +50,18 @@ public sealed class OperationOutputSchemaTests
             """),
         ["layer.list"] = (LayerOperationSchemas.ListOutput, "LayerOperationSchemas.ListOutput", $$$"""
             {"map": {{{Map}}}, "layers": [
-              {"id": {{{Layer}}}, "Name": "Parcels", "type": "FeatureLayer", "IsVisible": true, "Transparency": 0,
+              {"id": {{{Layer}}}, "name": "Parcels", "type": "FeatureLayer", "isVisible": true, "transparency": 0,
                "drawingOrder": 0, "isFeatureLayer": true,
                "elevation": {"mode": "on-ground", "offset": 0, "verticalExaggeration": 1}},
-              {"id": "pro://layer/x", "Name": "Imagery", "type": "BasemapLayer", "IsVisible": true, "Transparency": 12.5,
+              {"id": "pro://layer/x", "name": "Imagery", "type": "BasemapLayer", "isVisible": true, "transparency": 12.5,
                "drawingOrder": 1, "isFeatureLayer": false, "elevation": null}]}
             """),
         ["map.list"] = (MapOperationSchemas.ListOutput, "MapOperationSchemas.ListOutput", $$$"""
-            [{"id": {{{Map}}}, "Name": "Zoning", "type": "Map", "layerCount": 3, "isActive": true}]
+            [{"id": {{{Map}}}, "name": "Zoning", "type": "Map", "layerCount": 3, "isActive": true}]
             """),
         ["project.get"] = (ProjectOperationSchemas.GetOutput, "ProjectOperationSchemas.GetOutput", """
-            {"Project": {"Name": null, "Uri": null, "IsDirty": false, "IsOpen": false},
-             "Revision": "r-1", "CapturedAt": "2026-09-26T12:00:00+00:00"}
+            {"project": {"name": null, "uri": null, "isDirty": false, "isOpen": false},
+             "revision": "r-1", "capturedAt": "2026-09-26T12:00:00+00:00"}
             """),
         ["view.capture"] = (ViewOperationSchemas.CaptureOutput, "ViewOperationSchemas.CaptureOutput", """
             {"resource": "arcgis://resource/abc", "width": 1280, "height": 800, "sourceKind": "map",
@@ -77,17 +77,17 @@ public sealed class OperationOutputSchemaTests
              "sum": 0, "mean": null}
             """),
         ["layout.list"] = (LayoutOperationSchemas.ListOutput, "LayoutOperationSchemas.ListOutput", $$$"""
-            [{"id": "pro://layout/a", "Name": "Plan", "mapFrames": [{"Name": "Main", "map": {{{Map}}}}, {"Name": "Empty", "map": null}]}]
+            [{"id": "pro://layout/a", "name": "Plan", "mapFrames": [{"name": "Main", "map": {{{Map}}}}, {"name": "Empty", "map": null}]}]
             """),
         ["layout.inspect"] = (LayoutOperationSchemas.InspectOutput, "LayoutOperationSchemas.InspectOutput", $$$"""
-            {"id": "pro://layout/a", "Name": "Plan", "page": {"width": 11, "height": 8.5, "units": "Inch"},
+            {"id": "pro://layout/a", "name": "Plan", "page": {"width": 11, "height": 8.5, "units": "Inch"},
              "elements": [
-               {"Name": "Main", "type": "map-frame", "drawingOrder": 0,
+               {"name": "Main", "type": "map-frame", "drawingOrder": 0,
                 "bounds": {"x": 0.5, "y": 0.5, "width": 10, "height": 7.5, "xMax": 10.5, "yMax": 8},
                 "mapFrame": {"map": {{{Map}}}, "mapName": "Zoning", "camera": {"x": 1, "y": 2, "z": null, "scale": 1200,
                   "heading": 0, "pitch": -90, "roll": 0, "viewpoint": "CameraValues", "viewportWidth": 10,
                   "viewportHeight": 7.5, "spatialReferenceWkid": 2272} } },
-               {"Name": "Title", "type": "text", "drawingOrder": 1,
+               {"name": "Title", "type": "text", "drawingOrder": 1,
                 "bounds": {"x": 0.5, "y": 8, "width": 3, "height": 0.4, "xMax": 3.5, "yMax": 8.4}, "mapFrame": null}]}
             """),
         ["metadata.get"] = (MetadataOperationSchemas.GetOutput, "MetadataOperationSchemas.GetOutput", $$$"""
@@ -96,8 +96,8 @@ public sealed class OperationOutputSchemaTests
              "dataset": {"path": null, "directCatalogItemMetadata": false, "note": "..."},
              "supportsMetadata": true, "canEditMetadata": true, "usesSourceMetadata": false, "storage": "map-layer",
              "persistence": "project-aprx-layer-metadata",
-             "metadata": {"Title": "Parcels", "Summary": null, "Description": null, "Tags": ["zoning"], "Credits": null,
-                          "UseLimitations": null},
+             "metadata": {"title": "Parcels", "summary": null, "description": null, "tags": ["zoning"], "credits": null,
+                          "useLimitations": null},
              "xmlLength": 120, "xml": null}
             """),
     };

@@ -7,7 +7,10 @@ using ArcGISProMCP.Operations.Services;
 
 namespace ArcGISProMCP.Operations;
 
-/// <summary>Serialization shared by the geoprocessing catalog operations (camelCase, enums as names).</summary>
+/// <summary>
+/// Serialization of every operation's result data (camelCase, enums as names); <c>ProOperationBase.Json</c>
+/// delegates here. Dictionary keys are written unchanged because they carry user data.
+/// </summary>
 internal static class GeoprocessingJson
 {
     internal static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)

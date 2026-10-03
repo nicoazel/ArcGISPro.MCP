@@ -27,7 +27,7 @@ internal static class MetadataOperationSchemas
         ["layer"]);
 
     // Describes OperationResult.data for metadata.get (MetadataGetOperation.ReadMetadata with
-    // default JsonSerializer names; nulls written).
+    // camelCase names; nulls written).
     private static readonly JsonElement Scope = S.Enum("dataset-source", "map-layer");
 
     public static JsonElement GetOutput { get; } = S.Object(
@@ -55,14 +55,14 @@ internal static class MetadataOperationSchemas
                 "project-aprx-layer-metadata")),
             ("metadata", S.Object(
                 [
-                    ("Title", S.Any()),
-                    ("Summary", S.Any()),
-                    ("Description", S.Any()),
-                    ("Tags", S.Array(S.String())),
-                    ("Credits", S.Any()),
-                    ("UseLimitations", S.Any()),
+                    ("title", S.Any()),
+                    ("summary", S.Any()),
+                    ("description", S.Any()),
+                    ("tags", S.Array(S.String())),
+                    ("credits", S.Any()),
+                    ("useLimitations", S.Any()),
                 ],
-                ["Title", "Summary", "Description", "Tags", "Credits", "UseLimitations"])),
+                ["title", "summary", "description", "tags", "credits", "useLimitations"])),
             ("xmlLength", S.Integer(minimum: 0)),
             ("xml", S.Any("Raw metadata XML when includeXml is true; null otherwise.")),
         ],

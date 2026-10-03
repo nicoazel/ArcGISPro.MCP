@@ -52,7 +52,7 @@ public sealed class ArcPyOperationTests
         Assert.True(result.Success);
         var data = result.Data!.Value;
         Assert.Equal(Path.Combine("analysis", "count.py"), data.GetProperty("scriptPath").GetString());
-        Assert.Equal(hash, data.GetProperty("Sha256").GetString());
+        Assert.Equal(hash, data.GetProperty("sha256").GetString());
         Assert.Equal(13, data.GetProperty("sizeBytes").GetInt32());
         Assert.Equal(0, pro.Dispatcher.MainCimCalls + pro.Dispatcher.UiCalls);
     }
@@ -98,7 +98,7 @@ public sealed class ArcPyOperationTests
         Assert.Equal(hash, data.GetProperty("scriptSha256").GetString());
         Assert.Equal(30, data.GetProperty("timeoutSeconds").GetInt32());
         Assert.Equal(
-            ["outcome", "ExitCode", "stdout", "stderr", "stdoutTruncated", "stderrTruncated", "durationMilliseconds", "scriptSha256", "timeoutSeconds"],
+            ["outcome", "exitCode", "stdout", "stderr", "stdoutTruncated", "stderrTruncated", "durationMilliseconds", "scriptSha256", "timeoutSeconds"],
             data.EnumerateObject().Select(property => property.Name));
         // ExternalSideEffect writes still publish a new revision.
         Assert.Equal("rev-1", result.WorkspaceRevision);

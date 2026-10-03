@@ -124,7 +124,7 @@ public sealed class GeoprocessingOperationTests
         Assert.Equal(new GeoprocessingExecutionFlags(AddOutputsToMap: true, AddToHistory: true, RefreshProjectItems: true), call.Flags);
         var data = result.Data!.Value;
         Assert.Equal("fixture.BufferZones", data.GetProperty("tool").GetString());
-        Assert.False(data.GetProperty("IsFailed").GetBoolean());
+        Assert.False(data.GetProperty("isFailed").GetBoolean());
         Assert.Equal(["memory/result"], data.GetProperty("values").EnumerateArray().Select(value => value.GetString()));
         Assert.Equal(["DEFeatureClass"], data.GetProperty("valueTypes").EnumerateArray().Select(value => value.GetString()));
         Assert.True(data.GetProperty("elapsedMilliseconds").GetInt64() >= 0);
@@ -167,7 +167,7 @@ public sealed class GeoprocessingOperationTests
         Assert.False(failed.Success);
         Assert.Equal("geoprocessing_failed", failed.ErrorCode);
         Assert.Equal("ERROR 000732: Input Features: Dataset roads does not exist.", failed.Message);
-        Assert.True(failed.Data!.Value.GetProperty("IsFailed").GetBoolean());
+        Assert.True(failed.Data!.Value.GetProperty("isFailed").GetBoolean());
         Assert.Contains(failed.Notices, notice => notice.Code == GeoprocessingRunPolicy.MutatesInputNoticeCode);
         Assert.Equal("geoprocessing_cancelled", cancelled.ErrorCode);
         Assert.Equal("Geoprocessing tool 'fixture.BufferZones' did not complete.", cancelled.Message);

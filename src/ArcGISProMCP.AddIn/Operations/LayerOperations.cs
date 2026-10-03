@@ -91,7 +91,7 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
                 return (Result(existing, map, uri, requestedSource, requestIsLayerFile, created: false), new OperationNotice(
                     "layer_source_mismatch",
                     $"Layer '{existing.Name}' already existed with a healthy data source '{previous}', not the requested '{requestedSource}'. " +
-                    "ArcGIS could not swap its data source in place, so it was left unchanged (DataSourceStatus 'mismatch'); " +
+                    "ArcGIS could not swap its data source in place, so it was left unchanged (dataSourceStatus 'mismatch'); " +
                     "use a different name, or remove the layer first, to add the requested source.",
                     "warning"));
             }
@@ -121,7 +121,7 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
         // Report what the layer reads after the swap rather than assuming it is the request.
         var ok = string.Equals(result.DataSourceStatus, "ok", StringComparison.Ordinal);
         if (!ok)
-            message += $" ArcGIS now reports its source as '{result.Source ?? "unknown"}' (DataSourceStatus '{result.DataSourceStatus}').";
+            message += $" ArcGIS now reports its source as '{result.Source ?? "unknown"}' (dataSourceStatus '{result.DataSourceStatus}').";
         return (result, new OperationNotice("layer_repaired", message, ok ? "info" : "warning"));
     }
 
@@ -136,7 +136,7 @@ internal sealed class LayerAddOperation() : ProOperationBase(OperationDescriptor
     /// <summary>
     /// Swaps the dataset of a feature layer in place, keeping its symbology. True when ArcGIS accepted
     /// the swap and the layer's connection is not broken afterwards; whether it now reads the requested
-    /// path is reported separately in <c>Source</c> and <c>DataSourceStatus</c>.
+    /// path is reported separately in <c>source</c> and <c>dataSourceStatus</c>.
     /// </summary>
     private static bool TryReplaceDataSource(Layer layer, Uri uri)
     {

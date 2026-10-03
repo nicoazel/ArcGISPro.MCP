@@ -28,7 +28,7 @@ internal static class TableOperationSchemas
         ],
         ["layer", "field"]);
 
-    // Output schemas describe OperationResult.data (default JsonSerializer names; nulls written).
+    // Output schemas describe OperationResult.data (camelCase names; nulls written).
     public static JsonElement QueryOutput { get; } = S.Object(
         [
             ("map", S.String()),

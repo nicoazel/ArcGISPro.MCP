@@ -55,7 +55,7 @@ internal static class LayerSources
     }
 
     /// <summary>
-    /// The <c>DataSourceStatus</c> reported by <c>layer.add</c>: <c>broken</c>, <c>unverified</c>
+    /// The <c>dataSourceStatus</c> reported by <c>layer.add</c>: <c>broken</c>, <c>unverified</c>
     /// (no dataset path to compare), <c>mismatch</c> (the layer reads something other than the
     /// request) or <c>ok</c>.
     /// </summary>
