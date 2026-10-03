@@ -1,8 +1,10 @@
 # ArcGIS Pro MCP Studio documentation
 
-ArcGIS Pro MCP Studio lets a Model Context Protocol client drive a running ArcGIS Pro 3.7 session through a small gateway, a searchable operation registry, and a local review panel. Start with the path that matches what you are doing.
+ArcGIS Pro MCP Studio lets a Model Context Protocol client, such as Claude, drive a running ArcGIS Pro 3.7 session through a small gateway, a searchable operation registry, and a local review pane in ArcGIS Pro. Start with the path that matches what you are doing.
 
 **Status: development preview.** Supported: interactive same-user workstation with dockpane approvals. Autonomous mode is an opt-in expert setting, not recommended. See [deployment](deployment.md#status).
+
+In words: the MCP client talks over stdio to the gateway, which talks over a same-user named pipe to the add-in inside ArcGIS Pro; the add-in runs registry operations through the ArcGIS Pro SDK, sends risky ones to the ArcGIS MCP pane for a person to review, and runs ArcPy only when it is turned on.
 
 ```mermaid
 flowchart LR
@@ -10,15 +12,28 @@ flowchart LR
     server -->|"same-user named pipe<br/>length-prefixed JSON"| addin["ArcGISProMCP.AddIn<br/>inside ArcGIS Pro"]
     addin --> registry["Operation registry<br/>41 operations"]
     registry --> sdk["ArcGIS Pro SDK<br/>MCT / UI thread"]
-    addin -.->|"risky operations"| panel["MCP Studio panel<br/>local review"]
+    addin -.->|"risky operations"| panel["ArcGIS MCP pane<br/>local review"]
     registry -.->|"opt-in only"| arcpy["ArcPy worker"]
 ```
+
+> **Terms**
+>
+> - **stdio**: how the MCP client talks to the gateway: it starts `arcgis-pro-mcp.exe` and exchanges messages over its standard input and output.
+> - **Gateway**: `arcgis-pro-mcp.exe`, the small MCP server your client starts. It holds no GIS logic and forwards calls to ArcGIS Pro.
+> - **Add-in**: the ArcGIS Pro extension (`ArcGISProMCP.AddIn.esriAddinX`) that does the work inside your ArcGIS Pro session and adds the **ArcGIS MCP** pane, opened with **MCP Studio** on the **Add-In** tab.
+> - **Registry / operation**: the catalog of 41 typed GIS actions (operations) such as `layer.add` or `feature.update`, which the model searches and calls by id.
+> - **Workspace revision**: a fingerprint of the project's state. Every write names the revision it read, so a write based on outdated state is rejected.
+> - **Approval card / token**: a risky request appears as a card in the ArcGIS MCP pane. Approving it issues a short-lived, single-use token bound to those exact arguments; the client needs it to run the request.
+> - **Dry run**: `registry_invoke` with `dryRun: true` checks a call without running it.
+> - **Autonomous mode**: an opt-in, not recommended setting (`ARCGIS_PRO_MCP_AUTONOMOUS_MODE`) that skips most approval cards.
 
 ## Choose a path
 
 | I want to... | Read |
 | --- | --- |
-| Build, install, and connect a client | [Main README quick start](../README.md#quick-start), then [deployment and rollback](deployment.md) |
+| Install the release and connect Claude Desktop, Claude Code, VS Code or another client | [Install (users)](deployment.md#install-users), or the shorter [README quick start](../README.md#quick-start) |
+| Fix an install that does not connect | [Troubleshooting](deployment.md#troubleshooting) |
+| Build the bundle or publish a release | [Build and release (maintainers)](deployment.md#build-and-release-maintainers) |
 | Understand how requests flow and where code lives | [Architecture](architecture.md) |
 | Look up a tool, operation, environment variable, or workflow | [Reference](reference.md) |
 | Decide whether it is safe to run on a workstation | [Security and operational limits](security.md) |
@@ -31,7 +46,7 @@ flowchart LR
 ## Guides
 
 ### Get started
-- **[Deployment, status and rollback](deployment.md)**: the release status and supported configuration, building and verifying the bundle, configuring the MCP client, acceptance evidence, known limits, and rollback.
+- **[Deployment, status and rollback](deployment.md)**: for users, the status, installation, MCP client setup, verification, troubleshooting, upgrade, uninstall, rollback and known limits; for maintainers, building the bundle, acceptance evidence, the registry package and the release process.
 - **[Architecture](architecture.md)**: process boundaries, the six-step operation lifecycle, threading rules, and how to add a new operation.
 
 ### Operate safely
@@ -40,7 +55,7 @@ flowchart LR
 
 ### Verify and release
 - **[Manual acceptance](manual-acceptance.md)**: the live checklist for feature data, metadata, geoprocessing, ArcPy, and stability on a disposable project.
-- **[Acceptance evidence](acceptance/README.md)**: the committed evidence folder contract, how `tools/run-acceptance.ps1` produces an entry, and what the manifest test checks. Three entries are committed; the latest, [2026-10-03-e7deee2](acceptance/2026-10-03-e7deee2/summary.md), includes the first full live operation matrix (41/41 operations, 90/90 cases).
+- **[Acceptance evidence](acceptance/README.md)**: the committed evidence folder contract, how `tools/run-acceptance.ps1` produces an entry, and what the manifest test checks. The committed entry, [2026-10-03-e7deee2](acceptance/2026-10-03-e7deee2/summary.md) (two earlier ones are in the private archive only), includes the first full live operation matrix (41/41 operations, 90/90 cases).
 - **[Evaluations](../evals/README.md)**: retrieval suites (E1 registry search, E2 geoprocessing search), golden trajectories (E3), the current scorecard, and the live harness against ArcGIS Pro or FakeHost.
 - **[Demos and fixtures](demos.md)**: the demo runner, the Pittsburgh showcase workflow, fixture generators, and the live probe scripts.
 - **[Roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md)**: planned work, in priority order. Released changes are in the [changelog](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md).
@@ -53,7 +68,7 @@ The gateway exposes only 16 tools. The full catalog of GIS operations stays serv
 2. `registry_search` / `registry_browse`: find candidate operations by intent.
 3. `registry_describe`: load the input schema and `resultSchema` for the few operations the task needs.
 4. `registry_validate`: check arguments against the schema and the current workspace revision without changing anything. It does not resolve layers or paths. `registry_invoke` with `dryRun: true` goes further for operations with static validation, such as `gp.run`, without executing, needing a revision or consuming an approval.
-5. `registry_invoke`: run the operation with the revision. Confirmation-gated operations (every destructive or external-side-effect operation, plus `project.open`, `project.save` and `feature.update`) first need `approval_request`, a person approving in the panel, and `approval_status` (which can wait for the decision with `waitSeconds`) to return a single-use token. Every tool returns `{ ok, result, error }` as structured content; failures set `isError`.
+5. `registry_invoke`: run the operation with the revision. Confirmation-gated operations (every destructive or external-side-effect operation, plus `project.open`, `project.save` and `feature.update`) first need `approval_request`, a person approving in the ArcGIS MCP pane, and `approval_status` (which can wait for the decision with `waitSeconds`) to return a single-use token. Every tool returns `{ ok, result, error }` as structured content; failures set `isError`.
 6. `resource_read`: fetch returned images and larger observations by `arcgis://` handle.
 
 Reusable multi-step recipes go through `workflow_list` → `workflow_get` → `workflow_run`, and `skill_search` / `skill_get` supply the guidance for them. In default mode a workflow cannot run confirmation-gated steps, because there is no per-step approval yet. A workflow stops with `workspace_changed` if the project changes while it runs. The same state, descriptors, workflows, skills and observations are also exposed as read-only `arcgis://` MCP resources, and each skill and saved workflow is offered as an MCP prompt. See the [reference](reference.md) for every tool, operation, resource and prompt.
