@@ -16,7 +16,7 @@ Grading per task (the E3 checks, applied to the model's own trajectory):
   task_success          all three of the above
 
 Usage:
-  python evals/live/run_live_eval.py --server C:\\ArcGISProMCP\\0.2.0\\server\\arcgis-pro-mcp.exe
+  python evals/live/run_live_eval.py --server C:\\ArcGISProMCP\\0.3.0\\server\\arcgis-pro-mcp.exe
   python evals/live/run_live_eval.py --server dotnet --server-arg run --server-arg --project \\
       --server-arg src/ArcGISProMCP.Server --model claude-opus-5-5
 """
