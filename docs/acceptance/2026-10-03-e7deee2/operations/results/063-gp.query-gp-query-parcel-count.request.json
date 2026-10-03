@@ -1,0 +1,12 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "gp.query",
+    "arguments": {
+      "tool": "management.GetCount",
+      "parameters": [
+        "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Polygon_MixedMultiPart_Parcels.shp"
+      ]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.add-map-frame",
+    "arguments": {
+      "x": 0.5,
+      "width": 12,
+      "layout": "Ops Layout",
+      "name": "Main Frame",
+      "map": "Ops Map",
+      "height": 10,
+      "y": 0.5
+    }
+  }
+}

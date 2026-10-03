@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "layer_data_source_unavailable",
+  "message": "The data source of layer \u0027Broken\u0027 is unavailable (broken or missing). Repair its data source in ArcGIS Pro, or re-add it with layer.add using the same name and a valid source.",
+  "workspaceRevision": "173e342af9c6136d",
+  "notices": [],
+  "resources": []
+}

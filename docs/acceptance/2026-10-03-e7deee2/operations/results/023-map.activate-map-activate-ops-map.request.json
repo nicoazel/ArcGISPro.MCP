@@ -1,0 +1,9 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "map.activate",
+    "arguments": {
+      "map": "Ops Map"
+    }
+  }
+}

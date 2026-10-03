@@ -1,0 +1,222 @@
+{
+  "ok": true,
+  "result": {
+    "bridgeProtocol": 1,
+    "processId": 49484,
+    "workspace": {
+      "revision": "d06a52c468b682de",
+      "capturedAt": "2026-10-03T01:40:52.7477427-04:00",
+      "project": {
+        "name": "Acceptance-1003-0126.aprx",
+        "uri": "D:\\scratch\\mcp-acceptance\\Acceptance-1003-0126.aprx",
+        "isDirty": true,
+        "isOpen": true
+      },
+      "maps": [
+        {
+          "id": "pro://map/CIMPATH%3DBuildings_SiteDesign%2FBuildings_SiteDesign.json",
+          "name": "Buildings-SiteDesign",
+          "mapType": "Map",
+          "layerCount": 5,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DMap%2FMap.json",
+          "name": "Map",
+          "mapType": "Map",
+          "layerCount": 8,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+          "name": "Ops Map",
+          "mapType": "Map",
+          "layerCount": 6,
+          "isActive": true
+        },
+        {
+          "id": "pro://map/CIMPATH%3DOps_Scene%2FOps_Scene.json",
+          "name": "Ops Scene",
+          "mapType": "Scene",
+          "layerCount": 1,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DScene%2FScene.json",
+          "name": "Scene",
+          "mapType": "Scene",
+          "layerCount": 11,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DTransit%2FTransit.json",
+          "name": "Transit",
+          "mapType": "Map",
+          "layerCount": 4,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DUD1_TOD_Existing_Fabric%2FUD1_TOD_Existing_Fabric.json",
+          "name": "UD1 TOD Existing Fabric",
+          "mapType": "Map",
+          "layerCount": 4,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DUD1_TOD_Mobility%2FUD1_TOD_Mobility.json",
+          "name": "UD1 TOD Mobility",
+          "mapType": "Map",
+          "layerCount": 4,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DUD1_TOD_Program%2FUD1_TOD_Program.json",
+          "name": "UD1 TOD Program",
+          "mapType": "Map",
+          "layerCount": 4,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DUD2_Green_Infrastructure%2FUD2_Green_Infrastructure.json",
+          "name": "UD2 Green Infrastructure",
+          "mapType": "Map",
+          "layerCount": 5,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DUD2_Neighborhood_Nodes%2FUD2_Neighborhood_Nodes.json",
+          "name": "UD2 Neighborhood Nodes",
+          "mapType": "Map",
+          "layerCount": 4,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DUD2_Open_Space_Context%2FUD2_Open_Space_Context.json",
+          "name": "UD2 Open Space Context",
+          "mapType": "Map",
+          "layerCount": 4,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DUD3_Mixed_Use_Massing%2FUD3_Mixed_Use_Massing.json",
+          "name": "UD3 Mixed Use Massing",
+          "mapType": "Scene",
+          "layerCount": 5,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DUD3_Mixed_Use_Program%2FUD3_Mixed_Use_Program.json",
+          "name": "UD3 Mixed Use Program",
+          "mapType": "Map",
+          "layerCount": 4,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DUD3_Public_Realm_Fabric%2FUD3_Public_Realm_Fabric.json",
+          "name": "UD3 Public Realm Fabric",
+          "mapType": "Map",
+          "layerCount": 4,
+          "isActive": false
+        },
+        {
+          "id": "pro://map/CIMPATH%3DZoning%2FZoning.json",
+          "name": "Zoning",
+          "mapType": "Map",
+          "layerCount": 4,
+          "isActive": false
+        }
+      ],
+      "layouts": [
+        {
+          "id": "pro://layout/CIMPATH%3DLayout%2FLayout2.json",
+          "name": "East Liberty Concept Master Plan",
+          "mapFrameCount": 3,
+          "isOpen": false
+        },
+        {
+          "id": "pro://layout/CIMPATH%3DLayout%2FLayout.json",
+          "name": "Master Multi-Map",
+          "mapFrameCount": 3,
+          "isOpen": false
+        },
+        {
+          "id": "pro://layout/CIMPATH%3DLayout%2FLayout6.json",
+          "name": "Ops Layout",
+          "mapFrameCount": 1,
+          "isOpen": true
+        },
+        {
+          "id": "pro://layout/CIMPATH%3DLayout%2FLayout3.json",
+          "name": "Urban Test 1 - TOD Corridor",
+          "mapFrameCount": 3,
+          "isOpen": false
+        },
+        {
+          "id": "pro://layout/CIMPATH%3DLayout%2FLayout4.json",
+          "name": "Urban Test 2 - Green Loop",
+          "mapFrameCount": 3,
+          "isOpen": false
+        },
+        {
+          "id": "pro://layout/CIMPATH%3DLayout%2FLayout5.json",
+          "name": "Urban Test 3 - Mixed Use Massing",
+          "mapFrameCount": 3,
+          "isOpen": false
+        }
+      ],
+      "activeMapId": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+      "activeViewId": "pro://layout/CIMPATH%3DLayout%2FLayout6.json",
+      "capabilities": [
+        {
+          "id": "arcgis-pro",
+          "available": true,
+          "detail": "13.7.0.0"
+        },
+        {
+          "id": "maps",
+          "available": true,
+          "detail": null
+        },
+        {
+          "id": "feature-editing",
+          "available": true,
+          "detail": null
+        },
+        {
+          "id": "metadata",
+          "available": true,
+          "detail": null
+        },
+        {
+          "id": "layouts",
+          "available": true,
+          "detail": null
+        },
+        {
+          "id": "geoprocessing",
+          "available": true,
+          "detail": null
+        },
+        {
+          "id": "arcpy",
+          "available": true,
+          "detail": "Explicitly enabled; the configured ArcPy runtime is validated before script inspection or execution."
+        },
+        {
+          "id": "autonomous-control",
+          "available": false,
+          "detail": "Disabled; risky operations require local review."
+        },
+        {
+          "id": "visual-observations",
+          "available": true,
+          "detail": null
+        }
+      ]
+    },
+    "operationCount": 41,
+    "runningOperationCount": 0,
+    "connected": true
+  },
+  "error": null
+}

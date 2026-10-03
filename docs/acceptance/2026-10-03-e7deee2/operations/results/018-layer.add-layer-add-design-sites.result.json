@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": {
+    "Id": "pro://layer/CIMPATH%3DOps_Map%2FDesignSites.json",
+    "Name": "Design Sites",
+    "Map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "Source": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\DesignSites",
+    "RequestedSource": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\DesignSites",
+    "Created": true,
+    "Repaired": false,
+    "Replaced": false,
+    "DataSourceStatus": "ok"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "beff2fe04176a672",
+  "notices": [],
+  "resources": []
+}

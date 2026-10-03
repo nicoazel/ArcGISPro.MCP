@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "style.search",
+    "arguments": {
+      "type": "point",
+      "limit": 5,
+      "query": "circle"
+    }
+  }
+}

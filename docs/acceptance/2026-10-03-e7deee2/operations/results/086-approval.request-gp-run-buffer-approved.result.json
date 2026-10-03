@@ -1,0 +1,12 @@
+{
+  "requestId": "tA1ozPAmoZuX42pxXFpJlQ",
+  "operationId": "gp.run",
+  "operationVersion": "1.0.0",
+  "workspaceRevision": "d080afa78f54dbce",
+  "status": "pending",
+  "requestedAt": "2026-10-03T05:34:52.1833274\u002B00:00",
+  "expiresAt": "2026-10-03T05:36:52.1833274\u002B00:00",
+  "confirmationToken": null,
+  "instructions": "A person must approve or deny this exact request in the ArcGIS Pro MCP panel. Call approval_status again, optionally with waitSeconds (up to 120) to wait for the decision; there is no remote approval operation.",
+  "waitNotice": null
+}

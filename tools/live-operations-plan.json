@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "description": "Ordered live operation matrix for tools/run-live-operations.ps1. Every case key is implemented by a Register-Case block in that script; AcceptanceManifestTests checks that the plan covers every operation descriptor, that every confirmation-gated operation has an approval card and a no-token negative, and that every key is implemented.",
+  "approvalLifetimeSeconds": 120,
+  "phases": [
+    {
+      "id": "read-only",
+      "title": "Read-only discovery",
+      "cases": [
+        { "key": "project-get", "operation": "project.get", "kind": "happy", "description": "Open project name and path." },
+        { "key": "map-list", "operation": "map.list", "kind": "happy", "description": "Maps in the project." },
+        { "key": "layer-list", "operation": "layer.list", "kind": "happy", "description": "Layers of the active map (no map argument)." },
+        { "key": "layout-list", "operation": "layout.list", "kind": "happy", "description": "Layouts in the project." },
+        { "key": "gp-search-buffer", "operation": "gp.search", "kind": "happy", "description": "Toolbox search for 'buffer' finds analysis.Buffer." },
+        { "key": "gp-describe-buffer", "operation": "gp.describe", "kind": "happy", "description": "analysis.Buffer signature." },
+        { "key": "style-search-circle", "operation": "style.search", "kind": "happy", "description": "Point symbols matching 'circle', limit 5." },
+        { "key": "gp-describe-unknown-tool", "operation": "gp.describe", "kind": "negative", "expectErrorCode": "tool_not_found", "expectMessageContains": ["nope.Tool"], "description": "Unknown execution name." },
+        { "key": "gp-describe-bare-name", "operation": "gp.describe", "kind": "negative", "expectErrorCode": "tool_not_found", "expectMessageContains": ["Buffer"], "description": "A bare tool name is not an execution name; the reply suggests analysis.Buffer." },
+        { "key": "layer-list-missing-map", "operation": "layer.list", "kind": "negative", "expectErrorCode": "map_not_found", "expectMessageContains": ["No Such Map"], "description": "Missing map is named in the error." }
+      ]
+    },
+    {
+      "id": "map-build",
+      "title": "Map build, symbology, selection and tables",
+      "cases": [
+        { "key": "map-ensure-ops-map", "operation": "map.ensure", "kind": "happy", "description": "Create 'Ops Map' (2D, no basemap)." },
+        { "key": "basemap-set-topographic", "operation": "basemap.set", "kind": "happy", "requires": ["online"], "description": "Topographic basemap (needs a portal connection)." },
+        { "key": "basemap-set-unknown", "operation": "basemap.set", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["NotABasemap"], "description": "Unknown basemap name is rejected and named." },
+        { "key": "layer-add-parcels", "operation": "layer.add", "kind": "happy", "description": "Parcels shapefile copy as 'Parcels'." },
+        { "key": "layer-add-streets", "operation": "layer.add", "kind": "happy", "description": "Streets shapefile copy as 'Streets'." },
+        { "key": "layer-add-boundary", "operation": "layer.add", "kind": "happy", "description": "Boundary shapefile copy as 'Boundary'." },
+        { "key": "layer-add-design-sites", "operation": "layer.add", "kind": "happy", "description": "MasterPlan.gdb/DesignSites copy as 'Design Sites'." },
+        { "key": "layer-set-appearance-boundary", "operation": "layer.set-appearance", "kind": "happy", "description": "Boundary transparency 40." },
+        { "key": "symbology-set-simple-streets", "operation": "symbology.set-simple", "kind": "happy", "description": "Single symbol for Streets." },
+        { "key": "symbology-set-unique-values-parcels", "operation": "symbology.set-unique-values", "kind": "happy", "description": "Five land_use_1 classes on Parcels." },
+        { "key": "label-configure-streets", "operation": "label.configure", "kind": "happy", "description": "Street name labels." },
+        { "key": "map-activate-ops-map", "operation": "map.activate", "kind": "happy", "description": "Open and activate 'Ops Map'." },
+        { "key": "view-capture-active-map", "operation": "view.capture", "kind": "happy", "description": "Active map PNG; dimensions match the request." },
+        { "key": "feature-select-multifamily", "operation": "feature.select", "kind": "happy", "description": "Select multifamily parcels." },
+        { "key": "map-clear-selection", "operation": "map.clear-selection", "kind": "happy", "description": "Clear the selection on 'Ops Map'." },
+        { "key": "table-query-parcels", "operation": "table.query", "kind": "happy", "description": "Five parcel rows with land_use_1 and pop." },
+        { "key": "table-statistics-pop", "operation": "table.statistics", "kind": "happy", "description": "pop sum and parcel count equal tests/data/expected-statistics.json." },
+        { "key": "table-statistics-area-gross", "operation": "table.statistics", "kind": "happy", "description": "area_gross sum equals expected-statistics.json." },
+        { "key": "table-statistics-du", "operation": "table.statistics", "kind": "happy", "description": "du sum equals expected-statistics.json." },
+        { "key": "table-statistics-emp", "operation": "table.statistics", "kind": "happy", "description": "emp sum equals expected-statistics.json." },
+        { "key": "feature-query-baseline", "operation": "feature.query", "kind": "happy", "description": "Design Sites holds exactly 'Baseline Site'." },
+        { "key": "feature-layer-describe-design-sites", "operation": "feature.layer.describe", "kind": "happy", "description": "Design Sites is an editable polygon layer with a GlobalID field." },
+        { "key": "metadata-get-design-sites", "operation": "metadata.get", "kind": "happy", "description": "Design Sites metadata with XML." },
+        { "key": "layer-set-appearance-missing-layer", "operation": "layer.set-appearance", "kind": "negative", "expectErrorCode": "layer_not_found", "expectMessageContains": ["No Such Layer"], "description": "Missing layer is named in the error." },
+        { "key": "symbology-set-unique-values-polyline", "operation": "symbology.set-unique-values", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["Streets", "polygon"], "description": "Category renderer refuses the Streets polyline layer." },
+        { "key": "layer-set-appearance-stale-revision", "operation": "layer.set-appearance", "kind": "negative", "expectErrorCode": "workspace_revision_mismatch", "description": "Write with an outdated revision." },
+        { "key": "layer-set-appearance-no-revision", "operation": "layer.set-appearance", "kind": "negative", "expectErrorCode": "workspace_revision_required", "description": "Write without a revision." },
+        { "key": "layer-add-broken-source", "operation": "layer.add", "kind": "happy", "description": "Add a disposable shapefile copy as 'Broken' (its files are renamed next)." },
+        { "key": "table-query-broken-layer", "operation": "table.query", "kind": "negative", "expectErrorCode": "layer_data_source_unavailable", "expectMessageContains": ["Broken"], "description": "Query a layer whose data files were renamed away." },
+        { "key": "layer-add-repair-broken", "operation": "layer.add", "kind": "happy", "description": "Same name, valid source: repaired in place or replaced (layer_repaired notice)." }
+      ]
+    },
+    {
+      "id": "scene",
+      "title": "Scene and elevation",
+      "cases": [
+        { "key": "map-ensure-ops-scene", "operation": "map.ensure", "kind": "happy", "description": "Create 'Ops Scene' (local scene)." },
+        { "key": "layer-add-massing", "operation": "layer.add", "kind": "happy", "description": "MasterPlan.gdb/ProposedMassing multipatch into the scene." },
+        { "key": "layer-set-elevation-relative", "operation": "layer.set-elevation", "kind": "happy", "description": "Massing relative to ground." },
+        { "key": "layer-set-elevation-invalid-mode", "operation": "layer.set-elevation", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["mode"], "description": "Mode 'floating' is not in the schema." }
+      ]
+    },
+    {
+      "id": "layout",
+      "title": "Layout composition and capture",
+      "cases": [
+        { "key": "layout-ensure-ops-layout", "operation": "layout.ensure", "kind": "happy", "description": "17 x 11 in 'Ops Layout'." },
+        { "key": "layout-add-map-frame", "operation": "layout.add-map-frame", "kind": "happy", "description": "'Main Frame' bound to 'Ops Map'." },
+        { "key": "layout-set-frame-extent-parcels", "operation": "layout.set-frame-extent", "kind": "happy", "description": "Frame fitted to Parcels, padding 2." },
+        { "key": "layout-set-text-title", "operation": "layout.set-text", "kind": "happy", "description": "Static title text." },
+        { "key": "layout-set-text-dynamic", "operation": "layout.set-text", "kind": "happy", "description": "Dynamic text (<dyn> date tag)." },
+        { "key": "layout-ensure-surround-legend", "operation": "layout.ensure-surround", "kind": "happy", "description": "Legend right of the frame." },
+        { "key": "layout-ensure-surround-north-arrow", "operation": "layout.ensure-surround", "kind": "happy", "description": "North arrow, lower right." },
+        { "key": "layout-ensure-surround-scale-bar", "operation": "layout.ensure-surround", "kind": "happy", "description": "Scale bar, lower right, anchored at the request; its height follows the style (bounds are the actual size, surround_resized when it differs)." },
+        { "key": "layout-inspect-overlaps", "operation": "layout.inspect", "kind": "happy", "description": "Legend does not overlap scale bar or north arrow; legend and scale bar sit at least 0.35 in above the frame bottom." },
+        { "key": "layout-activate", "operation": "layout.activate", "kind": "happy", "description": "Open and activate 'Ops Layout'." },
+        { "key": "view-capture-layout", "operation": "view.capture", "kind": "happy", "description": "Layout PNG; dimensions match the request." },
+        { "key": "layout-add-map-frame-off-page", "operation": "layout.add-map-frame", "kind": "negative", "expectErrorCode": "element_outside_page", "expectMessageContains": ["Off Page Frame", "17 x 11"], "description": "A frame placed entirely outside the 17 x 11 page is refused." },
+        { "key": "layout-ensure-surround-off-page", "operation": "layout.ensure-surround", "kind": "negative", "expectErrorCode": "element_outside_page", "expectMessageContains": ["Off Page Bar"], "description": "A scale bar running past the right page edge is refused before it is created." },
+        { "key": "layout-ensure-surround-missing-frame", "operation": "layout.ensure-surround", "kind": "negative", "expectErrorCode": "frame_not_found", "expectMessageContains": ["No Such Frame"], "description": "Missing map frame is named in the error." },
+        { "key": "layout-inspect-missing-layout", "operation": "layout.inspect", "kind": "negative", "expectErrorCode": "layout_not_found", "expectMessageContains": ["No Such Layout"], "description": "Missing layout is named in the error." },
+        { "key": "layout-ensure-surround-unknown-kind", "operation": "layout.ensure-surround", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["kind"], "description": "Kind 'compass' is not in the schema." },
+        { "key": "layout-ensure-surround-zero-width", "operation": "layout.ensure-surround", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["width"], "description": "Width 0 is not allowed." }
+      ]
+    },
+    {
+      "id": "geoprocessing",
+      "title": "Geoprocessing without review",
+      "cases": [
+        { "key": "gp-query-parcel-count", "operation": "gp.query", "kind": "happy", "description": "management.GetCount on the parcels copy equals expected-statistics.json." },
+        { "key": "gp-query-not-allowed", "operation": "gp.query", "kind": "negative", "expectErrorCode": "tool_not_query_allowed", "expectMessageContains": ["analysis.Buffer"], "description": "Buffer is not a read-only query tool." },
+        { "key": "gp-query-invalid-name", "operation": "gp.query", "kind": "negative", "expectErrorCode": "invalid_arguments", "description": "'Buffer' fails the alias.Name pattern in the schema." },
+        { "key": "gp-run-dry-run-valid", "operation": "gp.run", "kind": "happy", "description": "Dry run of a valid Buffer: valid, needs confirmation, nothing executed." },
+        { "key": "gp-run-dry-run-invalid-line-side", "operation": "gp.run", "kind": "negative", "expectDryRunValid": false, "description": "Dry run of Buffer with line_side 'SIDEWAYS' reports valid: false (invalid_coded_value). A bad distance such as '50 Parsecs' cannot be caught statically: buffer_distance_or_field also accepts a field name." },
+        { "key": "gp-run-dry-run-idempotency-conflict", "operation": "gp.run", "kind": "negative", "expectErrorCode": "dry_run_idempotency_conflict", "description": "dryRun with an idempotencyKey is refused." }
+      ]
+    },
+    {
+      "id": "arcpy-inspect",
+      "title": "ArcPy inspection",
+      "cases": [
+        { "key": "arcpy-inspect-hello", "operation": "arcpy.inspect-script", "kind": "happy", "requires": ["arcpy"], "description": "SHA-256 of tools/arcpy-scripts/hello.py." },
+        { "key": "arcpy-inspect-escape", "operation": "arcpy.inspect-script", "kind": "negative", "requires": ["arcpy"], "expectErrorCode": "arcpy_script_rejected", "description": "A path outside the script root is refused." }
+      ]
+    },
+    {
+      "id": "feature-create",
+      "title": "Feature create and rejection",
+      "cases": [
+        { "key": "feature-create-site", "operation": "feature.create", "kind": "happy", "description": "Polygon 'Ops Matrix Site' in Design Sites, read back by GlobalID." },
+        { "key": "feature-create-point-geometry", "operation": "feature.create", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["point"], "description": "Point geometry into a polygon layer." },
+        { "key": "feature-create-two-vertices", "operation": "feature.create", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["coordinates"], "description": "Polygon with two vertices." },
+        { "key": "feature-create-unknown-field", "operation": "feature.create", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["NoSuchField"], "description": "Unknown attribute field is named in the error." }
+      ]
+    },
+    {
+      "id": "gateway",
+      "title": "MCP gateway pass",
+      "cases": [
+        { "key": "gateway-project-get", "operation": "project.get", "kind": "happy", "via": "gateway", "description": "registry_invoke project.get through arcgis-pro-mcp." },
+        { "key": "gateway-gp-run-dry-run", "operation": "gp.run", "kind": "happy", "via": "gateway", "description": "registry_invoke gp.run dryRun through arcgis-pro-mcp." }
+      ]
+    },
+    {
+      "id": "confirmation",
+      "title": "Gated operations without a token",
+      "cases": [
+        { "key": "gp-run-without-token", "operation": "gp.run", "kind": "negative", "expectErrorCode": "confirmation_required" },
+        { "key": "feature-update-without-token", "operation": "feature.update", "kind": "negative", "expectErrorCode": "confirmation_required" },
+        { "key": "metadata-update-without-token", "operation": "metadata.update", "kind": "negative", "expectErrorCode": "confirmation_required" },
+        { "key": "arcpy-run-without-token", "operation": "arcpy.run-script", "kind": "negative", "requires": ["arcpy"], "expectErrorCode": "confirmation_required" },
+        { "key": "feature-delete-without-token", "operation": "feature.delete", "kind": "negative", "expectErrorCode": "confirmation_required" },
+        { "key": "project-save-without-token", "operation": "project.save", "kind": "negative", "expectErrorCode": "confirmation_required" },
+        { "key": "project-open-without-token", "operation": "project.open", "kind": "negative", "expectErrorCode": "confirmation_required" }
+      ]
+    },
+    {
+      "id": "approvals",
+      "title": "Approval cards (operator)",
+      "cases": [
+        { "key": "gp-run-buffer-approved", "operation": "gp.run", "kind": "happy", "card": "approve", "target": "analysis.Buffer of Design Sites into the copied MasterPlan.gdb (50 Feet)", "description": "Approved Buffer, then gp.query GetCount of the output is 2." },
+        { "key": "feature-update-approved", "operation": "feature.update", "kind": "happy", "card": "approve", "target": "layer 'Design Sites', feature 'Ops Matrix Site' (Units -> 140)", "description": "Approved update, read back Units = 140." },
+        { "key": "metadata-update-approved", "operation": "metadata.update", "kind": "happy", "card": "approve", "target": "layer 'Design Sites' metadata (title, summary, tags)", "description": "Approved metadata update, read back with metadata.get." },
+        { "key": "arcpy-run-hello-approved", "operation": "arcpy.run-script", "kind": "happy", "card": "approve", "requires": ["arcpy"], "target": "script hello.py (hash-pinned)", "description": "Approved ArcPy probe, exit code 0 and JSON stdout." },
+        { "key": "feature-delete-approved", "operation": "feature.delete", "kind": "happy", "card": "approve", "target": "layer 'Design Sites', feature 'Ops Matrix Site'", "description": "Approved delete, Design Sites back to 'Baseline Site' only." },
+        { "key": "feature-delete-denied", "operation": "feature.delete", "kind": "negative", "card": "deny", "expectErrorCode": "confirmation_required", "target": "layer 'Design Sites', feature 'Baseline Site'", "description": "Operator denies; status denied, invoke without token refused, baseline row still present." },
+        { "key": "project-save-approved", "operation": "project.save", "kind": "happy", "card": "approve", "via": "gateway", "target": "the open disposable project", "description": "approval_request -> approval_status waitSeconds 120 -> registry_invoke with the token, through arcgis-pro-mcp." },
+        { "key": "project-open-approved", "operation": "project.open", "kind": "happy", "card": "approve", "target": "a copy of the saved project (<name>-reopen-<stamp>.aprx)", "description": "Approved open of the copy; project.get then reports the copy. Always the final call." }
+      ]
+    }
+  ]
+}

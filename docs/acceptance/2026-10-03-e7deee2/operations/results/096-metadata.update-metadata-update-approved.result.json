@@ -1,0 +1,43 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FDesignSites.json",
+    "layerName": "Design Sites",
+    "changed": {
+      "Title": "Ops Matrix Design Sites",
+      "Summary": "Disposable layer edited by the live operation matrix.",
+      "Description": "Written by tools/run-live-operations.ps1 after local review in the MCP Studio dockpane.",
+      "Tags": [
+        "mcp",
+        "acceptance",
+        "ops-matrix"
+      ],
+      "Credits": "Synthetic acceptance fixture",
+      "UseLimitations": "Testing only; not authoritative planning data.",
+      "IsEmpty": false
+    },
+    "detachedFromSourceMetadata": true,
+    "metadata": {
+      "Title": "Ops Matrix Design Sites",
+      "Summary": "Disposable layer edited by the live operation matrix.",
+      "Description": "Written by tools/run-live-operations.ps1 after local review in the MCP Studio dockpane.",
+      "Tags": [
+        "mcp",
+        "acceptance",
+        "ops-matrix"
+      ],
+      "Credits": "Synthetic acceptance fixture",
+      "UseLimitations": "Testing only; not authoritative planning data."
+    },
+    "metadataScope": "map-layer",
+    "storage": "map-layer",
+    "persistedBy": "ArcGIS Pro Layer.SetMetadata",
+    "xmlLength": 604
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "72f9f19ec6a42e92",
+  "notices": [],
+  "resources": []
+}

@@ -1,0 +1,41 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FDesignSites.json",
+    "layerName": "Design Sites",
+    "layerType": "FeatureLayer",
+    "isFeatureLayer": true,
+    "datasetPath": "file:///D:/scratch/mcp-acceptance/operations-data-20261003-013338/MasterPlan.gdb/DesignSites",
+    "metadataScope": "map-layer",
+    "dataset": {
+      "path": "file:///D:/scratch/mcp-acceptance/operations-data-20261003-013338/MasterPlan.gdb/DesignSites",
+      "directCatalogItemMetadata": false,
+      "note": "ArcGIS Pro\u0027s Layer metadata API is the supported path here; direct catalog-item metadata editing is intentionally not inferred from a dataset path."
+    },
+    "supportsMetadata": true,
+    "canEditMetadata": true,
+    "usesSourceMetadata": false,
+    "storage": "map-layer",
+    "persistence": "project-aprx-layer-metadata",
+    "metadata": {
+      "Title": "Ops Matrix Design Sites",
+      "Summary": "Disposable layer edited by the live operation matrix.",
+      "Description": "Written by tools/run-live-operations.ps1 after local review in the MCP Studio dockpane.",
+      "Tags": [
+        "mcp",
+        "acceptance",
+        "ops-matrix"
+      ],
+      "Credits": "Synthetic acceptance fixture",
+      "UseLimitations": "Testing only; not authoritative planning data."
+    },
+    "xmlLength": 602,
+    "xml": "\u003Cmetadata xml:lang=\u0022en\u0022\u003E\u003CEsri\u003E\u003CCreaDate\u003E20261003\u003C/CreaDate\u003E\u003CCreaTime\u003E01380100\u003C/CreaTime\u003E\u003CArcGISFormat\u003E1.0\u003C/ArcGISFormat\u003E\u003CSyncOnce\u003ETRUE\u003C/SyncOnce\u003E\u003C/Esri\u003E\u003CresTitle\u003EOps Matrix Design Sites\u003C/resTitle\u003E\u003CidAbs\u003EDisposable layer edited by the live operation matrix.\u003C/idAbs\u003E\u003CidPurp\u003EWritten by tools/run-live-operations.ps1 after local review in the MCP Studio dockpane.\u003C/idPurp\u003E\u003CidCredit\u003ESynthetic acceptance fixture\u003C/idCredit\u003E\u003CuseLimit\u003ETesting only; not authoritative planning data.\u003C/useLimit\u003E\u003CsearchKeys\u003E\u003Ckeyword\u003Emcp\u003C/keyword\u003E\u003Ckeyword\u003Eacceptance\u003C/keyword\u003E\u003Ckeyword\u003Eops-matrix\u003C/keyword\u003E\u003C/searchKeys\u003E\u003C/metadata\u003E\r\n"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "72f9f19ec6a42e92",
+  "notices": [],
+  "resources": []
+}

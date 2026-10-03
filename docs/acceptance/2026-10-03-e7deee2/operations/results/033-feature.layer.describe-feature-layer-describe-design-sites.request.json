@@ -1,0 +1,10 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "feature.layer.describe",
+    "arguments": {
+      "layer": "Design Sites",
+      "map": "Ops Map"
+    }
+  }
+}

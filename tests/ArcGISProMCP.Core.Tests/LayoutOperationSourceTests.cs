@@ -55,20 +55,42 @@ public sealed class LayoutOperationSourceTests
         Assert.Contains("if (frameChanged) surround.SetMapFrame(frame);", operations, StringComparison.Ordinal);
         Assert.Contains("surround.SetLockedAspectRatio(false);", operations, StringComparison.Ordinal);
         Assert.Contains("created.SetLockedAspectRatio(false);", operations, StringComparison.Ordinal);
-        Assert.Contains("SurroundBoundsMatch(kind, surround.GetBounds(false), envelope)", operations, StringComparison.Ordinal);
-        Assert.Contains("Treat the request", operations, StringComparison.Ordinal);
-        Assert.Contains("kind == \"legend\"", operations, StringComparison.Ordinal);
-        Assert.Contains("actual.Width >= 0.25", operations, StringComparison.Ordinal);
-        Assert.Contains("kind == \"legend\" || primaryDimensionConverged", operations, StringComparison.Ordinal);
-        Assert.Contains("actual.Width >= requested.Width * 0.5", operations, StringComparison.Ordinal);
-        Assert.Contains("primaryDimensionConverged", operations, StringComparison.Ordinal);
+        // The size rule itself is LayoutGeometry.FitSurround, behavior-tested in
+        // ArcGISProMCP.Operations.Tests (LayoutGeometryTests).
+        Assert.Contains("Fit(kind, surround.GetBounds(false), requested) == SurroundFit.Rejected", operations, StringComparison.Ordinal);
+        Assert.Contains("LayoutGeometry.FitSurround(kind, requested, Box(actual))", operations, StringComparison.Ordinal);
         Assert.Contains("if (boundsChanged)", operations, StringComparison.Ordinal);
         Assert.Contains("LayoutElementPlacement.Apply(surround, envelope);", operations, StringComparison.Ordinal);
         Assert.Contains("var actual = surround.GetBounds(false);", operations, StringComparison.Ordinal);
-        Assert.Contains("EnsureConverged(surround, frame, kind, actual, envelope);", operations, StringComparison.Ordinal);
-        Assert.Contains("updated = frameChanged || boundsChanged", operations, StringComparison.Ordinal);
+        Assert.Contains("EnsureConverged(surround, frame, kind, actual, requested);", operations, StringComparison.Ordinal);
+        // The frame binding is still required; a resized surround is reported, never silently accepted.
+        Assert.Contains("did not accept its binding to map frame", operations, StringComparison.Ordinal);
+        Assert.Contains("\"surround_resized\"", operations, StringComparison.Ordinal);
+        Assert.Contains("layout.DeleteElement(created);", operations, StringComparison.Ordinal);
+        Assert.Contains("LayoutGeometry.EnsureOnPage(", operations, StringComparison.Ordinal);
+        Assert.Contains("updated: frameChanged || boundsChanged", operations, StringComparison.Ordinal);
         Assert.Contains("LegendFittingStrategy.AdjustColumnsAndSize", operations, StringComparison.Ordinal);
         Assert.Contains("ConfigureLegend(createdLegend)", operations, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Frames_surrounds_and_text_are_refused_off_the_page_before_anything_is_created()
+    {
+        var layout = ReadSource("LayoutOperations.cs");
+        var frame = layout[layout.IndexOf("class LayoutAddMapFrameOperation", StringComparison.Ordinal)..];
+        var check = frame.IndexOf("LayoutGeometry.EnsureOnPage($\"Map frame '{name}'\", new PageBox(x, y, width, height), page.Width, page.Height, page.Units.Name);", StringComparison.Ordinal);
+        Assert.True(check > 0, "layout.add-map-frame no longer checks the frame against the page.");
+        Assert.True(check < frame.IndexOf("CreateMapFrameElement", StringComparison.Ordinal), "The page check must run before the frame is created.");
+
+        var surround = ReadSource("LayoutSurroundOperations.cs");
+        Assert.True(surround.IndexOf("LayoutGeometry.EnsureOnPage(", StringComparison.Ordinal) < surround.IndexOf("CreateMapSurroundElement", StringComparison.Ordinal));
+        Assert.Contains("ProHandles.ResolveMapFrame(layout, RequiredString(arguments, \"frame\"))", surround, StringComparison.Ordinal);
+
+        var text = ReadSource("LayoutPresentationOperations.cs");
+        Assert.True(text.IndexOf("LayoutGeometry.EnsurePointOnPage(", StringComparison.Ordinal) > 0);
+        Assert.True(text.IndexOf("LayoutGeometry.EnsurePointOnPage(", StringComparison.Ordinal) < text.IndexOf("CreateTextGraphicElement", StringComparison.Ordinal));
+
+        Assert.Contains("ProHandles.ResolveMapFrame(layout, name)", ReadSource("PresentationRefinementOperations.cs"), StringComparison.Ordinal);
     }
 
     [Fact]

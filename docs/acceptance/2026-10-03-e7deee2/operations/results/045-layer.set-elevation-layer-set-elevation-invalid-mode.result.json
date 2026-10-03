@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "invalid_arguments",
+  "message": "$.mode: Value must match one of the declared enum values.",
+  "workspaceRevision": "3674e94774a5db63",
+  "notices": [],
+  "resources": []
+}

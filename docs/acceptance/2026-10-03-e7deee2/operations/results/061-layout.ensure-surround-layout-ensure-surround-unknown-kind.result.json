@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "invalid_arguments",
+  "message": "$.kind: Value must match one of the declared enum values.",
+  "workspaceRevision": "fd4f1c82d7feff3c",
+  "notices": [],
+  "resources": []
+}

@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data": {
+    "id": "pro://layer/CIMPATH%3DOps_Scene%2FProposedMassing.json",
+    "Name": "Proposed Massing",
+    "map": "pro://map/CIMPATH%3DOps_Scene%2FOps_Scene.json",
+    "mode": "relative-to-ground",
+    "offset": 0,
+    "verticalExaggeration": 1
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "3674e94774a5db63",
+  "notices": [],
+  "resources": []
+}

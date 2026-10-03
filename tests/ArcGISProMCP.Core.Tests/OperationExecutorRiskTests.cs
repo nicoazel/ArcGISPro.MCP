@@ -181,6 +181,99 @@ public sealed class OperationExecutorRiskTests
         Assert.False(Assert.Single(riskyAudit.Events).AutonomousBypass);
     }
 
+    [Fact]
+    public async Task Unmet_precondition_refuses_before_the_token_is_validated_so_it_is_not_spent()
+    {
+        var operation = new PreconditionOperation(refuse: true);
+        var confirmation = new CountingConfirmation("token-1");
+        var executor = Interactive(operation, confirmation);
+
+        var result = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), Revision, ConfirmationToken: "token-1"),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Equal("pending_edits", result.ErrorCode);
+        Assert.Equal(Revision, result.WorkspaceRevision);
+        Assert.Equal(1, operation.PreconditionCalls);
+        Assert.Equal(0, confirmation.Validations);
+        Assert.Equal(0, operation.CallCount);
+    }
+
+    [Fact]
+    public async Task Met_precondition_continues_to_token_validation_and_execution()
+    {
+        var operation = new PreconditionOperation(refuse: false);
+        var confirmation = new CountingConfirmation("token-1");
+        var executor = Interactive(operation, confirmation);
+
+        var result = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), Revision, ConfirmationToken: "token-1"),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(1, operation.PreconditionCalls);
+        Assert.Equal(1, confirmation.Validations);
+        Assert.Equal(1, operation.CallCount);
+    }
+
+    [Fact]
+    public async Task Precondition_is_not_checked_for_a_dry_run_or_a_stale_revision()
+    {
+        var operation = new PreconditionOperation(refuse: true);
+        var executor = Interactive(operation, new CountingConfirmation("token-1"));
+
+        var dryRun = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), DryRun: true),
+            TestContext.Current.CancellationToken);
+        var stale = await executor.ExecuteAsync(
+            new OperationRequest(operation.Descriptor.Id, JsonSerializer.SerializeToElement(new { }), "stale", ConfirmationToken: "token-1"),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(dryRun.Success);
+        Assert.Equal("workspace_revision_mismatch", stale.ErrorCode);
+        Assert.Equal(0, operation.PreconditionCalls);
+    }
+
+    private static OperationExecutor Interactive(IOperation operation, IConfirmationValidator confirmation) =>
+        new(
+            new SingleOperationRegistry(operation),
+            new OperationContext(new InlineDispatcher(), new StaticWorkspace(), confirmation, new CapturingAudit(), "precondition-test", CancellationToken.None));
+
+    private sealed class PreconditionOperation(bool refuse) : IOperation, IExecutionPrecondition
+    {
+        public int CallCount { get; private set; }
+
+        public int PreconditionCalls { get; private set; }
+
+        public OperationDescriptor Descriptor { get; } = OperationDescriptor.Create(
+            "test.precondition.open", "Precondition", "Precondition test.", JsonSchemas.EmptyObject,
+            risk: OperationRisk.SafeWrite, requiresConfirmation: true);
+
+        public Task<OperationResult> ExecuteAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+        {
+            CallCount++;
+            return Task.FromResult(OperationResult.Ok(null, Revision));
+        }
+
+        public ValueTask<OperationRefusal?> CheckPreconditionAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+        {
+            PreconditionCalls++;
+            return ValueTask.FromResult(refuse ? new OperationRefusal("pending_edits", "Save edits first.") : null);
+        }
+    }
+
+    private sealed class CountingConfirmation(string validToken) : IConfirmationValidator
+    {
+        public int Validations { get; private set; }
+
+        public ValueTask<bool> IsValidAsync(string token, OperationDescriptor descriptor, JsonElement arguments, WorkspaceSnapshot workspace, CancellationToken cancellationToken)
+        {
+            Validations++;
+            return ValueTask.FromResult(string.Equals(token, validToken, StringComparison.Ordinal));
+        }
+    }
+
     private static OperationExecutor AutonomousWith(IOperation operation, CapturingAudit audit, IConfirmationValidator confirmation) =>
         new(
             new SingleOperationRegistry(operation),

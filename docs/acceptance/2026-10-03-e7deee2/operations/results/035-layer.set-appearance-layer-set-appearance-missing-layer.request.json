@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layer.set-appearance",
+    "arguments": {
+      "transparency": 10,
+      "map": "Ops Map",
+      "layer": "No Such Layer"
+    }
+  }
+}

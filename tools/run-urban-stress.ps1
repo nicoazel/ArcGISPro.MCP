@@ -43,11 +43,45 @@ if (-not (Test-Path -LiteralPath $proposalGeodatabase -PathType Container) -or
     @((Get-ChildItem -LiteralPath $proposalGeodatabase -Filter '*.gdbtable' -File -ErrorAction SilentlyContinue)).Count -eq 0) {
     throw "Standalone proposal geodatabase is missing or incomplete: $proposalGeodatabase"
 }
+
+# ArcGIS Pro locks data it has open (*.sr.lock next to shapefiles, *.lock inside the geodatabase).
+# Run against a git-ignored copy so a live session never leaves locks in tests\data. The copy is
+# keyed by the SHA-256 of tests\data\expected-statistics.json, which the generator rewrites with
+# every data version: a complete copy with a matching key is reused (a stable path, so layer.add
+# does not repair data sources on every run), and a data change gets a fresh folder, never stale data.
+$expectedStatisticsPath = Join-Path $repoRoot 'tests\data\expected-statistics.json'
+$fixtureKey = (Get-FileHash -LiteralPath $expectedStatisticsPath -Algorithm SHA256).Hash.Substring(0, 12).ToLowerInvariant()
+$fixtureCopyRoot = Join-Path $repoRoot "artifacts\urban-stress\fixtures\$fixtureKey"
+$fixtureCopyMarker = Join-Path $fixtureCopyRoot '.complete'
+if (-not (Test-Path -LiteralPath $fixtureCopyMarker -PathType Leaf)) {
+    if (Test-Path -LiteralPath $fixtureCopyRoot) {
+        # An interrupted copy: start over rather than run against a partial fixture.
+        Remove-Item -LiteralPath $fixtureCopyRoot -Recurse -Force
+    }
+    $shpCopy = Join-Path $fixtureCopyRoot 'SHP'
+    $gdbCopy = Join-Path $fixtureCopyRoot 'MasterPlan.gdb'
+    $null = New-Item -ItemType Directory -Path $shpCopy -Force
+    $null = New-Item -ItemType Directory -Path $gdbCopy -Force
+    # Copy the folder contents into the new folders, so the copy is never nested (SHP\SHP).
+    Copy-Item -Path (Join-Path $fixtureRoot '*') -Destination $shpCopy -Recurse -Force
+    Copy-Item -Path (Join-Path $proposalGeodatabase '*') -Destination $gdbCopy -Recurse -Force
+    Get-ChildItem -LiteralPath $fixtureCopyRoot -Recurse -File -Filter '*.lock' | Remove-Item -Force
+    Set-Content -LiteralPath $fixtureCopyMarker -Value $fixtureKey -Encoding ASCII
+}
+Write-Verbose "Urban fixture copy: $fixtureCopyRoot"
+$fixtureRoot = Join-Path $fixtureCopyRoot 'SHP'
+$proposalGeodatabase = Join-Path $fixtureCopyRoot 'MasterPlan.gdb'
+$proposal = Join-Path $proposalGeodatabase 'ProposedBuildings'
+$massing = Join-Path $proposalGeodatabase 'ProposedMassing'
+# Written by tools/create-synthetic-test-data.py alongside the fixture it describes.
+$expectedStatistics = Get-Content -LiteralPath $expectedStatisticsPath -Raw | ConvertFrom-Json
+$expectedMatched = [int]$expectedStatistics.matched
+if ($expectedMatched -le 0) { throw "Expected statistics have no matched parcel count: $expectedStatisticsPath" }
 $commonStats = @{
-    'stats-area'       = @{ matched = 1019; sum = 211.80126265300203 }
-    'stats-population' = @{ matched = 1019; sum = 2977.0 }
-    'stats-dwellings'  = @{ matched = 1019; sum = 1760.0 }
-    'stats-employment' = @{ matched = 1019; sum = 4716.0 }
+    'stats-area'       = @{ matched = $expectedMatched; sum = [double]$expectedStatistics.area_gross }
+    'stats-population' = @{ matched = $expectedMatched; sum = [double]$expectedStatistics.pop }
+    'stats-dwellings'  = @{ matched = $expectedMatched; sum = [double]$expectedStatistics.du }
+    'stats-employment' = @{ matched = $expectedMatched; sum = [double]$expectedStatistics.emp }
 }
 
 $cases = @(
@@ -55,7 +89,7 @@ $cases = @(
         Name = 'tod'
         Workflow = 'workflows\urban-tod-corridor.workflow.json'
         Id = 'workflow.urban-tod-corridor'
-        Version = '1.1.0'
+        Version = '1.2.0'
         Layout = 'Urban Test 1 - TOD Corridor'
         Parameters = @{
             zoningSource = Join-Path $fixtureRoot 'Polygon_MixedMultiPart_Parcels.shp'
@@ -68,7 +102,7 @@ $cases = @(
         Name = 'green'
         Workflow = 'workflows\urban-green-loop.workflow.json'
         Id = 'workflow.urban-green-loop'
-        Version = '1.1.0'
+        Version = '1.2.0'
         Layout = 'Urban Test 2 - Green Loop'
         Parameters = @{
             zoningSource = Join-Path $fixtureRoot 'Polygon_MixedMultiPart_Parcels.shp'
@@ -82,7 +116,7 @@ $cases = @(
         Name = 'mixed'
         Workflow = 'workflows\urban-mixed-use-massing.workflow.json'
         Id = 'workflow.urban-mixed-use-massing'
-        Version = '1.1.0'
+        Version = '1.2.0'
         Layout = 'Urban Test 3 - Mixed Use Massing'
         Parameters = @{
             zoningSource = Join-Path $fixtureRoot 'Polygon_MixedMultiPart_Parcels.shp'
@@ -167,6 +201,40 @@ function Assert-Layout([string]$LayoutName, [string]$CaseDirectory) {
     if (@($inspect.data.elements | Where-Object type -eq 'scale-bar').Count -ne 1) { throw "$LayoutName scale bar count drifted." }
     if (@($inspect.data.elements | Where-Object type -eq 'legend').Count -ne 1) { throw "$LayoutName legend count drifted." }
     if (@($inspect.data.elements | Where-Object name -eq 'dynamic-status').Count -ne 1) { throw "$LayoutName dynamic status text is missing." }
+    Assert-SurroundPlacement $LayoutName $frames @($inspect.data.elements | Where-Object type -in @('legend', 'scale-bar', 'north-arrow'))
+}
+
+function Test-BoundsOverlap($A, $B) {
+    return [double]$A.x -lt [double]$B.xMax -and [double]$B.x -lt [double]$A.xMax -and
+           [double]$A.y -lt [double]$B.yMax -and [double]$B.y -lt [double]$A.yMax
+}
+
+function Assert-SurroundPlacement([string]$LayoutName, $Frames, $Surrounds) {
+    # Legends and scale bars must clear the basemap attribution drawn along the
+    # bottom edge of the frame that contains them, and no surround may overlap another.
+    $clearance = 0.35
+    $tolerance = 0.01
+    foreach ($surround in $Surrounds) {
+        $bounds = $surround.bounds
+        $container = @($Frames | Where-Object {
+            [double]$bounds.x -ge [double]$_.bounds.x - $tolerance -and
+            [double]$bounds.y -ge [double]$_.bounds.y - $tolerance -and
+            [double]$bounds.xMax -le [double]$_.bounds.xMax + $tolerance -and
+            [double]$bounds.yMax -le [double]$_.bounds.yMax + $tolerance
+        }) | Select-Object -First 1
+        if ($null -eq $container) { throw "$LayoutName $($surround.type) '$($surround.name)' is not inside any map frame." }
+        if ($surround.type -in @('legend', 'scale-bar') -and
+            [double]$bounds.y -lt [double]$container.bounds.y + $clearance - $tolerance) {
+            throw "$LayoutName $($surround.type) '$($surround.name)' bottom $($bounds.y) is less than $clearance in above frame '$($container.name)' bottom $($container.bounds.y)."
+        }
+    }
+    for ($i = 0; $i -lt $Surrounds.Count; $i++) {
+        for ($j = $i + 1; $j -lt $Surrounds.Count; $j++) {
+            if (Test-BoundsOverlap $Surrounds[$i].bounds $Surrounds[$j].bounds) {
+                throw "$LayoutName $($Surrounds[$i].type) '$($Surrounds[$i].name)' overlaps $($Surrounds[$j].type) '$($Surrounds[$j].name)'."
+            }
+        }
+    }
 }
 
 function Assert-Png([string]$Path) {

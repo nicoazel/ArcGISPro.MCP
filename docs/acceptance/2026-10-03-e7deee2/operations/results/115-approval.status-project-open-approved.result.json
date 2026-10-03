@@ -1,0 +1,12 @@
+{
+  "requestId": "jGpE7HGoGcd4Oqx1A3SBNw",
+  "operationId": "project.open",
+  "operationVersion": "1.0.0",
+  "workspaceRevision": "fa269ba7eebfb5df",
+  "status": "expired",
+  "requestedAt": "2026-10-03T05:40:53.9642385\u002B00:00",
+  "expiresAt": "2026-10-03T05:42:53.9642385\u002B00:00",
+  "confirmationToken": null,
+  "instructions": null,
+  "waitNotice": null
+}

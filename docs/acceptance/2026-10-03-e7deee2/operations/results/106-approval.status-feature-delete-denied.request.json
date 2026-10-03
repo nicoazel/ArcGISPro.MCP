@@ -1,0 +1,7 @@
+{
+  "method": "approval.status",
+  "parameters": {
+    "requestId": "p8apElcaB_E7EwakuT9N-g",
+    "waitSeconds": 120
+  }
+}

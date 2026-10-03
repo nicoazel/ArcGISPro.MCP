@@ -22,7 +22,7 @@ From the repository root:
 The packager always runs `tools/verify-release.ps1` first. That performs the Release solution build, every portable test project under `tests/`, whitespace validation, add-in packaging, and exact add-in-content inspection. It then publishes the framework-dependent Windows x64 stdio server and creates:
 
 ```text
-artifacts/releases/ArcGISProMCP-0.2.0-win-x64-development-preview.zip
+artifacts/releases/ArcGISProMCP-0.3.0-win-x64-development-preview.zip
 ```
 
 The archive has one versioned root directory containing:
@@ -76,7 +76,7 @@ A generic MCP client entry is:
 {
   "mcpServers": {
     "arcgis-pro": {
-      "command": "C:\\ArcGISProMCP\\0.2.0\\server\\arcgis-pro-mcp.exe"
+      "command": "C:\\ArcGISProMCP\\0.3.0\\server\\arcgis-pro-mcp.exe"
     }
   }
 }
@@ -92,7 +92,17 @@ ArcPy is absent from the operation registry unless explicitly enabled before Arc
 
 - every new workspace revision with the state it was computed from: the MCP write sequence, the project URI (its full local path), project name and dirty flag, and each map's and layout's name, handle, layer count and map frame count;
 - `advance` and `ignored` lines naming the ArcGIS event (or `operation`) behind each revision advance, or the event deliberately ignored;
-- `settle-unsettled` and `settle-timeout` lines when a write published its revision without the revision going quiet, or after the 3 s settle budget ran out.
+- one line per post-write settle, `settle-ok`, `settle-unsettled` (the samples never repeated the revision) or `settle-timeout` (the 3 s budget ran out and a plain snapshot was published), with `drainMs` (host drain plus the 300 ms host-event quiet wait), `sampleMs` (revision sampling after the drain), `samples` and the published `revision`.
+
+`tools/analyze-revision-log.py` (Python 3.11, standard library only) reads a revision log and attributes each settle to the innermost audited operation whose `startedAt`..`completedAt` interval contains it. Per operation id it prints the settle count, budget-cap (timeout) rate, unsettled count and p50/p95 of drain, sample and total milliseconds, then the same over all settles:
+
+```powershell
+python tools/analyze-revision-log.py revisions-1234.log --audit "$env:LOCALAPPDATA\ArcGISProMCP\audit\operations.jsonl"
+python tools/analyze-revision-log.py revisions-1234.log --audit operations.jsonl --json      # machine-readable report
+python tools/analyze-revision-log.py revisions-1234.log --audit operations.jsonl --slack-ms 500
+```
+
+`--slack-ms` widens each operation interval when matching (default 250 ms); without `--audit` every settle is reported as unmatched. Settle lines from an older add-in without timing are skipped and counted on stderr.
 
 The log contains project paths and map and layout names, so treat it like the project itself when sharing it. Writing stops once the file reaches 50 MB (a final `capped` line says so); delete the file to start again. Nothing rotates or deletes it automatically.
 
@@ -111,7 +121,7 @@ The log contains project paths and map and layout names, so treat it like the pr
 
 ## Acceptance evidence
 
-**Committed evidence:** [`docs/acceptance/2026-09-29-96f6a5b`](acceptance/2026-09-29-96f6a5b/summary.md) (the latest; the first was [`2026-09-28-5f34f16`](acceptance/2026-09-28-5f34f16/summary.md)) records commit `96f6a5b` on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0): release verify, the loaded add-in DLLs matching the package, host probe, the MCP smoke test including the approval-card probe, and the three bundled urban workflows x 3 runs in default (review-required) mode, with layouts visually inspected. It does not cover autonomous mode or the feature/GP/ArcPy section.
+**Committed evidence:** [`docs/acceptance/2026-10-03-e7deee2`](acceptance/2026-10-03-e7deee2/summary.md) (the latest; earlier: [`2026-09-29-96f6a5b`](acceptance/2026-09-29-96f6a5b/summary.md) and [`2026-09-28-5f34f16`](acceptance/2026-09-28-5f34f16/summary.md)) records commit `e7deee2` on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0): release verify, the loaded add-in DLLs matching the package, host probe, the MCP smoke test, the three bundled urban workflows x 3 runs with layouts visually inspected, and the live operation matrix (41/41 operations, 90/90 cases, 7 approved and 1 denied card), all in default (review-required) mode. Its approval cards were decided by Claude through computer use at the maintainer's direction, not by a person reviewing them ([details](acceptance/README.md)). It does not cover autonomous mode or the separate feature/GP/ArcPy section.
 
 A live acceptance pass of the ArcGIS-only build was run on the maintainer's workstation on 2026-09-09. It covered MCP protocol and reconnect, multi-instance discovery, feature editing, layer metadata, SDK geoprocessing, the optional ArcPy runner (in autonomous mode), the urban layout workflows and the Pittsburgh showcase, and idle/shutdown behavior. Two findings are retained:
 
@@ -122,7 +132,7 @@ The evidence from that pass (result JSON, hashes and images under `artifacts/`) 
 
 ## Known limits
 
-- The post-write settle is capped at 3 s. In the 2026-09-29 evidence run, the operator's revision log (`ARCGIS_PRO_MCP_REVISION_LOG`, not committed) recorded 26 of 324 writes (8%, heavy layout and 3D steps) reached the cap because ArcGIS Pro did not go idle within 3 s; the host then published a plain sample. No revision drift followed in that run, but a late ArcGIS event echo after a capped settle can still surface as `workspace_changed` on the next workflow step. Rerun the workflow after refreshing state.
+- The post-write settle budget is 3 s. It bounds the host's own waiting: the drain of the main CIM thread and UI dispatcher, the 300 ms host-event quiet wait and the quiet revision samples. It does not bound how long a write takes to return: every snapshot, including the plain one published when the budget runs out, is read on ArcGIS Pro's main CIM thread, so while Pro is busy (for example loading a newly added layer) the write waits for it. One write after `layer.add` took about 30 s in a live run. In the 2026-09-29 evidence run, before the host-event quiet wait existed, the operator's revision log (`ARCGIS_PRO_MCP_REVISION_LOG`, not committed) recorded 26 of 324 writes (8%, heavy layout and 3D steps) reaching the cap because ArcGIS Pro did not go idle within 3 s. No revision drift followed in that run, but a late ArcGIS event echo after a capped settle can still surface as `workspace_changed` on the next workflow step. Rerun the workflow after refreshing state. Measure settles on your own workstation with the revision log and `tools/analyze-revision-log.py` (see [diagnostics](#diagnostics)).
 - **Workflows cannot execute confirmation-gated steps in default mode.** `workflow_run` invokes each step without an approval token, and there is no per-step approval yet. A step such as `gp.run`, `metadata.update`, `feature.update`, `feature.delete`, `project.save` or `arcpy.run-script` fails with `confirmation_required` unless the host runs in autonomous mode. Run such operations individually through `approval_request` and `registry_invoke`.
 - Workflows are not transactional or resumable after a crash. There is no automatic rollback. A run that detects a mid-run workspace change stops with `workspace_changed` and leaves its completed steps in place.
 - Feature editing excludes batch edits, multipoint construction, multipart construction and complete subtype/domain/range validation.
@@ -161,14 +171,14 @@ Build and verify the package locally:
 ./tools/pack-gateway.ps1
 ```
 
-This runs `dotnet pack` into `artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg` and fails unless the package declares the `McpServer` package type, contains `.mcp/server.json` identical to source, exposes the `arcgis-pro-mcp` command, and bundles every `skills/*.skill.json` byte-for-byte under the tool's `skills` directory. It also fails if either version in `server.json` differs from `Directory.Build.props`, so bump all three together. The package is framework-dependent and RID-agnostic (`tools/net10.0/any`) and needs the .NET 10 runtime; `PublishSingleFile` only affects `dotnet publish`, so `package-release.ps1` still produces the single-file executable.
+This runs `dotnet pack` into `artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg` and fails unless the package declares the `McpServer` package type, contains `.mcp/server.json` identical to source, exposes the `arcgis-pro-mcp` command, and bundles every `skills/*.skill.json` byte-for-byte under the tool's `skills` directory. It also fails if either version in `server.json` differs from `Directory.Build.props`, so bump them together (see [release process](#release-process)). The package is framework-dependent and RID-agnostic (`tools/net10.0/any`) and needs the .NET 10 runtime; `PublishSingleFile` only affects `dotnet publish`, so `package-release.ps1` still produces the single-file executable.
 
 Try the package without publishing it:
 
 ```powershell
-dotnet tool install --tool-path "$env:TEMP\arcgis-pro-mcp-tool" --add-source artifacts/packages ArcGISProMCP.Gateway --version 0.2.0
+dotnet tool install --tool-path "$env:TEMP\arcgis-pro-mcp-tool" --add-source artifacts/packages ArcGISProMCP.Gateway --version 0.3.0
 # or, with .NET 10 (dnx asks before it downloads and runs the tool):
-# dnx ArcGISProMCP.Gateway --version 0.2.0 --add-source artifacts/packages
+# dnx ArcGISProMCP.Gateway --version 0.3.0 --add-source artifacts/packages
 ```
 
 ### Environment variables in `server.json`
@@ -186,16 +196,28 @@ Registry clients set environment variables on the gateway process only. `server.
 
 Not automated and not done by any script in this repository. It requires the maintainer's nuget.org account and GitHub identity:
 
-1. Bump `Version` in `Directory.Build.props` and both `version` fields in `.mcp/server.json`, then run `./tools/pack-gateway.ps1`.
+1. Start from a released version (see [release process](#release-process)), then run `./tools/pack-gateway.ps1`.
 2. Push the package: `dotnet nuget push artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg --api-key <key> --source https://api.nuget.org/v3/index.json`, and wait for nuget.org validation and indexing.
 3. Install the registry publisher (`mcp-publisher`, from the modelcontextprotocol/registry releases), run `mcp-publisher login github` as `nicoazel`, then run `mcp-publisher validate` and `mcp-publisher publish` from `src/ArcGISProMCP.Server/.mcp` (both read `server.json` from the current directory).
 4. Confirm the entry at `https://registry.modelcontextprotocol.io/v0/servers?search=io.github.nicoazel/arcgis-pro-mcp`.
 
 The registry verifies NuGet ownership by finding `mcp-name: io.github.nicoazel/arcgis-pro-mcp` in the package README. The packed README is the repository `README.md`, which carries `<!-- mcp-name: io.github.nicoazel/arcgis-pro-mcp -->` on its own line (an HTML comment, so it does not render). Keep that line when editing the README.
 
+## Release process
+
+The maintainer pushes a tag `vX.Y.Z`; `.github/workflows/release.yml` builds, tests and packages that commit and creates a **draft** GitHub release; the maintainer reviews the draft and publishes it. Nothing is published, signed or pushed to nuget.org or the MCP registry automatically.
+
+1. On `main`, set the same plain `X.Y.Z` in `Version` in `Directory.Build.props`, both `version` fields in `src/ArcGISProMCP.Server/.mcp/server.json`, and the `AddInInfo` `version` in `src/ArcGISProMCP.AddIn/Config.daml`. In `CHANGELOG.md`, the release section is `## [X.Y.Z] - unreleased` until release day; then set the date (`## [X.Y.Z] - yyyy-MM-dd`), keep an empty `## [Unreleased]` above it, and update the compare links at the bottom.
+2. Record live acceptance for the release commit with `tools/run-acceptance.ps1 -Commit` (see [acceptance evidence](#acceptance-evidence)) and merge it. The release notes link the latest committed evidence folder, which covers only the commit it names.
+3. Push an annotated tag on that `main` commit: `git tag -a vX.Y.Z -m "vX.Y.Z"` and `git push origin vX.Y.Z`. For a release candidate, tag `vX.Y.Z-rc.N` with the same product version; the changelog heading may still say `unreleased`.
+4. The workflow fails unless the tag is on `main`, the tag version equals all four version fields, and, for a final release, the changelog heading is dated. It then runs `tools/package-release.ps1` (release build, every test project, add-in inspection, offline MCP smoke test), writes `SHA256SUMS` for the bundle zip, extracts the notes with `tools/extract-release-notes.ps1`, and creates the draft release "ArcGIS Pro MCP Studio vX.Y.Z" with the zip and `SHA256SUMS` attached (marked as a prerelease for `-rc.N`).
+5. Review the draft: the notes, the evidence link, and the assets. Download the zip, check it against `SHA256SUMS` and its inner `checksums.sha256` (see [verify before installation](#verify-before-installation)), then publish the draft by hand. If anything is wrong, delete the draft and the tag, fix `main`, and tag again.
+
+Preview the notes locally with `./tools/extract-release-notes.ps1 -Version X.Y.Z -Ref vX.Y.Z -OutputPath artifacts/release-notes.md`.
+
 ## Release boundaries
 
-- The packaging script does not install, sign, or upload anything.
+- The packaging script does not install, sign, or upload anything. The release workflow only creates a draft release; publishing it is the maintainer's decision.
 - Live ArcGIS-host acceptance of the exact installed build, including the dockpane approval flow, is required before relying on a build.
 - Anyone who enables autonomous mode anyway must also verify the visible autonomous warning and the autonomous-mode audit notices.
 

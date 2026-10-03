@@ -1,0 +1,12 @@
+{
+  "success": false,
+  "data": {
+    "tool": "nope.Tool",
+    "suggestions": []
+  },
+  "errorCode": "tool_not_found",
+  "message": "Tool \u0027nope.Tool\u0027 is not in the toolbox catalog. Use gp.search to find the execution name.",
+  "workspaceRevision": "c91ddcb509a3d4b0",
+  "notices": [],
+  "resources": []
+}

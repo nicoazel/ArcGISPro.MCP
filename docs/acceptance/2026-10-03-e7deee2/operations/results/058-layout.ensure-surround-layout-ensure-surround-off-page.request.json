@@ -1,0 +1,16 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.ensure-surround",
+    "arguments": {
+      "layout": "Ops Layout",
+      "frame": "Main Frame",
+      "x": 16,
+      "height": 0.5,
+      "width": 2.5,
+      "kind": "scale-bar",
+      "name": "Off Page Bar",
+      "y": 1
+    }
+  }
+}

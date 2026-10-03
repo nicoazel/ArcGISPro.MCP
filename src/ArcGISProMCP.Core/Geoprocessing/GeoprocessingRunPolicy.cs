@@ -179,6 +179,10 @@ public static partial class GeoprocessingRunPolicy
         var name = tool ?? string.Empty;
         if (!QueryToolNamePattern().IsMatch(name))
         {
+            // Defence in depth: through gp.query this is unreachable, because the operation's input
+            // schema carries the same pattern and the executor rejects a non-matching name with
+            // invalid_arguments first. Kept so a caller that skips schema validation (a direct call,
+            // a future operation) still cannot pass a path or toolbox file.
             return new GpQueryResolution(null, "invalid_tool_name",
                 "gp.query tools are named 'alias.ToolName' (lowercase alias, letters and digits only), for example 'management.GetCount'.");
         }

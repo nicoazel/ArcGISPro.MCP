@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "invalid_arguments",
+  "message": "Unknown basemap \u0027NotABasemap\u0027. Use a Pro basemap name such as None, Topographic, Streets, Imagery, or OpenStreetMap.",
+  "workspaceRevision": "f4deffa485bcb392",
+  "notices": [],
+  "resources": []
+}

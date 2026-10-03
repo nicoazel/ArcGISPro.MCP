@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "workspace_revision_required",
+  "message": "Operation \u0027layer.set-appearance\u0027 changes the workspace and requires the revision from system_get_state.",
+  "workspaceRevision": "5599ba2b58ca29f2",
+  "notices": [],
+  "resources": []
+}

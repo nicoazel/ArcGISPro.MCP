@@ -1,6 +1,6 @@
 {
   "id": "workflow.master-cartography",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "title": "Three-map master cartography",
   "summary": "Build zoning, transit, and buildings/site-design maps, compose one landscape layout, and capture visual evidence.",
   "tags": ["cartography", "multi-map", "layout", "master-plan"],

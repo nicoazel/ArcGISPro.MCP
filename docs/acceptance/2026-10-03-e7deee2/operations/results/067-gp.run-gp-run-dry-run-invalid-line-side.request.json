@@ -1,0 +1,23 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "gp.run",
+    "arguments": {
+      "tool": "analysis.Buffer",
+      "parameters": [
+        "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\DesignSites",
+        "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\DesignSites_Buffer_20261003_013338",
+        "50 Feet",
+        "SIDEWAYS"
+      ],
+      "environments": {
+        "workspace": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb"
+      },
+      "overwriteOutput": false,
+      "addOutputsToMap": false,
+      "addToHistory": true,
+      "refreshProjectItems": false
+    },
+    "dryRun": true
+  }
+}

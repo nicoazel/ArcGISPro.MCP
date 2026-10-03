@@ -30,9 +30,13 @@ internal sealed class SymbologySetSimpleOperation() : ProOperationBase(Operation
         {
             var map = ProHandles.ResolveMap(mapReference);
             var featureLayer = ProHandles.ResolveLayer(map, layerReference) as FeatureLayer
-                ?? throw new InvalidOperationException("Simple symbology requires a feature layer.");
-            using var featureClass = LayerData.OpenFeatureClass(featureLayer);
-            var shapeType = featureClass.GetDefinition().GetShapeType();
+                ?? throw OperationException.InvalidArgument($"Layer '{layerReference}' is not a feature layer; simple symbology requires one.");
+            var shapeType = LayerData.Read(featureLayer, () =>
+            {
+                using var featureClass = LayerData.OpenFeatureClass(featureLayer);
+                using var definition = featureClass.GetDefinition();
+                return definition.GetShapeType();
+            });
             var fillColor = ToCim(color);
             var strokeColor = ToCim(outline);
             CIMSymbol symbol = shapeType switch
@@ -42,7 +46,7 @@ internal sealed class SymbologySetSimpleOperation() : ProOperationBase(Operation
                 GeometryType.Polygon or GeometryType.Multipatch => SymbolFactory.Instance.ConstructPolygonSymbol(
                     fillColor, SimpleFillStyle.Solid,
                     SymbolFactory.Instance.ConstructStroke(strokeColor, outlineWidth, SimpleLineStyle.Solid)),
-                _ => throw new NotSupportedException($"Geometry type '{shapeType}' does not support simple feature symbology.")
+                _ => throw OperationException.InvalidArgument($"Layer '{featureLayer.Name}' has geometry type '{shapeType}', which does not support simple feature symbology.")
             };
             featureLayer.SetRenderer(new CIMSimpleRenderer { Symbol = symbol.MakeSymbolReference() });
             return new { layer = ProHandles.ForLayer(featureLayer), featureLayer.Name, geometryType = shapeType.ToString(), color = RequiredString(arguments, "color"), size };
@@ -78,7 +82,7 @@ internal sealed class LabelConfigureOperation() : ProOperationBase(OperationDesc
         {
             var map = ProHandles.ResolveMap(mapReference);
             var featureLayer = ProHandles.ResolveLayer(map, layerReference) as FeatureLayer
-                ?? throw new InvalidOperationException("Labels require a feature layer.");
+                ?? throw OperationException.InvalidArgument($"Layer '{layerReference}' is not a feature layer; labels require one.");
             if (featureLayer.LabelClasses.Count == 0) featureLayer.AddLabelClass("MCP labels");
             var definition = featureLayer.GetDefinition() as CIMFeatureLayer
                 ?? throw new InvalidOperationException("Feature layer definition could not be read.");

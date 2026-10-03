@@ -6,7 +6,37 @@ Use the exact packaged add-in and gateway against a disposable ArcGIS Pro projec
 
 `tools/run-acceptance.ps1` automates the recordable parts of this checklist. It captures the commit, ArcGIS Pro version, package hash and the hashes of the add-in DLLs that Pro actually loaded. It runs the existing harnesses and writes `manifest.json`, `summary.md` and `SHA256SUMS`. With `-Commit` it copies them to `docs/acceptance/<yyyy-MM-dd>-<sha7>/`. It covers Baseline steps 1–3 (`smoke`), the scripted feature, metadata, geoprocessing and ArcPy runs (`feature-gp-arcpy`, **autonomous mode only**) and the urban workflow stress run (`stress`). It is read-only unless you pass `-AllowProjectMutation` with a `-DisposableRoot`. Start with `./tools/run-acceptance.ps1 -PlanOnly`. The folder contract and the full procedure are in [acceptance/README.md](acceptance/README.md). The fixture data used by `stress` is described in [tests/data/README.md](../tests/data/README.md).
 
-The script does not cover the steps that need a person: approving, denying or letting reviews expire in the dockpane, multi-instance routing, undo/redo, reload checks and visual inspection. Run those from the lists below and record what you inspected with `-VisuallyInspected`.
+The `operations` section (`tools/run-live-operations.ps1`, default mode) runs every one of the 41 operations with happy and negative cases and asks the operator at the console to approve seven review cards and deny one in the dockpane; see [acceptance/README.md](acceptance/README.md) step 5. Check its matrix with `./tools/run-live-operations.ps1 -PlanOnly`.
+
+The scripts do not cover the remaining steps that need a person: letting reviews expire or cancelling them on purpose, judging what a card shows, a real MCP client, multi-instance routing, undo/redo, reload checks and visual inspection. Run those from the lists below and record what you inspected with `-VisuallyInspected`.
+
+## Real MCP client
+
+Use the installed gateway from the release bundle, not a build output, against the disposable project in default mode.
+
+1. Register the gateway exactly as the README shows. Claude Code: `claude mcp add arcgis-pro -- C:\ArcGISProMCP\<version>\server\arcgis-pro-mcp.exe`, then `claude mcp list` shows `arcgis-pro` connected. Claude Desktop: add the `mcpServers.arcgis-pro.command` entry to `claude_desktop_config.json`, restart Claude Desktop, and confirm the 16 ArcGIS tools appear.
+2. Ask: *"Read the ArcGIS Pro project state."* The client calls `system_get_state`; the answer names the open disposable project and its maps.
+3. Ask: *"List the layers in the active map."* The answer matches the Contents pane.
+4. Ask: *"Set Units to 140 on the 'Baseline Site' feature in Design Sites."* The client should describe or validate `feature.update`, call `approval_request`, and wait with `approval_status`. One card appears in the dockpane. Approve once. The attribute changes in Pro (open the attribute table) and the client reports success with a new workspace revision.
+5. Repeat step 4 with a different value and **Deny** the card. The client reports the denial and the value stays unchanged.
+6. Record the client name and version, the gateway path, the prompts, and the audit records (`%LOCALAPPDATA%\ArcGISProMCP\audit\operations.jsonl`) for both attempts.
+
+## Dockpane review cards
+
+For each confirmation-gated operation the `operations` section raises one card (two for `feature.delete`). While each card is pending, check in the MCP Studio dockpane before clicking:
+
+| Operation | Card must show | Then |
+| --- | --- | --- |
+| `gp.run` (Buffer) | Tool `analysis.Buffer`, its input and output paths and `50 Feet`, no user-code or credit warning | Approve once; the output appears in the copied `MasterPlan.gdb` and nothing is added to the map |
+| `feature.update` | Layer `Design Sites`, the target GlobalID, `Units: 140` | Approve once; only that feature changes |
+| `metadata.update` | Layer `Design Sites` and the new title, summary, tags, credits and use limitations | Approve once; `metadata.get` reads the new values back |
+| `arcpy.run-script` | Script `hello.py`, its SHA-256, the argument `ops-matrix` and the timeout | Approve once; the run directory appears under the working root |
+| `feature.delete` (first card) | Layer `Design Sites` and the GlobalID of `Ops Matrix Site` | Approve once; only that feature is deleted |
+| `feature.delete` (DENY card) | Layer `Design Sites` and the GlobalID of `Baseline Site` | **Deny**; the card closes, nothing is deleted |
+| `project.save` | The project path, requested through the MCP gateway | Approve once; the `.aprx` timestamp changes |
+| `project.open` | The `<name>-reopen-<stamp>.aprx` path | Approve once; Pro closes the current project and opens the copy |
+
+For every card also check: the operation id, version, risk and workspace revision are readable without scrolling; the arguments preview matches the table above; the requested and expiry times are shown; any warning on the card is legible and accurate; Approve once and Deny are both reachable by keyboard; and a decided card leaves the pending list at once. Record any confusing wording as a finding.
 
 ## Baseline
 

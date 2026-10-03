@@ -1,0 +1,13 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "feature.select",
+    "arguments": {
+      "where": "land_use_1 = 'multifamily'",
+      "limit": 500,
+      "mode": "new",
+      "map": "Ops Map",
+      "layer": "Parcels"
+    }
+  }
+}

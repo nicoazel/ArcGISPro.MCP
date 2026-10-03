@@ -111,7 +111,7 @@ internal sealed class FeatureSelectOperation(IFeatureService features) : ProOper
         var relationship = FeatureOperationSupport.ReadSpatialRelationship(arguments);
         var mode = OptionalString(arguments, "mode") ?? "new";
         if (mode is not ("new" or "add"))
-            throw new ArgumentException("mode must be 'new' or 'add'.", nameof(arguments));
+            throw OperationException.InvalidArgument("mode must be 'new' or 'add'.");
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
             var layer = features.Schema(target);
@@ -168,7 +168,7 @@ internal sealed class FeatureUpdateOperation(IFeatureService features) : ProOper
             var objectId = FeatureOperationSupport.ResolveObjectId(features, target, layer, arguments.GetProperty("target"));
             var attributes = FeatureOperationSupport.ReadWritableAttributes(arguments, layer.Fields);
             var hasGeometry = arguments.TryGetProperty("geometry", out var geometryElement) && geometryElement.ValueKind == JsonValueKind.Object;
-            if (attributes.Count == 0 && !hasGeometry) throw new ArgumentException("Specify attributes and/or geometry.", nameof(arguments));
+            if (attributes.Count == 0 && !hasGeometry) throw OperationException.InvalidArgument("Specify attributes and/or geometry.");
             FeatureGeometry? geometry = null;
             if (hasGeometry)
             {
@@ -272,7 +272,7 @@ internal static class FeatureOperationSupport
         if (string.IsNullOrEmpty(value)) return null;
         return SpatialRelationships.TryGetValue(value.ToLowerInvariant(), out var relationship)
             ? relationship
-            : throw new ArgumentException("spatialRelationship must be intersects, envelopeIntersects, contains, within, touches, crosses, or overlaps.", nameof(arguments));
+            : throw OperationException.InvalidArgument("spatialRelationship must be intersects, envelopeIntersects, contains, within, touches, crosses, or overlaps.");
     }
 
     public static string[] ResolveReadableFields(IReadOnlyList<FeatureSchemaField> fields, string[] requested)
@@ -281,7 +281,7 @@ internal static class FeatureOperationSupport
         return requested.Length == 0
             ? available.Where(field => field.Type is not ("Blob" or "Raster" or "XML")).Select(field => field.Name).ToArray()
             : requested.Select(name => available.FirstOrDefault(field => string.Equals(field.Name, name, StringComparison.OrdinalIgnoreCase))?.Name
-                ?? throw new ArgumentException($"Unknown or unsupported field '{name}'.", nameof(requested))).ToArray();
+                ?? throw OperationException.InvalidArgument($"Unknown or unsupported field '{name}'.")).ToArray();
     }
 
     /// <summary>
@@ -316,10 +316,10 @@ internal static class FeatureOperationSupport
 
     public static long ResolveObjectId(IFeatureService features, FeatureLayerTarget layerTarget, FeatureLayerInfo layer, JsonElement target)
     {
-        if (target.ValueKind != JsonValueKind.Object) throw new ArgumentException("target must be an ObjectID or GlobalID object.", nameof(target));
+        if (target.ValueKind != JsonValueKind.Object) throw OperationException.InvalidArgument("target must be an ObjectID or GlobalID object.");
         if (target.TryGetProperty("objectId", out var objectId) && objectId.TryGetInt64(out var id)) return id;
         if (!target.TryGetProperty("globalId", out var globalId) || globalId.ValueKind != JsonValueKind.String || !Guid.TryParse(globalId.GetString(), out var guid))
-            throw new ArgumentException("target must contain objectId or a valid globalId UUID.", nameof(target));
+            throw OperationException.InvalidArgument("target must contain objectId or a valid globalId UUID.");
         if (layer.GlobalIdField is null) throw new InvalidOperationException("This layer has no GlobalID field; target it by ObjectID.");
         var matches = features.FindObjectIdsByGlobalId(layerTarget, guid, 2);
         if (matches.Count == 0) throw new InvalidOperationException($"No feature matches GlobalID '{guid:D}'.");
@@ -330,15 +330,15 @@ internal static class FeatureOperationSupport
     public static Dictionary<string, object> ReadWritableAttributes(JsonElement arguments, IReadOnlyList<FeatureFieldInfo> fields)
     {
         if (!arguments.TryGetProperty("attributes", out var attributes) || attributes.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null) return [];
-        if (attributes.ValueKind != JsonValueKind.Object) throw new ArgumentException("attributes must be a JSON object.", nameof(arguments));
+        if (attributes.ValueKind != JsonValueKind.Object) throw OperationException.InvalidArgument("attributes must be a JSON object.");
         var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         foreach (var property in attributes.EnumerateObject())
         {
-            if (result.Count >= MaximumAttributeCount) throw new ArgumentException($"attributes may contain at most {MaximumAttributeCount} fields.", nameof(arguments));
+            if (result.Count >= MaximumAttributeCount) throw OperationException.InvalidArgument($"attributes may contain at most {MaximumAttributeCount} fields.");
             var field = fields.FirstOrDefault(candidate => string.Equals(candidate.Name, property.Name, StringComparison.OrdinalIgnoreCase))
-                ?? throw new ArgumentException($"Unknown field '{property.Name}'.", nameof(arguments));
+                ?? throw OperationException.InvalidArgument($"Unknown field '{property.Name}'.");
             if (!field.IsEditable || field.Type is FeatureFieldTypes.ObjectId or FeatureFieldTypes.GlobalId or FeatureFieldTypes.Geometry)
-                throw new ArgumentException($"Field '{field.Name}' is system-managed or read-only.", nameof(arguments));
+                throw OperationException.InvalidArgument($"Field '{field.Name}' is system-managed or read-only.");
             result[field.Name] = ToFieldValue(property.Value, field);
         }
         return result;
@@ -347,17 +347,17 @@ internal static class FeatureOperationSupport
     /// <summary>Parses point/polyline/polygon JSON and checks it against the layer shape type.</summary>
     public static FeatureGeometry ReadGeometry(JsonElement geometry, FeatureLayerInfo layer)
     {
-        if (geometry.ValueKind != JsonValueKind.Object) throw new ArgumentException("geometry must be a JSON object.", nameof(geometry));
+        if (geometry.ValueKind != JsonValueKind.Object) throw OperationException.InvalidArgument("geometry must be a JSON object.");
         var type = Required(geometry, "type").ToLowerInvariant();
         var result = type switch
         {
             "point" => new FeatureGeometry(FeatureGeometryKind.Point, [ReadPoint(geometry)]),
             "polyline" => new FeatureGeometry(FeatureGeometryKind.Polyline, ReadPoints(geometry, 2)),
             "polygon" => new FeatureGeometry(FeatureGeometryKind.Polygon, ReadPoints(geometry, 3)),
-            _ => throw new ArgumentException("geometry.type must be point, polyline, or polygon.", nameof(geometry))
+            _ => throw OperationException.InvalidArgument("geometry.type must be point, polyline, or polygon.")
         };
         if (!string.Equals(result.Kind.ToString(), layer.GeometryType, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException($"Geometry type '{result.Kind}' does not match layer shape type '{layer.GeometryType}'.", nameof(geometry));
+            throw OperationException.InvalidArgument($"Geometry type '{result.Kind}' does not match layer shape type '{layer.GeometryType}'.");
         return result;
     }
 
@@ -367,7 +367,7 @@ internal static class FeatureOperationSupport
         var ymin = RequiredNumber(envelope, "ymin");
         var xmax = RequiredNumber(envelope, "xmax");
         var ymax = RequiredNumber(envelope, "ymax");
-        if (xmin > xmax || ymin > ymax) throw new ArgumentException("envelope minimum coordinates must not exceed maximum coordinates.", nameof(envelope));
+        if (xmin > xmax || ymin > ymax) throw OperationException.InvalidArgument("envelope minimum coordinates must not exceed maximum coordinates.");
         return new FeatureEnvelope(xmin, ymin, xmax, ymax);
     }
 
@@ -379,18 +379,18 @@ internal static class FeatureOperationSupport
     private static FeaturePoint[] ReadPoints(JsonElement geometry, int minimum)
     {
         if (!geometry.TryGetProperty("coordinates", out var coordinates) || coordinates.ValueKind != JsonValueKind.Array)
-            throw new ArgumentException("polyline and polygon geometry require coordinates.", nameof(geometry));
+            throw OperationException.InvalidArgument("polyline and polygon geometry require coordinates.");
         var points = coordinates.EnumerateArray().Select(coordinate =>
         {
-            if (coordinate.ValueKind != JsonValueKind.Array) throw new ArgumentException("Each coordinate must be an [x, y] or [x, y, z] array.", nameof(geometry));
+            if (coordinate.ValueKind != JsonValueKind.Array) throw OperationException.InvalidArgument("Each coordinate must be an [x, y] or [x, y, z] array.");
             var values = coordinate.EnumerateArray().ToArray();
             if (values.Length is < 2 or > 3 || values.Any(value => !value.TryGetDouble(out _)))
-                throw new ArgumentException("Each coordinate must be an [x, y] or [x, y, z] numeric array.", nameof(geometry));
+                throw OperationException.InvalidArgument("Each coordinate must be an [x, y] or [x, y, z] numeric array.");
             return values.Length == 3
                 ? new FeaturePoint(values[0].GetDouble(), values[1].GetDouble(), values[2].GetDouble())
                 : new FeaturePoint(values[0].GetDouble(), values[1].GetDouble(), null);
         }).ToArray();
-        if (points.Length < minimum) throw new ArgumentException($"geometry.coordinates must contain at least {minimum} positions.", nameof(geometry));
+        if (points.Length < minimum) throw OperationException.InvalidArgument($"geometry.coordinates must contain at least {minimum} positions.");
         return points;
     }
 
@@ -398,7 +398,7 @@ internal static class FeatureOperationSupport
     {
         if (value.ValueKind == JsonValueKind.Null)
         {
-            if (!field.IsNullable) throw new ArgumentException($"Field '{field.Name}' is not nullable.");
+            if (!field.IsNullable) throw OperationException.InvalidArgument($"Field '{field.Name}' is not nullable.");
             return DBNull.Value;
         }
         try
@@ -416,18 +416,18 @@ internal static class FeatureOperationSupport
                 "TimeOnly" => TimeOnly.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture),
                 "TimestampOffset" => DateTimeOffset.Parse(RequiredStringValue(value, field.Name), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
                 "GUID" => Guid.Parse(RequiredStringValue(value, field.Name)),
-                _ => throw new ArgumentException($"Field '{field.Name}' of type '{field.Type}' is not supported by typed feature edits.")
+                _ => throw OperationException.InvalidArgument($"Field '{field.Name}' of type '{field.Type}' is not supported by typed feature edits.")
             };
         }
         catch (Exception exception) when (exception is FormatException or OverflowException)
         {
-            throw new ArgumentException($"Value for field '{field.Name}' is not a valid {field.Type}.", exception);
+            throw OperationException.InvalidArgument($"Value for field '{field.Name}' is not a valid {field.Type}.", exception);
         }
     }
 
     private static string ValidateString(string value, FeatureFieldInfo field)
     {
-        if (field.Length > 0 && value.Length > field.Length) throw new ArgumentException($"Value for field '{field.Name}' exceeds its maximum length of {field.Length}.");
+        if (field.Length > 0 && value.Length > field.Length) throw OperationException.InvalidArgument($"Value for field '{field.Name}' exceeds its maximum length of {field.Length}.");
         return value;
     }
 
@@ -450,7 +450,7 @@ internal static class FeatureOperationSupport
             value.ValueKind != JsonValueKind.String ||
             string.IsNullOrWhiteSpace(value.GetString()))
         {
-            throw new ArgumentException($"Argument '{name}' is required.");
+            throw OperationException.InvalidArgument($"Argument '{name}' is required.");
         }
 
         return value.GetString()!;
@@ -460,17 +460,17 @@ internal static class FeatureOperationSupport
         value.TryGetProperty(name, out var property) && property.ValueKind == JsonValueKind.String ? property.GetString() : null;
 
     private static string Required(JsonElement value, string name) =>
-        Optional(value, name) is { Length: > 0 } result ? result : throw new ArgumentException($"'{name}' is required.", nameof(value));
+        Optional(value, name) is { Length: > 0 } result ? result : throw OperationException.InvalidArgument($"'{name}' is required.");
 
     private static double RequiredNumber(JsonElement value, string name) =>
-        value.TryGetProperty(name, out var property) && property.TryGetDouble(out var result) ? result : throw new ArgumentException($"'{name}' must be numeric.", nameof(value));
+        value.TryGetProperty(name, out var property) && property.TryGetDouble(out var result) ? result : throw OperationException.InvalidArgument($"'{name}' must be numeric.");
 
     private static double RequiredFieldNumber(JsonElement value, string field) =>
-        value.TryGetDouble(out var result) ? result : throw new ArgumentException($"Value for field '{field}' must be numeric.");
+        value.TryGetDouble(out var result) ? result : throw OperationException.InvalidArgument($"Value for field '{field}' must be numeric.");
 
     private static long RequiredInteger(JsonElement value, string field) =>
-        value.TryGetInt64(out var result) ? result : throw new ArgumentException($"Value for field '{field}' must be an integer.");
+        value.TryGetInt64(out var result) ? result : throw OperationException.InvalidArgument($"Value for field '{field}' must be an integer.");
 
     private static string RequiredStringValue(JsonElement value, string field) =>
-        value.ValueKind == JsonValueKind.String ? value.GetString() ?? string.Empty : throw new ArgumentException($"Value for field '{field}' must be a string.");
+        value.ValueKind == JsonValueKind.String ? value.GetString() ?? string.Empty : throw OperationException.InvalidArgument($"Value for field '{field}' must be a string.");
 }

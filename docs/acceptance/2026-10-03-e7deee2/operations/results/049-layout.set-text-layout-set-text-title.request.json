@@ -1,0 +1,17 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.set-text",
+    "arguments": {
+      "fontFamily": "Tahoma",
+      "size": 22,
+      "x": 12.9,
+      "layout": "Ops Layout",
+      "y": 9.9,
+      "fontStyle": "Bold",
+      "text": "OPS MATRIX",
+      "name": "Title",
+      "color": "#1F2D3D"
+    }
+  }
+}

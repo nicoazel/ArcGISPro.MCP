@@ -240,9 +240,54 @@ public sealed class OperationExecutorTests
         Assert.Contains(code, error.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(OperationErrorCodes.LayerDataSourceUnavailable)]
+    [InlineData(OperationErrorCodes.MapNotFound)]
+    [InlineData(OperationErrorCodes.LayerNotFound)]
+    [InlineData(OperationErrorCodes.LayoutNotFound)]
+    [InlineData(OperationErrorCodes.FrameNotFound)]
+    [InlineData(OperationErrorCodes.ElementOutsidePage)]
+    public void Stable_operation_codes_are_not_reserved(string code) =>
+        Assert.DoesNotContain(code, OperationErrorCodes.Reserved);
+
     [Fact]
-    public void Stable_operation_codes_are_not_reserved() =>
-        Assert.DoesNotContain(OperationErrorCodes.LayerDataSourceUnavailable, OperationErrorCodes.Reserved);
+    public void Not_found_failures_have_stable_codes_and_name_what_was_missing()
+    {
+        Assert.Equal(("map_not_found", "Map 'No Such Map' was not found."), Describe(OperationException.MapNotFound("No Such Map")));
+        Assert.Equal(("map_not_found", "No map is available."), Describe(OperationException.MapNotFound(null)));
+        Assert.Equal(("layer_not_found", "Layer 'No Such Layer' was not found in map 'Ops Map'."), Describe(OperationException.LayerNotFound("No Such Layer", "Ops Map")));
+        Assert.Equal(("layout_not_found", "Layout 'Nope' was not found."), Describe(OperationException.LayoutNotFound("Nope")));
+        Assert.Equal(("frame_not_found", "Map frame 'Inset' was not found on layout 'Ops Layout'."), Describe(OperationException.FrameNotFound("Inset", "Ops Layout")));
+
+        static (string, string) Describe(OperationException exception) => (exception.Code, exception.Message);
+    }
+
+    [Fact]
+    public async Task An_explicit_invalid_argument_is_reported_as_invalid_arguments()
+    {
+        var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
+        fixture.Operation.Throws = OperationException.InvalidArgument("Unknown basemap 'NotABasemap'.");
+
+        var result = await fixture.ExecuteAsync(expectedRevision: null);
+
+        Assert.False(result.Success);
+        Assert.Equal("invalid_arguments", result.ErrorCode);
+        Assert.Equal("Unknown basemap 'NotABasemap'.", result.Message);
+        Assert.Equal("invalid_arguments", Assert.Single(fixture.Audit.Events).ErrorCode);
+    }
+
+    [Fact]
+    public async Task A_plain_argument_exception_stays_operation_failed()
+    {
+        // ArcGIS SDK calls throw ArgumentException for internal failures too, possibly after a change;
+        // only an operation's explicit OperationException.InvalidArgument means "nothing ran, fix the call".
+        var fixture = new ExecutorFixture(OperationRisk.ReadOnly);
+        fixture.Operation.Throws = new ArgumentException("Value does not fall within the expected range.");
+
+        var result = await fixture.ExecuteAsync(expectedRevision: null);
+
+        Assert.Equal("operation_failed", result.ErrorCode);
+    }
 
     private sealed class ExecutorFixture
     {

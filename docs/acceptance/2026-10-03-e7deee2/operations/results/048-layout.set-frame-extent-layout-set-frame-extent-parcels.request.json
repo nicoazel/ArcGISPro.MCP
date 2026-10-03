@@ -1,0 +1,12 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.set-frame-extent",
+    "arguments": {
+      "layout": "Ops Layout",
+      "layer": "Parcels",
+      "padding": 2,
+      "frame": "Main Frame"
+    }
+  }
+}

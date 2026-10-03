@@ -1,0 +1,108 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "pro://map/CIMPATH%3DBuildings_SiteDesign%2FBuildings_SiteDesign.json",
+      "Name": "Buildings-SiteDesign",
+      "type": "Map",
+      "layerCount": 5,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DMap%2FMap.json",
+      "Name": "Map",
+      "type": "Map",
+      "layerCount": 8,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DScene%2FScene.json",
+      "Name": "Scene",
+      "type": "Scene",
+      "layerCount": 11,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DTransit%2FTransit.json",
+      "Name": "Transit",
+      "type": "Map",
+      "layerCount": 4,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DUD1_TOD_Existing_Fabric%2FUD1_TOD_Existing_Fabric.json",
+      "Name": "UD1 TOD Existing Fabric",
+      "type": "Map",
+      "layerCount": 4,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DUD1_TOD_Mobility%2FUD1_TOD_Mobility.json",
+      "Name": "UD1 TOD Mobility",
+      "type": "Map",
+      "layerCount": 4,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DUD1_TOD_Program%2FUD1_TOD_Program.json",
+      "Name": "UD1 TOD Program",
+      "type": "Map",
+      "layerCount": 4,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DUD2_Green_Infrastructure%2FUD2_Green_Infrastructure.json",
+      "Name": "UD2 Green Infrastructure",
+      "type": "Map",
+      "layerCount": 5,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DUD2_Neighborhood_Nodes%2FUD2_Neighborhood_Nodes.json",
+      "Name": "UD2 Neighborhood Nodes",
+      "type": "Map",
+      "layerCount": 4,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DUD2_Open_Space_Context%2FUD2_Open_Space_Context.json",
+      "Name": "UD2 Open Space Context",
+      "type": "Map",
+      "layerCount": 4,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DUD3_Mixed_Use_Massing%2FUD3_Mixed_Use_Massing.json",
+      "Name": "UD3 Mixed Use Massing",
+      "type": "Scene",
+      "layerCount": 5,
+      "isActive": true
+    },
+    {
+      "id": "pro://map/CIMPATH%3DUD3_Mixed_Use_Program%2FUD3_Mixed_Use_Program.json",
+      "Name": "UD3 Mixed Use Program",
+      "type": "Map",
+      "layerCount": 4,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DUD3_Public_Realm_Fabric%2FUD3_Public_Realm_Fabric.json",
+      "Name": "UD3 Public Realm Fabric",
+      "type": "Map",
+      "layerCount": 4,
+      "isActive": false
+    },
+    {
+      "id": "pro://map/CIMPATH%3DZoning%2FZoning.json",
+      "Name": "Zoning",
+      "type": "Map",
+      "layerCount": 4,
+      "isActive": false
+    }
+  ],
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "c91ddcb509a3d4b0",
+  "notices": [],
+  "resources": []
+}

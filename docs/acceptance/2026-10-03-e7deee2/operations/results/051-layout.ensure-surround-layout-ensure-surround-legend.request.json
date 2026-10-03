@@ -1,0 +1,16 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.ensure-surround",
+    "arguments": {
+      "layout": "Ops Layout",
+      "frame": "Main Frame",
+      "x": 12.9,
+      "height": 5.6,
+      "width": 3.6,
+      "kind": "legend",
+      "name": "Legend",
+      "y": 3.0
+    }
+  }
+}

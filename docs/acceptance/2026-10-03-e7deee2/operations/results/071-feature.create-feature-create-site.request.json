@@ -1,0 +1,41 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "feature.create",
+    "arguments": {
+      "geometry": {
+        "type": "polygon",
+        "coordinates": [
+          [
+            1366340.0,
+            416760.0
+          ],
+          [
+            1366410.0,
+            416760.0
+          ],
+          [
+            1366410.0,
+            416830.0
+          ],
+          [
+            1366340.0,
+            416830.0
+          ],
+          [
+            1366340.0,
+            416760.0
+          ]
+        ]
+      },
+      "attributes": {
+        "FAR": 4.75,
+        "Name": "Ops Matrix Site",
+        "ReviewDate": "2026-09-08T15:30:00Z",
+        "Units": 120
+      },
+      "map": "Ops Map",
+      "layer": "Design Sites"
+    }
+  }
+}

@@ -43,6 +43,22 @@ public interface IUnattendedExecutionGate
 }
 
 /// <summary>
+/// An operation that can refuse a request because of the current host state before anything is
+/// approved or run. The executor calls <see cref="CheckPreconditionAsync"/> for every non-dry-run
+/// request after the revision checks and before it validates (and so consumes) an approval token
+/// or applies the autonomous bypass, so a refusal leaves the token approved for a retry once the
+/// condition is resolved (as long as the workspace revision has not changed). The operation must
+/// still re-check the condition when it runs: the state can change between the two.
+/// </summary>
+public interface IExecutionPrecondition
+{
+    ValueTask<OperationRefusal?> CheckPreconditionAsync(
+        JsonElement arguments,
+        OperationContext context,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>
 /// An operation that describes argument-specific risks for the local approval card
 /// (for example "modifies input data in place"). Null means no warning.
 /// </summary>

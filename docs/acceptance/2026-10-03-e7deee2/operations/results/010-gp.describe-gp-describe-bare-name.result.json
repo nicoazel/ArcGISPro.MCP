@@ -1,0 +1,18 @@
+{
+  "success": false,
+  "data": {
+    "tool": "Buffer",
+    "suggestions": [
+      "analysis.Buffer",
+      "3d.Buffer3D",
+      "analysis.GraphicBuffer",
+      "analysis.PairwiseBuffer",
+      "analysis.MultipleRingBuffer"
+    ]
+  },
+  "errorCode": "tool_not_found",
+  "message": "Tool \u0027Buffer\u0027 is not in the toolbox catalog. Did you mean: analysis.Buffer, 3d.Buffer3D, analysis.GraphicBuffer, analysis.PairwiseBuffer, analysis.MultipleRingBuffer?",
+  "workspaceRevision": "c91ddcb509a3d4b0",
+  "notices": [],
+  "resources": []
+}

@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FPolygon_MixedMultiPart_Parcels.json",
+    "mode": "new",
+    "matched": 106,
+    "selectionCount": 106,
+    "limit": 500
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "aefccdba82d252f8",
+  "notices": [],
+  "resources": []
+}

@@ -1,0 +1,91 @@
+name: Bug report
+description: Something in the gateway, the add-in, a workflow or the tooling does not behave as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. **Do not report security vulnerabilities here**; follow [SECURITY.md](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/SECURITY.md) and use a private security advisory instead.
+
+        Before pasting logs, remove anything you would not publish: project paths, map and layer names, attribute values, user names.
+  - type: input
+    id: bundle-version
+    attributes:
+      label: Bundle version or commit
+      description: The release bundle you installed (for example `0.3.0`) or the commit you built from.
+      placeholder: 0.3.0
+    validations:
+      required: true
+  - type: input
+    id: pro-version
+    attributes:
+      label: ArcGIS Pro version
+      description: Full build number from **Project > About** (for example `3.7.1.1904`).
+      placeholder: 3.7.1.1904
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Approval mode
+      options:
+        - Default (dockpane approvals)
+        - Autonomous (ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true)
+        - Not applicable (build, tests or tooling only)
+    validations:
+      required: true
+  - type: dropdown
+    id: arcpy
+    attributes:
+      label: ArcPy runner enabled
+      description: Whether `ARCGIS_PRO_MCP_ENABLE_ARCPY=true` was set before ArcGIS Pro started.
+      options:
+        - 'No'
+        - 'Yes'
+        - Not applicable
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      description: Client name and version, or `none` if the problem does not involve a client.
+      placeholder: Claude Desktop 1.x, Claude Code 2.x, MCP Inspector, ...
+    validations:
+      required: true
+  - type: input
+    id: operation
+    attributes:
+      label: Gateway tool, operation or workflow involved
+      placeholder: registry_invoke layer.add, workflow_run urban-tod-corridor, tools/run-acceptance.ps1, ...
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Start from a fresh, disposable project if you can. Include the prompt or the exact tool call arguments.
+      placeholder: |
+        1. Open a disposable copy of ...
+        2. Ask the client to ...
+        3. Approve the card ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+      description: What you expected, what happened instead, and any error code (for example `workspace_revision_mismatch`).
+    validations:
+      required: true
+  - type: textarea
+    id: audit
+    attributes:
+      label: audit.jsonl excerpt
+      description: |
+        The relevant lines from `%LOCALAPPDATA%\ArcGISProMCP\audit\operations.jsonl` around the failure, with paths and data values redacted.
+      render: json
+  - type: textarea
+    id: other-logs
+    attributes:
+      label: Other logs
+      description: Gateway stderr, the revision log (`ARCGIS_PRO_MCP_REVISION_LOG`), or ArcGIS Pro error reports, redacted as above.
+      render: text

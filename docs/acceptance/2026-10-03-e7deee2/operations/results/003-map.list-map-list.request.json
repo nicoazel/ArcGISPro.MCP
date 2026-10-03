@@ -1,0 +1,7 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "map.list",
+    "arguments": {}
+  }
+}

@@ -58,8 +58,8 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 | Id | Risk | Does |
 | --- | --- | --- |
 | `project.get` | ReadOnly | Project identity, path, dirty state, and revision. |
-| `project.open` | SafeWrite + **approval** | Opens an existing `.aprx`, replacing the current project. |
-| `project.save` | SafeWrite + **approval** | Saves the current project to disk. |
+| `project.open` | SafeWrite + **approval** | Opens an existing `.aprx`, replacing the current project. Refuses with `pending_edits` while the current project has unsaved feature edits, and otherwise with `unsaved_project_changes` while it has unsaved project changes, instead of letting ArcGIS Pro block on its modal "Save all edits?" or "Save changes?" prompt; save first with `project.save`. ArcGIS Pro marks a project changed right after opening it, so in practice `project.open` usually needs a `project.save` first. The refusal comes before the approval token is checked, so it does not spend the token; retry with it while the workspace revision is unchanged (an approved `project.save` changes it), otherwise request a new approval. |
+| `project.save` | SafeWrite + **approval** | Saves pending feature edits (`editsSaved: true` when there were any), then the project, to disk. Fails with `edits_not_saved`, leaving the `.aprx` unsaved, when ArcGIS Pro cannot save the edits. |
 | `map.list` | ReadOnly | Every map and scene, with handles, view state, type, and layer counts. |
 | `map.ensure` | SafeWrite | Returns a named map, or creates it as 2D/3D with the requested basemap. |
 | `map.activate` | SafeWrite | Opens or activates a map view. |
@@ -104,7 +104,7 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 | `layout.add-map-frame` | SafeWrite | Adds a map frame at page coordinates in inches. |
 | `layout.set-frame-extent` | SafeWrite | Fits a frame to a layer, with padding and heading/pitch overrides. |
 | `layout.set-text` | SafeWrite | Creates or updates a named point-text element. |
-| `layout.ensure-surround` | SafeWrite | Legend, north arrow, or scale bar linked to a map frame. |
+| `layout.ensure-surround` | SafeWrite | Legend, north arrow, or scale bar linked to a map frame, anchored at `x`, `y`. ArcGIS Pro may size it from its style (a scale bar takes its height from the style); `bounds` is the actual size and `surround_resized` says when it differs. |
 | `layout.activate` | SafeWrite | Opens or activates a layout view. |
 | `view.capture` | ReadOnly | PNG of the active map view or a named layout, returned as a resource handle. |
 
@@ -137,7 +137,7 @@ The `arcpy.*` operations are registered only when [ArcPy is enabled](arcpy.md).
 | `ARCGIS_PRO_MCP_ALLOW_FAKEHOST` | Gateway | Development only. `true` lets automatic host selection consider FakeHost records, which it otherwise ignores. |
 | `ARCGIS_PRO_MCP_PIPE` | Gateway and Pro | Explicit pipe name override. It must match on both sides. |
 | `ARCGIS_PRO_MCP_AUTONOMOUS_MODE` | Pro, before startup | `true` bypasses panel review for risky operations. Opt-in expert setting, not recommended; see [security](security.md). |
-| `ARCGIS_PRO_MCP_REVISION_LOG` | Pro, before startup | `1`/`true` appends each workspace revision change, the host event behind each revision advance and settle timeouts to `%LOCALAPPDATA%\ArcGISProMCP\diagnostics\revisions-<pid>.log` (one file per ArcGIS Pro process). Lines contain the project path (URI) and map and layout names; writing stops at 50 MB. Diagnostics for unexpected `workspace_revision_mismatch` or `workspace_changed`; off by default. See [deployment](deployment.md#diagnostics). |
+| `ARCGIS_PRO_MCP_REVISION_LOG` | Pro, before startup | `1`/`true` appends each workspace revision change, the host event behind each revision advance and the outcome and timing of every post-write settle to `%LOCALAPPDATA%\ArcGISProMCP\diagnostics\revisions-<pid>.log` (one file per ArcGIS Pro process). Lines contain the project path (URI) and map and layout names; writing stops at 50 MB. Diagnostics for unexpected `workspace_revision_mismatch` or `workspace_changed`; off by default. See [deployment](deployment.md#diagnostics). |
 | `ARCGIS_PRO_MCP_ENABLE_ARCPY` | Pro, before startup | `true` registers the `arcpy.*` operations. |
 | `ARCGIS_PRO_MCP_ARCPY_SCRIPT_ROOT` | Pro | Absolute directory of approved scripts. Required when ArcPy is enabled. |
 | `ARCGIS_PRO_MCP_ARCPY_WORKING_ROOT` | Pro | Absolute, separate working directory tree. Required when ArcPy is enabled. |
@@ -150,7 +150,7 @@ Each host publishes a discovery record under `%LOCALAPPDATA%\ArcGISProMCP\hosts`
 
 ## Bundled workflows and skills
 
-All bundled workflows are version 1.1.0 and none of them save the project; save with an explicit, approved `project.save` call. They are seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` on first load without overwriting existing files.
+All bundled workflows are version 1.2.0 and none of them save the project; save with an explicit, approved `project.save` call. They are seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` on first load without overwriting existing files.
 
 | File | Title |
 | --- | --- |
@@ -205,9 +205,15 @@ Codes a client should handle. The message carries the details.
 | `arcgis_unavailable` | gateway | No ArcGIS Pro host accepted the connection. Retryable. |
 | `approval_not_found` | approval status | Unknown or no longer retained approval id. Fails closed. |
 | `bridge_contract_mismatch` | gateway | The add-in returned a result this gateway cannot read. Install matching add-in and gateway versions. |
-| `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped). |
+| `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped), and the code of an operation failure without a more specific code. |
 | `skill_not_found` | skill get | Unknown bundled skill id. |
 | `layer_data_source_unavailable` | invoke, workflow step | The target layer's data source is broken or cannot be opened (for example relative paths after a project was copied). The message names the layer; repair its data source in ArcGIS Pro, or re-add it with `layer.add` using the same name and a valid source. |
+| `map_not_found`, `layer_not_found`, `layout_not_found`, `frame_not_found` | invoke, workflow step | The named map, layer (in the resolved map), layout or map frame (on the resolved layout) does not exist. The message names it. Nothing ran. |
+| `element_outside_page` | `layout.add-map-frame`, `layout.ensure-surround`, `layout.set-text` | The requested frame or surround box, or the text anchor, is not on the layout page (0.01 in tolerance). The message names the element and the page size. Nothing was created. |
+| `pending_edits` | `project.open` | The current project has unsaved feature edits, so ArcGIS Pro would block on its modal "Save all edits?" prompt. Nothing was opened. Save with an approved `project.save` (or save or discard the edits in ArcGIS Pro), then retry; the refusal does not spend the approval token, which stays valid while the workspace revision is unchanged. |
+| `unsaved_project_changes` | `project.open` | The current project has unsaved project changes, so ArcGIS Pro would block on its modal "Save changes?" prompt. ArcGIS Pro marks a project changed right after opening it, so expect this on an untouched project too. Nothing was opened. Save with an approved `project.save` (or save in ArcGIS Pro), then retry; the refusal does not spend the approval token, which stays valid while the workspace revision is unchanged. |
+| `edits_not_saved` | `project.save` | ArcGIS Pro could not save the pending feature edits (for example a locked or read-only data source), so the `.aprx` was not saved either. Check the edited layers and retry. |
+| `invalid_arguments` (from an operation) | invoke, workflow step | Besides schema failures, an operation reports an argument value the project does not accept: an unknown basemap, a layer of the wrong kind or geometry type, an unknown or read-only field, a `feature.*` attribute value or geometry the layer does not accept. Raised before anything changes. An unexpected `ArgumentException` inside an operation stays `operation_failed`. |
 
 ## Scripts
 
@@ -220,4 +226,5 @@ Codes a client should handle. The message carries the details.
 | `tools/test-mcp.ps1` | Live handshake, tool discovery, state, registry search, and skill read. |
 | `tools/run-live-feature-gp-arcpy.ps1` | Live feature, geoprocessing, and ArcPy acceptance driver. |
 | `tools/run-urban-stress.ps1` | Repeats the urban layout workflows as a stress test. |
+| `tools/create-synthetic-test-data.py` | Generates the synthetic `tests/data` fixture and `expected-statistics.json` (ArcGIS Pro Python; `--template-aprx`, `--output tests\data --replace`). Not run in CI. |
 | `tools/create-*.py` | Generate the Pittsburgh showcase and urban massing fixtures. |

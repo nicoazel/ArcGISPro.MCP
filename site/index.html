@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ArcGIS Pro MCP Studio</title>
+<meta name="description" content="An ArcGIS Pro 3.7 add-in and a stdio MCP gateway that let an MCP client work inside your open ArcGIS Pro session, with typed operations, revision checks, dockpane approvals and an audit log.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f2f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d151c" media="(prefers-color-scheme: dark)">
+<link rel="canonical" href="https://nicoazel.github.io/ArcGISPro.MCP/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ArcGIS Pro MCP Studio">
+<meta property="og:title" content="ArcGIS Pro MCP Studio">
+<meta property="og:description" content="Let an MCP client work inside the ArcGIS Pro session you already have open: 41 typed operations, revision-checked writes, approvals a person gives in a Pro dockpane, and an audit log.">
+<meta property="og:url" content="https://nicoazel.github.io/ArcGISPro.MCP/">
+<meta property="og:image" content="https://nicoazel.github.io/ArcGISPro.MCP/img/layout-tod.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="776">
+<meta property="og:image:alt" content="An ArcGIS Pro layout produced by the transit-oriented corridor workflow on synthetic test data, captured in a live ArcGIS Pro 3.7.1 session.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top">ArcGIS Pro MCP Studio</a>
+    <nav aria-label="Sections">
+      <ul>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#safety">Safety</a></li>
+        <li><a href="#quality">Quality</a></li>
+        <li><a href="#evidence">Evidence</a></li>
+        <li><a href="#start">Quick start</a></li>
+        <li><a href="#limits">Limits</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="hero" id="top" aria-labelledby="hero-title">
+  <svg class="contours" viewBox="0 0 1200 520" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
+    <path d="M640 -20 C 760 60, 820 40, 900 120 S 1080 210, 1220 160"/>
+    <path class="index" d="M600 40 C 720 120, 800 110, 880 190 S 1060 290, 1220 240"/>
+    <path d="M560 110 C 690 190, 780 180, 860 260 S 1040 370, 1220 320"/>
+    <path d="M520 190 C 660 260, 760 250, 840 330 S 1020 450, 1220 400"/>
+    <path d="M480 270 C 630 330, 740 330, 820 400 S 1000 530, 1220 480"/>
+    <path class="index" d="M440 350 C 600 400, 720 410, 800 470 S 980 600, 1220 560"/>
+    <path d="M1010 120 C 1050 95, 1110 100, 1130 130 S 1100 190, 1050 185 S 985 150, 1010 120 Z"/>
+    <path d="M1035 132 C 1060 118, 1095 122, 1105 140 S 1085 170, 1058 167 S 1020 150, 1035 132 Z"/>
+  </svg>
+  <div class="wrap">
+    <p class="eyebrow">MCP server for ArcGIS Pro 3.7</p>
+    <h1 id="hero-title">Let a model work in the ArcGIS Pro session you already have open</h1>
+    <p class="lede">An ArcGIS Pro add-in and a small stdio MCP gateway. Claude Desktop, Claude Code or any other MCP client calls typed, schema-validated operations by stable id. Every write is checked against the current workspace revision, every risky write waits for a person to approve the exact arguments in a Pro dockpane, and every invocation is audited.</p>
+    <p class="status"><span class="pill">development preview 0.3.0 &middot; unsigned</span> <span>Windows x64, licensed ArcGIS Pro 3.7.1, .NET 10 runtime</span></p>
+    <div class="ctas">
+      <a class="btn primary" href="https://github.com/nicoazel/ArcGISPro.MCP/releases">Download a release</a>
+      <a class="btn secondary" href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/README.md">Read the docs</a>
+      <a class="btn secondary" href="https://github.com/nicoazel/ArcGISPro.MCP">View on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<section id="how" aria-labelledby="how-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title">The gateway holds no GIS logic. The add-in does the work, and only the dockpane can approve.</h2>
+    </div>
+    <figure class="figure">
+      <svg class="diagram diagram-wide" viewBox="0 0 960 360" role="img" aria-labelledby="arch-wide-title arch-wide-desc">
+        <title id="arch-wide-title">Architecture</title>
+        <desc id="arch-wide-desc">An MCP client talks to the arcgis-pro-mcp gateway over stdio. The gateway exposes 16 tools and connects over a same-user named pipe to the add-in inside the ArcGIS Pro process. There, the operation registry of 41 operations hands calls to the executor, which checks schema, revision and approval and writes the audit log. Approvals go through a queue that only a person in the MCP Studio dockpane can resolve. The executor calls the ArcGIS Pro SDK.</desc>
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow" d="M0 0 L10 5 L0 10 Z"/></marker>
+        </defs>
+        <rect class="box host" x="482" y="20" width="463" height="325" rx="6"/>
+        <text class="h" x="497" y="46">ARCGIS PRO PROCESS · ADD-IN</text>
+
+        <rect class="box" x="15" y="70" width="175" height="80" rx="4"/>
+        <text class="t" x="30" y="102">MCP client</text>
+        <text class="s" x="30" y="124">Claude Desktop / Code</text>
+
+        <rect class="box" x="240" y="70" width="160" height="80" rx="4"/>
+        <text class="t" x="254" y="102">Gateway</text>
+        <text class="s" x="254" y="124">arcgis-pro-mcp.exe</text>
+        <text class="s" x="254" y="140">16 tools</text>
+
+        <rect class="box" x="495" y="70" width="180" height="80" rx="4"/>
+        <text class="t" x="510" y="102">Operation registry</text>
+        <text class="s" x="510" y="124">41 operations</text>
+        <text class="s" x="510" y="140">input + result schemas</text>
+
+        <rect class="box key" x="735" y="70" width="190" height="80" rx="4"/>
+        <text class="t" x="750" y="102">Executor</text>
+        <text class="s" x="750" y="124">schema · revision</text>
+        <text class="s" x="750" y="140">approval · audit</text>
+
+        <rect class="box" x="495" y="240" width="180" height="80" rx="4"/>
+        <text class="t" x="510" y="272">ArcGIS Pro SDK</text>
+        <text class="s" x="510" y="294">MCT / UI thread</text>
+
+        <rect class="box person" x="735" y="240" width="190" height="80" rx="4"/>
+        <text class="t" x="750" y="272">MCP Studio dockpane</text>
+        <text class="s" x="750" y="294">a person approves</text>
+
+        <path class="edge" d="M190 110 H 238" marker-end="url(#ah)"/>
+        <text class="e" x="196" y="100">stdio</text>
+        <path class="edge" d="M400 110 H 493" marker-end="url(#ah)"/>
+        <text class="e" x="408" y="130">same-user</text>
+        <text class="e" x="408" y="145">named pipe</text>
+        <path class="edge" d="M675 110 H 733" marker-end="url(#ah)"/>
+        <path class="edge" d="M760 150 L 640 238" marker-end="url(#ah)"/>
+        <path class="edge" d="M830 152 V 238" marker-start="url(#ah)" marker-end="url(#ah)"/>
+        <text class="e" x="840" y="200">approval queue</text>
+      </svg>
+
+      <svg class="diagram diagram-narrow" viewBox="0 0 360 660" role="img" aria-labelledby="arch-narrow-title arch-narrow-desc">
+        <title id="arch-narrow-title">Architecture</title>
+        <desc id="arch-narrow-desc">Same architecture, stacked: MCP client, stdio, gateway with 16 tools, same-user named pipe, then inside the ArcGIS Pro process the operation registry of 41 operations, the executor, and below it the ArcGIS Pro SDK and the MCP Studio dockpane where a person approves.</desc>
+        <defs>
+          <marker id="ahn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="arrow" d="M0 0 L10 5 L0 10 Z"/></marker>
+        </defs>
+        <rect class="box" x="70" y="10" width="220" height="64" rx="4"/>
+        <text class="t" x="86" y="38">MCP client</text>
+        <text class="s" x="86" y="58">Claude Desktop / Code</text>
+        <path class="edge" d="M180 74 V 112" marker-end="url(#ahn)"/>
+        <text class="e" x="190" y="98">stdio</text>
+
+        <rect class="box" x="70" y="114" width="220" height="80" rx="4"/>
+        <text class="t" x="86" y="142">Gateway</text>
+        <text class="s" x="86" y="162">arcgis-pro-mcp.exe</text>
+        <text class="s" x="86" y="178">16 tools</text>
+        <path class="edge" d="M180 194 V 266" marker-end="url(#ahn)"/>
+        <text class="e" x="190" y="214">same-user named pipe</text>
+
+        <rect class="box host" x="10" y="226" width="340" height="424" rx="6"/>
+        <text class="h" x="24" y="250">ARCGIS PRO PROCESS · ADD-IN</text>
+
+        <rect class="box" x="70" y="268" width="220" height="70" rx="4"/>
+        <text class="t" x="86" y="296">Operation registry</text>
+        <text class="s" x="86" y="316">41 operations, schemas</text>
+        <path class="edge" d="M180 338 V 376" marker-end="url(#ahn)"/>
+
+        <rect class="box key" x="70" y="378" width="220" height="70" rx="4"/>
+        <text class="t" x="86" y="406">Executor</text>
+        <text class="s" x="86" y="426">schema · revision</text>
+        <text class="s" x="86" y="441">approval · audit</text>
+
+        <path class="edge" d="M130 448 L 100 530" marker-end="url(#ahn)"/>
+        <path class="edge" d="M230 450 L 260 530" marker-start="url(#ahn)" marker-end="url(#ahn)"/>
+        <text class="e" x="250" y="480">approval</text>
+        <text class="e" x="250" y="494">queue</text>
+
+        <rect class="box" x="24" y="532" width="150" height="100" rx="4"/>
+        <text class="t" x="38" y="560">ArcGIS Pro</text>
+        <text class="t" x="38" y="580">SDK</text>
+        <text class="s" x="38" y="602">MCT / UI thread</text>
+
+        <rect class="box person" x="186" y="532" width="150" height="100" rx="4"/>
+        <text class="t" x="200" y="560">MCP Studio</text>
+        <text class="t" x="200" y="580">dockpane</text>
+        <text class="s" x="200" y="602">a person approves</text>
+      </svg>
+      <figcaption>FakeHost runs the add-in's real handler, registry and executor over fake ArcGIS services, so the end-to-end tests and evals exercise production code without ArcGIS Pro. Details: <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/architecture.md">architecture</a>.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="surface" aria-labelledby="surface-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">What the model gets</p>
+      <h2 id="surface-title">A small set of tools in front of a typed registry</h2>
+    </div>
+    <div class="figures">
+      <div><b>16</b><span>gateway tools the client sees</span></div>
+      <div><b>41</b><span>typed operations in the registry, each with an input schema and risk tier</span></div>
+      <div><b>2,200+</b><span>installed geoprocessing tools reachable through <code>gp.search</code>, <code>gp.describe</code> and <code>gp.run</code></span></div>
+    </div>
+    <div class="split">
+      <div class="prose">
+        <p>The model searches the registry by intent, reads an operation's descriptor, validates arguments, and invokes it by id, such as <code>layer.add</code>, <code>symbology.set-unique-values</code>, <code>layout.ensure-surround</code> or <code>view.capture</code>. Operations cover projects and maps, layers and cartography, features, tables and metadata, layouts and observation, and geoprocessing. ArcPy script execution is opt-in.</p>
+        <ul class="list">
+          <li>MCP structured output: 15 stable-shape operations declare an output schema.</li>
+          <li><code>arcgis://</code> resources for project state, operation descriptors, workflows, skills and captured images.</li>
+          <li>Prompts built from bundled skills and versioned, declarative workflows.</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="eyebrow tools-title">The 16 gateway tools</h3>
+        <ul class="tools">
+          <li>system_get_state</li>
+          <li>registry_search</li>
+          <li>registry_browse</li>
+          <li>registry_describe</li>
+          <li>registry_validate</li>
+          <li>registry_invoke</li>
+          <li>approval_request</li>
+          <li>approval_status</li>
+          <li>approval_cancel</li>
+          <li>workflow_list</li>
+          <li>workflow_get</li>
+          <li>workflow_save</li>
+          <li>workflow_run</li>
+          <li>resource_read</li>
+          <li>skill_search</li>
+          <li>skill_get</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="safety" aria-labelledby="safety-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Safety model</p>
+      <h2 id="safety-title">Writes name the revision they read. Risky writes wait for a person.</h2>
+    </div>
+    <div class="safety">
+      <div class="prose">
+        <div class="table-wrap">
+          <table>
+            <caption class="note table-note">Default mode. <code>project.open</code>, <code>project.save</code> and <code>feature.update</code> are SafeWrite but also need approval.</caption>
+            <thead><tr><th scope="col">Risk tier</th><th scope="col">What it takes to run</th></tr></thead>
+            <tbody>
+              <tr><td class="tier">ReadOnly</td><td>Runs freely.</td></tr>
+              <tr><td class="tier">SafeWrite</td><td>The current workspace revision. A stale revision is rejected before anything runs.</td></tr>
+              <tr><td class="tier">Destructive</td><td>Revision plus a single-use approval token from the dockpane.</td></tr>
+              <tr><td class="tier">ExternalSideEffect</td><td>Revision plus a single-use approval token from the dockpane. Every <code>gp.run</code> is in this tier.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="list">
+          <li><code>approval_request</code> queues a card in the dockpane. A person approves or denies it, and <code>approval_status</code> returns a short-lived token bound to the operation, its version, the exact arguments and the revision. The gateway cannot approve its own request.</li>
+          <li><code>gp.run</code> cards warn when a tool modifies input in place, consumes credits or runs user code. Allowlisted read-only tools run through <code>gp.query</code> without review.</li>
+          <li>A dry run validates statically, never executes and never consumes a token.</li>
+          <li>Every invocation, approval decision and autonomous bypass is appended to a JSON-lines audit log.</li>
+          <li>Autonomous mode is an opt-in expert setting and is not recommended. It still refuses Destructive, user-code and unclassified <code>gp.run</code> requests without a person-issued token.</li>
+        </ul>
+        <p><code>gp.run</code> can execute arbitrary Python through Python toolboxes, script tools and expressions, with your GIS authority. Read <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/security.md">security and limits</a> before connecting a client you do not fully trust.</p>
+      </div>
+      <figure class="figure card-figure">
+        <img src="img/approval-card.png" width="501" height="390" alt="The ArcGIS MCP dockpane in a live ArcGIS Pro session showing an approval card for arcpy.run-script, version 1.0.0, risk High, with the warning that the request runs a Python script in the ArcGIS Pro Python environment with your ArcGIS Pro permissions, the workspace revision it is bound to, and a link to review the full arguments.">
+        <figcaption>An approval card for <code>arcpy.run-script</code> in the dockpane during the live operation matrix. The card names the operation, its risk and the revision it is bound to, shows a "Runs user code" warning, and links to the full arguments.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section id="quality" aria-labelledby="quality-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Quality</p>
+      <h2 id="quality-title">945 tests, measured search, pinned CI</h2>
+      <p>Build: .NET 10 with <code>TreatWarningsAsErrors</code> and 0 warnings. Tests use xUnit v3; the portable tests do not need ArcGIS Pro.</p>
+    </div>
+    <div class="split">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Test project</th><th scope="col" class="num">Tests</th></tr></thead>
+          <tbody>
+            <tr><td><code>Core.Tests</code><br><span class="note">Executor policy, approvals, schemas, search, risk tiers, workflows, audit</span></td><td class="num">490</td></tr>
+            <tr><td><code>Operations.Tests</code><br><span class="note">Operation behaviour over fake ArcGIS services</span></td><td class="num">246</td></tr>
+            <tr><td><code>Server.Tests</code><br><span class="note">MCP contract snapshots, end-to-end runs, trajectories</span></td><td class="num">123</td></tr>
+            <tr><td><code>Bridge.Tests</code><br><span class="note">Pipe framing, discovery, host scheduling</span></td><td class="num">67</td></tr>
+            <tr><td><code>Evals.Tests</code><br><span class="note">Retrieval suites gated on a measured baseline</span></td><td class="num">19</td></tr>
+          </tbody>
+          <tfoot><tr><td>Total</td><td class="num">945</td></tr></tfoot>
+        </table>
+      </div>
+      <div class="prose">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Search suite</th><th scope="col" class="num">Tasks</th><th scope="col" class="num">recall@5</th></tr></thead>
+            <tbody>
+              <tr><td>Registry search, held out</td><td class="num">16</td><td class="num">0.938</td></tr>
+              <tr><td>Geoprocessing search, held out</td><td class="num">16</td><td class="num">0.875</td></tr>
+              <tr><td>Registry search</td><td class="num">30</td><td class="num">0.867</td></tr>
+              <tr><td>Geoprocessing search</td><td class="num">30</td><td class="num">0.900</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Held-out tasks were written before search tuning and never tuned against, so they are the numbers to trust. Geoprocessing suites ran against ArcGIS Pro 3.7.1 with 2,210 system tools. Eight golden trajectories pass on every <code>dotnet test</code>; four of them exercise approval. No live-model scorecard is committed yet. See <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/evals/README.md">evals</a>.</p>
+        <p class="note">CI on GitHub Actions uses actions pinned to commit SHAs and read-only permissions: build and test on Windows, a packaging job that fails if development-only hosts reach the bundle, and a lint job.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="evidence" aria-labelledby="evidence-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Live evidence</p>
+      <h2 id="evidence-title">Recorded on a real ArcGIS Pro 3.7.1 session</h2>
+      <p><code>tools/run-acceptance.ps1</code> records the commit, the ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into a dated folder under <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance">docs/acceptance</a>, and a test validates every committed folder against the evidence contract. The latest committed run, <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance/2026-10-03-e7deee2">docs/acceptance/2026-10-03-e7deee2</a> (version 0.3.0 at commit e7deee2, ArcGIS Pro 3.7.1.1904), covers the three bundled urban workflows and the full operation matrix on synthetic test data in default mode. The layouts below are its captures.</p>
+      <p class="note">The approval cards in that run were decided by Claude, operating the dockpane through computer use at the maintainer's direction, not clicked by the maintainer. The run shows that a card gates each risky call and that approve and deny behave as specified; it does not test a human reviewer's judgement. During the final <code>project.open</code> card, ArcGIS Pro's modal "Save all edits?" prompt appeared because feature edits were pending, and was answered the same way; that hang is fixed after the evidence commit (<code>project.open</code> now refuses with <code>pending_edits</code>).</p>
+    </div>
+    <div class="gallery">
+      <figure>
+        <a href="img/layout-tod.png"><img src="img/layout-tod.png" width="1200" height="776" loading="lazy" alt="Layout URBAN TEST 01 from the transit-oriented corridor workflow, captured live: land-use categories, a labelled development program, the transit network and existing-fabric frames, with a legend and scale bar."></a>
+        <figcaption>Transit-oriented corridor</figcaption>
+      </figure>
+      <figure>
+        <a href="img/layout-green.png"><img src="img/layout-green.png" width="900" height="582" loading="lazy" alt="Layout URBAN TEST 02 from the green loop workflow, captured live: green infrastructure sites, loop corridors, the development interface and neighborhood nodes."></a>
+        <figcaption>Green loop</figcaption>
+      </figure>
+      <figure>
+        <a href="img/layout-mixed.png"><img src="img/layout-mixed.png" width="1200" height="776" loading="lazy" alt="Layout URBAN TEST 03 from the mixed-use massing workflow, captured live: 3D building massing extruded over the public realm with mixed-use categories in a scene frame."></a>
+        <figcaption>Mixed-use massing, 3D scene</figcaption>
+      </figure>
+    </div>
+    <div class="scope">
+      <div>
+        <h3>Covered by the latest committed run</h3>
+        <ul class="list">
+          <li>Release build, every test project and the package contents</li>
+          <li>The four loaded add-in DLLs match the package</li>
+          <li>Host probe (41 operations) and the MCP smoke test (16 tools)</li>
+          <li>Three bundled workflows, three runs each, layouts inspected (cosmetic legend and scale-bar overlaps recorded)</li>
+          <li>The live operation matrix: 41 of 41 operations, 90 of 90 cases passed (58 happy paths, 32 negative cases), eight dockpane approval cards with 7 approved and 1 denied</li>
+          <li>Default mode, no autonomous bypass</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Not covered</h3>
+        <ul class="list">
+          <li>Autonomous mode</li>
+          <li>The separate feature, geoprocessing and ArcPy section of the acceptance script (not selected for this run; the operation matrix exercises those operations one by one)</li>
+          <li>A person deciding the approval cards (see the note above)</li>
+        </ul>
+        <p class="note">For anything a run does not cover, use the <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/manual-acceptance.md">manual acceptance</a> checklist on your own installation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="start" aria-labelledby="start-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Quick start</p>
+      <h2 id="start-title">Install the add-in, point your client at the gateway</h2>
+      <p>Requirements: Windows x64, a licensed ArcGIS Pro 3.7.1 and the .NET 10 x64 runtime.</p>
+    </div>
+    <ol class="steps">
+      <li><div>
+        <h3>Get the bundle</h3>
+        <p>Download <code>ArcGISProMCP-&lt;version&gt;-win-x64-development-preview.zip</code> from <a href="https://github.com/nicoazel/ArcGISPro.MCP/releases">Releases</a>, check <code>checksums.sha256</code>, and extract it, for example to <code>C:\ArcGISProMCP\0.3.0</code>.</p>
+      </div></li>
+      <li><div>
+        <h3>Install the add-in</h3>
+        <p>Close ArcGIS Pro and double-click <code>ArcGISProMCP.AddIn.esriAddinX</code>. The add-in is unsigned, so your organization's add-in policy may block it.</p>
+      </div></li>
+      <li><div>
+        <h3>Open a disposable project</h3>
+        <p>Start ArcGIS Pro, open a <strong>disposable copy</strong> of a project, and open <strong>Add-In &gt; ArcGIS MCP &gt; MCP Studio</strong>.</p>
+      </div></li>
+      <li><div>
+        <h3>Connect your MCP client</h3>
+        <p class="snippet-label">Claude Desktop, <code>claude_desktop_config.json</code></p>
+<pre><code>{
+  "mcpServers": {
+    "arcgis-pro": {
+      "command": "C:\\ArcGISProMCP\\0.3.0\\server\\arcgis-pro-mcp.exe"
+    }
+  }
+}</code></pre>
+        <p class="snippet-label">Claude Code</p>
+<pre><code>claude mcp add arcgis-pro -- C:\ArcGISProMCP\0.3.0\server\arcgis-pro-mcp.exe</code></pre>
+        <p>Then ask: <em>"Read the ArcGIS Pro project state and list the layers in the active map."</em> Ask for an edit, such as updating one attribute, and approve the card that appears in the dockpane.</p>
+      </div></li>
+    </ol>
+    <p class="note">Full install, verification and rollback steps: <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/deployment.md">deployment</a>. All settings: <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/reference.md#environment-variables">reference</a>.</p>
+  </div>
+</section>
+
+<section id="limits" aria-labelledby="limits-title">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Known limits</p>
+      <h2 id="limits-title">What this preview does not do</h2>
+    </div>
+    <ul class="list">
+      <li>The package is unsigned. Wider distribution needs an organizational signing certificate and another verification pass.</li>
+      <li>Workflows cannot run confirmation-gated steps in default mode; run those operations one at a time through approval.</li>
+      <li>Workflows are not transactional or resumable after a crash, and nothing is rolled back automatically.</li>
+      <li>ArcPy and <code>gp.run</code> can execute arbitrary user code. Neither is a sandbox.</li>
+      <li>Revision checks are an optimistic guard, not a lock. Some direct edits in Pro, such as reordering layers, do not invalidate an approval.</li>
+      <li>After each write the host waits up to 3 seconds for ArcGIS Pro's event echoes to settle; heavy layout and 3D steps sometimes reach that cap. Reading the final state still waits for Pro's main thread, so while Pro is busy (for example loading a newly added layer) a write can take much longer to return.</li>
+      <li>Feature editing excludes batch edits and multipart construction. Advanced renderers, workspace connections and PDF export are outside the registry.</li>
+      <li>Idempotency, workflow history and resources do not survive an ArcGIS Pro restart.</li>
+    </ul>
+    <p class="note">The full list: <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/deployment.md#known-limits">known limits</a> and <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/security.md">security and operational limits</a>.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <ul>
+      <li><a href="https://github.com/nicoazel/ArcGISPro.MCP">GitHub</a></li>
+      <li><a href="https://github.com/nicoazel/ArcGISPro.MCP/releases">Releases</a></li>
+      <li><a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/README.md">Documentation</a></li>
+      <li><a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/SECURITY.md">Security policy</a></li>
+      <li><a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md">Changelog</a></li>
+    </ul>
+    <p>Licensed under <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/LICENSE">Apache-2.0</a>. ArcGIS Pro and other Esri products require their own licenses.</p>
+    <p>ArcGIS and ArcGIS Pro are trademarks of Esri; this project is not affiliated with or endorsed by Esri.</p>
+  </div>
+</footer>
+</body>
+</html>

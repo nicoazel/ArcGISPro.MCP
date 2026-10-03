@@ -1,0 +1,41 @@
+{
+  "success": true,
+  "data": {
+    "tool": "analysis.Buffer",
+    "IsFailed": false,
+    "IsCanceled": false,
+    "ErrorCode": 0,
+    "ReturnValue": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\DesignSites_Buffer_20261003_013338",
+    "values": [
+      "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\DesignSites_Buffer_20261003_013338"
+    ],
+    "valueTypes": [
+      "DEFeatureClass"
+    ],
+    "elapsedMilliseconds": 633,
+    "riskTier": "Standard",
+    "flags": {
+      "addOutputsToMap": false,
+      "addToHistory": true,
+      "refreshProjectItems": false,
+      "overwriteOutput": false
+    },
+    "messages": [
+      {
+        "type": "ProcessStart",
+        "Text": "Start Time: Saturday, October 3, 2026 1:35:08 AM",
+        "ErrorCode": 0
+      },
+      {
+        "type": "ProcessEnd",
+        "Text": "Succeeded at Saturday, October 3, 2026 1:35:09 AM (Elapsed Time: 0.43 seconds)",
+        "ErrorCode": 0
+      }
+    ]
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "a83024e637e453e2",
+  "notices": [],
+  "resources": []
+}

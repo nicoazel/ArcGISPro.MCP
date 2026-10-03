@@ -1,0 +1,4 @@
+{
+  "method": "system.get_state",
+  "parameters": {}
+}

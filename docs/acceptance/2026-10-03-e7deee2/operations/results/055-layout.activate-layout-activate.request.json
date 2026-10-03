@@ -1,0 +1,9 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.activate",
+    "arguments": {
+      "layout": "Ops Layout"
+    }
+  }
+}

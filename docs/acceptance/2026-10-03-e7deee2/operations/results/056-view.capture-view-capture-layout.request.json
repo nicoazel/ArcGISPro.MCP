@@ -1,0 +1,12 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "view.capture",
+    "arguments": {
+      "layout": "Ops Layout",
+      "width": 1700,
+      "height": 1100,
+      "view": "layout"
+    }
+  }
+}

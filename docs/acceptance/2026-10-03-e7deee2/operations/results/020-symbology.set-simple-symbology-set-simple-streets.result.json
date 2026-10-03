@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "data": {
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FPolyline_MultipartMix_Streets.json",
+    "Name": "Streets",
+    "geometryType": "Polyline",
+    "color": "#4A4A4A",
+    "size": 1.5
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "0be7e71821bddf17",
+  "notices": [],
+  "resources": []
+}

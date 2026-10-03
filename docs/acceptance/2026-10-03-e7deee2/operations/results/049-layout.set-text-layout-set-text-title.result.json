@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "data": {
+    "layout": "pro://layout/CIMPATH%3DLayout%2FLayout6.json",
+    "Name": "Title",
+    "created": true,
+    "text": "OPS MATRIX",
+    "x": 12.9,
+    "y": 9.9,
+    "fontFamily": "Tahoma",
+    "fontStyle": "Bold",
+    "size": 22,
+    "color": "#1F2D3D"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "065f896b3c7af371",
+  "notices": [],
+  "resources": []
+}

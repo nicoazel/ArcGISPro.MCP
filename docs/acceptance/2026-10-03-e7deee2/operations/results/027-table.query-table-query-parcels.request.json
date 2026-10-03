@@ -1,0 +1,15 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "table.query",
+    "arguments": {
+      "limit": 5,
+      "fields": [
+        "land_use_1",
+        "pop"
+      ],
+      "map": "Ops Map",
+      "layer": "Parcels"
+    }
+  }
+}

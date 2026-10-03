@@ -1,0 +1,100 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "pro://layout/CIMPATH%3DLayout%2FLayout2.json",
+      "Name": "East Liberty Concept Master Plan",
+      "mapFrames": [
+        {
+          "Name": "Site Plan",
+          "map": "pro://map/CIMPATH%3DBuildings_SiteDesign%2FBuildings_SiteDesign.json"
+        },
+        {
+          "Name": "Land Use Context",
+          "map": "pro://map/CIMPATH%3DZoning%2FZoning.json"
+        },
+        {
+          "Name": "Mobility Context",
+          "map": "pro://map/CIMPATH%3DTransit%2FTransit.json"
+        }
+      ]
+    },
+    {
+      "id": "pro://layout/CIMPATH%3DLayout%2FLayout.json",
+      "Name": "Master Multi-Map",
+      "mapFrames": [
+        {
+          "Name": "Zoning Overview",
+          "map": "pro://map/CIMPATH%3DZoning%2FZoning.json"
+        },
+        {
+          "Name": "Transit Context",
+          "map": "pro://map/CIMPATH%3DTransit%2FTransit.json"
+        },
+        {
+          "Name": "Buildings and Site Design",
+          "map": "pro://map/CIMPATH%3DBuildings_SiteDesign%2FBuildings_SiteDesign.json"
+        }
+      ]
+    },
+    {
+      "id": "pro://layout/CIMPATH%3DLayout%2FLayout3.json",
+      "Name": "Urban Test 1 - TOD Corridor",
+      "mapFrames": [
+        {
+          "Name": "Program Plan",
+          "map": "pro://map/CIMPATH%3DUD1_TOD_Program%2FUD1_TOD_Program.json"
+        },
+        {
+          "Name": "Mobility Structure",
+          "map": "pro://map/CIMPATH%3DUD1_TOD_Mobility%2FUD1_TOD_Mobility.json"
+        },
+        {
+          "Name": "Existing Fabric",
+          "map": "pro://map/CIMPATH%3DUD1_TOD_Existing_Fabric%2FUD1_TOD_Existing_Fabric.json"
+        }
+      ]
+    },
+    {
+      "id": "pro://layout/CIMPATH%3DLayout%2FLayout4.json",
+      "Name": "Urban Test 2 - Green Loop",
+      "mapFrames": [
+        {
+          "Name": "Green Infrastructure Plan",
+          "map": "pro://map/CIMPATH%3DUD2_Green_Infrastructure%2FUD2_Green_Infrastructure.json"
+        },
+        {
+          "Name": "Open Space Context",
+          "map": "pro://map/CIMPATH%3DUD2_Open_Space_Context%2FUD2_Open_Space_Context.json"
+        },
+        {
+          "Name": "Neighborhood Nodes",
+          "map": "pro://map/CIMPATH%3DUD2_Neighborhood_Nodes%2FUD2_Neighborhood_Nodes.json"
+        }
+      ]
+    },
+    {
+      "id": "pro://layout/CIMPATH%3DLayout%2FLayout5.json",
+      "Name": "Urban Test 3 - Mixed Use Massing",
+      "mapFrames": [
+        {
+          "Name": "Massing Scene",
+          "map": "pro://map/CIMPATH%3DUD3_Mixed_Use_Massing%2FUD3_Mixed_Use_Massing.json"
+        },
+        {
+          "Name": "Program Mix",
+          "map": "pro://map/CIMPATH%3DUD3_Mixed_Use_Program%2FUD3_Mixed_Use_Program.json"
+        },
+        {
+          "Name": "Public Realm Fabric",
+          "map": "pro://map/CIMPATH%3DUD3_Public_Realm_Fabric%2FUD3_Public_Realm_Fabric.json"
+        }
+      ]
+    }
+  ],
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "c91ddcb509a3d4b0",
+  "notices": [],
+  "resources": []
+}

@@ -231,6 +231,7 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
 
     private void Edited(string action, FakeLayer layer)
     {
+        state.HasEdits = true;
         if (state.TrackDirty) state.IsDirty = true;
         Observer?.Invoke(action, layer.Name);
     }
@@ -247,7 +248,7 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
         var layer = map.Layers.FirstOrDefault(candidate =>
                         string.Equals(candidate.Uri, value, StringComparison.OrdinalIgnoreCase) ||
                         string.Equals(candidate.Name, value, StringComparison.OrdinalIgnoreCase))
-                    ?? throw new InvalidOperationException($"Layer '{target.Layer}' was not found in map '{map.Name}'.");
+                    ?? throw OperationException.LayerNotFound(target.Layer, map.Name);
         var table = layer.Table ?? throw new InvalidOperationException("Feature operations require a feature layer.");
         if (table.DataSourceBroken) throw OperationException.LayerDataSourceUnavailable(layer.Name);
         return (map, layer, table);

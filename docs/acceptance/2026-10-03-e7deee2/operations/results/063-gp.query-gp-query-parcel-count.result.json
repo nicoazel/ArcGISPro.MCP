@@ -1,0 +1,45 @@
+{
+  "success": true,
+  "data": {
+    "tool": "management.GetCount",
+    "isFailed": false,
+    "isCanceled": false,
+    "errorCode": 0,
+    "returnValue": "970",
+    "values": [
+      "970"
+    ],
+    "valueTypes": [
+      "GPLong"
+    ],
+    "elapsedMilliseconds": 917,
+    "flags": {
+      "addOutputsToMap": false,
+      "addToHistory": false,
+      "refreshProjectItems": false,
+      "overwriteOutput": false
+    },
+    "messages": [
+      {
+        "type": "ProcessStart",
+        "text": "Start Time: Saturday, October 3, 2026 1:34:41 AM",
+        "errorCode": 0
+      },
+      {
+        "type": "Informative",
+        "text": "Row Count = 970",
+        "errorCode": 0
+      },
+      {
+        "type": "ProcessEnd",
+        "text": "Succeeded at Saturday, October 3, 2026 1:34:41 AM (Elapsed Time: 0.33 seconds)",
+        "errorCode": 0
+      }
+    ]
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "fd4f1c82d7feff3c",
+  "notices": [],
+  "resources": []
+}

@@ -1,18 +1,51 @@
 using System.Text;
+using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Operations.Services;
 
 namespace ArcGISProMCP.Testing;
 
 internal sealed class FakeProjectService(FakeProState state) : IProjectService
 {
+    public bool HasEdits
+    {
+        get
+        {
+            FakeDispatcher.Require(FakeThread.Ui, nameof(HasEdits));
+            return state.IsOpen && state.HasEdits;
+        }
+    }
+
+    public bool IsDirty
+    {
+        get
+        {
+            FakeDispatcher.Require(FakeThread.Ui, nameof(IsDirty));
+            return state.IsOpen && state.IsDirty;
+        }
+    }
+
     public Task OpenAsync(string path)
     {
         FakeDispatcher.Require(FakeThread.Ui, nameof(OpenAsync));
+        // ArcGIS Pro would block on its modal "Save all edits?" (pending edits) or "Save changes?"
+        // (dirty project) prompt here; the operation must refuse first.
+        if (state.HasEdits || state.IsDirty)
+            throw new InvalidOperationException("ArcGIS Pro would prompt to save unsaved work before opening another project.");
         state.Calls.Add($"project.open {path}");
         state.ProjectUri = path;
         state.ProjectName = Path.GetFileNameWithoutExtension(path);
         state.IsDirty = false;
         return Task.CompletedTask;
+    }
+
+    public Task<bool> SaveEditsAsync()
+    {
+        FakeDispatcher.Require(FakeThread.Ui, nameof(SaveEditsAsync));
+        if (!state.IsOpen) throw new InvalidOperationException("No ArcGIS Pro project is open.");
+        state.Calls.Add("project.save-edits");
+        if (state.FailEditSave) return Task.FromResult(false);
+        state.HasEdits = false;
+        return Task.FromResult(true);
     }
 
     public Task SaveAsync()
@@ -98,7 +131,7 @@ internal sealed class FakeMapService(FakeProState state) : IMapService
         {
             return state.Maps.FirstOrDefault(map => string.Equals(map.Name, state.ActiveMapName, StringComparison.Ordinal))
                 ?? state.Maps.FirstOrDefault()
-                ?? throw new InvalidOperationException("No map is available.");
+                ?? throw OperationException.MapNotFound(null);
         }
 
         const string prefix = "pro://map/";
@@ -108,7 +141,7 @@ internal sealed class FakeMapService(FakeProState state) : IMapService
         return state.Maps.FirstOrDefault(map =>
                    string.Equals(map.Uri, value, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(map.Name, value, StringComparison.OrdinalIgnoreCase))
-               ?? throw new InvalidOperationException($"Map '{handleOrName}' was not found.");
+               ?? throw OperationException.MapNotFound(handleOrName);
     }
 
     private static ResolvedMap ToResolved(FakeMap map) => new(FakeProState.MapHandle(map), map.Name, map);
@@ -160,7 +193,7 @@ internal sealed class FakeViewCaptureService(FakeProState state) : IViewCaptureS
             : state.Layouts.FirstOrDefault(candidate =>
                   string.Equals(candidate.Name, layoutReference, StringComparison.OrdinalIgnoreCase) ||
                   string.Equals(FakeProState.LayoutHandle(candidate), layoutReference, StringComparison.OrdinalIgnoreCase))
-              ?? throw new InvalidOperationException($"Layout '{layoutReference}' was not found.");
+              ?? throw OperationException.LayoutNotFound(layoutReference);
         ExportedPaths.Add(outputPath);
         File.WriteAllBytes(outputPath, Png($"layout:{layout.Name}", width + LayoutOvershootPixels, height + LayoutOvershootPixels));
         state.Calls.Add($"view.export-layout {layout.Name} {width}x{height}");

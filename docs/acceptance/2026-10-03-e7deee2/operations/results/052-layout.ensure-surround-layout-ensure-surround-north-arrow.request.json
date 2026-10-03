@@ -1,0 +1,16 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.ensure-surround",
+    "arguments": {
+      "layout": "Ops Layout",
+      "frame": "Main Frame",
+      "x": 15.7,
+      "height": 1.1,
+      "width": 0.7,
+      "kind": "north-arrow",
+      "name": "North Arrow",
+      "y": 0.9
+    }
+  }
+}

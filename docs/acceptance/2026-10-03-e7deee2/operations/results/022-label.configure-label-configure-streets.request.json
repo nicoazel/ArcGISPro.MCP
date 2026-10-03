@@ -1,0 +1,15 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "label.configure",
+    "arguments": {
+      "color": "#333333",
+      "layer": "Streets",
+      "expression": "$feature.NAME",
+      "fontFamily": "Tahoma",
+      "enabled": true,
+      "map": "Ops Map",
+      "size": 7
+    }
+  }
+}

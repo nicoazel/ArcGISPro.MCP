@@ -22,8 +22,7 @@ internal sealed class LayoutSetFrameExtentOperation() : ProOperationBase(Operati
         {
             var layout = ProHandles.ResolveLayout(RequiredString(arguments, "layout"));
             var name = RequiredString(arguments, "frame");
-            var frame = layout.GetElementsAsFlattenedList().OfType<MapFrame>().SingleOrDefault(item => item.Name == name)
-                ?? throw new ArgumentException($"Map frame '{name}' was not found.");
+            var frame = ProHandles.ResolveMapFrame(layout, name);
             var layer = ProHandles.ResolveLayer(frame.Map, RequiredString(arguments, "layer"));
             // A broken data layer has no extent to frame; group layers report their own status.
             if (layer is not ILayerContainer) LayerData.EnsureAvailable(layer);
@@ -130,13 +129,19 @@ internal sealed class SymbologySetUniqueValuesOperation() : ProOperationBase(Ope
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
             var map = ProHandles.ResolveMap(OptionalString(arguments, "map"));
-            var layer = ProHandles.ResolveLayer(map, RequiredString(arguments, "layer")) as FeatureLayer
-                ?? throw new ArgumentException("A feature layer is required.");
-            using var featureClass = LayerData.OpenFeatureClass(layer);
-            using var definition = featureClass.GetDefinition();
-            if (definition.GetShapeType() != GeometryType.Polygon) throw new ArgumentException("This category renderer supports polygon layers.");
+            var layerReference = RequiredString(arguments, "layer");
+            var layer = ProHandles.ResolveLayer(map, layerReference) as FeatureLayer
+                ?? throw OperationException.InvalidArgument($"Layer '{layerReference}' is not a feature layer; the category renderer requires a polygon feature layer.");
             var field = RequiredString(arguments, "field");
-            if (definition.FindField(field) < 0) throw new ArgumentException($"Unknown field '{field}'.");
+            var (shapeType, hasField) = LayerData.Read(layer, () =>
+            {
+                using var featureClass = LayerData.OpenFeatureClass(layer);
+                using var definition = featureClass.GetDefinition();
+                return (definition.GetShapeType(), definition.FindField(field) >= 0);
+            });
+            if (shapeType != GeometryType.Polygon)
+                throw OperationException.InvalidArgument($"Layer '{layer.Name}' has geometry type '{shapeType}'; this category renderer supports polygon layers only.");
+            if (!hasField) throw OperationException.InvalidArgument($"Unknown field '{field}' on layer '{layer.Name}'.");
             var classes = items.Select(item => new CIMUniqueValueClass
             {
                 Label = OptionalString(item, "label") ?? RequiredString(item, "value"),

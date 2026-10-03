@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "result": {
+    "requestId": "TclHYWcRYK3IV_pz2x0c-w",
+    "operationId": "project.save",
+    "operationVersion": "1.0.0",
+    "workspaceRevision": "d06a52c468b682de",
+    "status": "pending",
+    "requestedAt": "2026-10-03T01:39:58.835388-04:00",
+    "expiresAt": "2026-10-03T01:41:58.835388-04:00",
+    "confirmationToken": null,
+    "instructions": "A person must approve or deny this exact request in the ArcGIS Pro MCP panel. Call approval_status again, optionally with waitSeconds (up to 120) to wait for the decision; there is no remote approval operation.",
+    "waitNotice": null
+  },
+  "error": null
+}

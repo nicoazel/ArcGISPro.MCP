@@ -146,4 +146,60 @@ public sealed class LayerSourcesTests
     public void Data_source_status_accepts_a_matching_dataset_spelled_differently() =>
         Assert.Equal("ok", LayerSources.DataSourceStatus(
             false, false, false, new Uri(@"D:\data\City.gdb\Transport\Roads"), new Uri(@"D:\data\City.gdb\Roads"), () => true));
+
+    /// <summary>A fake file system: the listed files and directories exist, nothing else.</summary>
+    private static (Func<string, bool> FileExists, Func<string, bool> DirectoryExists) FileSystem(string[] files, string[] directories) =>
+        (path => files.Contains(path, StringComparer.OrdinalIgnoreCase), path => directories.Contains(path, StringComparer.OrdinalIgnoreCase));
+
+    [Fact]
+    public void A_shapefile_whose_files_were_renamed_away_is_missing()
+    {
+        // The live operation matrix renamed Broken_Boundary.* to Moved_Broken_Boundary.*; ArcGIS reports the path without ".shp".
+        var (file, directory) = FileSystem([@"D:\ops\broken\Moved_Broken_Boundary.shp"], [@"D:\ops\broken", @"D:\ops", @"D:\"]);
+
+        Assert.True(LayerSources.LocalSourceMissing(new Uri(@"D:\ops\broken\Broken_Boundary"), file, directory));
+        Assert.True(LayerSources.LocalSourceMissing(new Uri(@"D:\ops\broken\Broken_Boundary.shp"), file, directory));
+    }
+
+    [Theory]
+    [InlineData(@"D:\ops\Parcels")]
+    [InlineData(@"D:\ops\Parcels.shp")]
+    [InlineData(@"D:\ops\City.gdb")]
+    public void An_existing_dataset_is_not_missing(string path)
+    {
+        var (file, directory) = FileSystem([@"D:\ops\Parcels.shp"], [@"D:\ops", @"D:\ops\City.gdb", @"D:\"]);
+
+        Assert.False(LayerSources.LocalSourceMissing(new Uri(path), file, directory));
+    }
+
+    [Theory]
+    // A feature class (or one in a feature dataset) inside an existing geodatabase is not a file-system entry.
+    [InlineData(@"D:\ops\City.gdb\Roads")]
+    [InlineData(@"D:\ops\City.gdb\Transport\Roads")]
+    // Datasets inside container files.
+    [InlineData(@"D:\ops\Sites.gpkg\main.Sites")]
+    public void Datasets_inside_an_existing_container_cannot_be_judged(string path)
+    {
+        var (file, directory) = FileSystem([@"D:\ops\Sites.gpkg"], [@"D:\ops", @"D:\ops\City.gdb", @"D:\"]);
+
+        Assert.Null(LayerSources.LocalSourceMissing(new Uri(path), file, directory));
+    }
+
+    [Fact]
+    public void A_dataset_in_a_deleted_geodatabase_is_missing()
+    {
+        var (file, directory) = FileSystem([], [@"D:\ops", @"D:\"]);
+
+        Assert.True(LayerSources.LocalSourceMissing(new Uri(@"D:\ops\Gone.gdb\Transport\Roads"), file, directory));
+    }
+
+    [Fact]
+    public void Services_and_unknown_paths_cannot_be_judged()
+    {
+        var (file, directory) = FileSystem([], []);
+
+        Assert.Null(LayerSources.LocalSourceMissing(null, file, directory));
+        Assert.Null(LayerSources.LocalSourceMissing(new Uri("https://services.example.com/arcgis/rest/services/Roads/FeatureServer/0"), file, directory));
+        Assert.Null(LayerSources.LocalSourceMissing(new Uri(@"data\Parcels.shp", UriKind.Relative), file, directory));
+    }
 }

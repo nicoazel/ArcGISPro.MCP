@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "data": {
+    "Id": "pro://layer/CIMPATH%3DOps_Map%2FBroken_Boundary.json",
+    "Name": "Broken",
+    "Map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "Source": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Boundary_Multipart_Polygon",
+    "RequestedSource": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Boundary_Multipart_Polygon.shp",
+    "Created": false,
+    "Repaired": true,
+    "Replaced": false,
+    "DataSourceStatus": "ok"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "4e8e4fe4165a9dc0",
+  "notices": [
+    {
+      "code": "layer_repaired",
+      "message": "Layer \u0027Broken\u0027 already existed but it read \u0027D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\broken\\Broken_Boundary\u0027 instead of the requested source; its data source was replaced and its symbology was kept.",
+      "severity": "info"
+    }
+  ],
+  "resources": []
+}

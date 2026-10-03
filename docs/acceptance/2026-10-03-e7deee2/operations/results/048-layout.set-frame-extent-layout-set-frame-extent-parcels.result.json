@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "data": {
+    "frame": "Main Frame",
+    "Scale": 9880.019760150462,
+    "Heading": -0,
+    "Pitch": -90,
+    "viewpoint": "LookFrom",
+    "X": 1365600,
+    "Y": 416800,
+    "Z": null,
+    "ViewportWidth": 0,
+    "ViewportHeight": 0
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "e54ff4842064879b",
+  "notices": [],
+  "resources": []
+}

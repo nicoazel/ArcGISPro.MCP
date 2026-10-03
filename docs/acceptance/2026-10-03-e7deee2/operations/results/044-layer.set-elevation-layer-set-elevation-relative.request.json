@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layer.set-elevation",
+    "arguments": {
+      "mode": "relative-to-ground",
+      "map": "Ops Scene",
+      "layer": "Proposed Massing"
+    }
+  }
+}

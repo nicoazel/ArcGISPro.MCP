@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "Name": "Ops Map",
+    "basemap": "Topographic"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "f4deffa485bcb392",
+  "notices": [],
+  "resources": []
+}

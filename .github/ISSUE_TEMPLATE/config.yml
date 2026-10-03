@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/nicoazel/ArcGISPro.MCP/security/advisories/new
+    about: Report vulnerabilities privately through a GitHub security advisory, never in a public issue.
+  - name: Documentation
+    url: https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/README.md
+    about: Installation, reference, security model, known limits and manual acceptance.

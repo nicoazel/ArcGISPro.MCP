@@ -1,0 +1,17 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "feature.query",
+    "arguments": {
+      "where": "1=1",
+      "limit": 10,
+      "fields": [
+        "Name",
+        "Units",
+        "FAR"
+      ],
+      "map": "Ops Map",
+      "layer": "Design Sites"
+    }
+  }
+}

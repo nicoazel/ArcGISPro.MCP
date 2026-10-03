@@ -1,0 +1,14 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.set-text",
+    "arguments": {
+      "text": "Printed <dyn type=\"date\" format=\"yyyy-MM-dd\"/>",
+      "x": 12.9,
+      "layout": "Ops Layout",
+      "name": "Dynamic Date",
+      "size": 9,
+      "y": 9.4
+    }
+  }
+}

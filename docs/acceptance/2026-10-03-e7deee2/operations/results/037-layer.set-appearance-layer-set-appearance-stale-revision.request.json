@@ -1,0 +1,12 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layer.set-appearance",
+    "arguments": {
+      "transparency": 45,
+      "map": "Ops Map",
+      "layer": "Boundary"
+    },
+    "expectedRevision": "stale-ops-matrix-revision"
+  }
+}

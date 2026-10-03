@@ -1,0 +1,9 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "gp.describe",
+    "arguments": {
+      "tool": "nope.Tool"
+    }
+  }
+}

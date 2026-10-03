@@ -1,0 +1,12 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "symbology.set-simple",
+    "arguments": {
+      "size": 1.5,
+      "color": "#4A4A4A",
+      "map": "Ops Map",
+      "layer": "Streets"
+    }
+  }
+}

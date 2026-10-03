@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": {
+    "id": "pro://layer/CIMPATH%3DOps_Map%2FBoundary_Multipart_Polygon.json",
+    "Name": "Boundary",
+    "IsVisible": true,
+    "Transparency": 40
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "a31502aeb074d956",
+  "notices": [],
+  "resources": []
+}

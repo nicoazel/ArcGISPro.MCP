@@ -1,0 +1,10 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "gp.query",
+    "arguments": {
+      "tool": "Buffer",
+      "parameters": []
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "workspace_revision_mismatch",
+  "message": "Workspace changed: expected \u0027stale-ops-matrix-revision\u0027, current \u00275599ba2b58ca29f2\u0027. Refresh state before writing.",
+  "workspaceRevision": "5599ba2b58ca29f2",
+  "notices": [],
+  "resources": []
+}

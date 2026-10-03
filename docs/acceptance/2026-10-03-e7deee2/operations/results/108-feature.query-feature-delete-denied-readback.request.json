@@ -1,0 +1,15 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "feature.query",
+    "arguments": {
+      "where": "Name = 'Baseline Site'",
+      "limit": 10,
+      "fields": [
+        "Name"
+      ],
+      "map": "Ops Map",
+      "layer": "Design Sites"
+    }
+  }
+}

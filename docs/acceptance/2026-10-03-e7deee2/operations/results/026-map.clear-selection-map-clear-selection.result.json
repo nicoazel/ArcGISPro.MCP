@@ -1,0 +1,12 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "cleared": true
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "5599ba2b58ca29f2",
+  "notices": [],
+  "resources": []
+}

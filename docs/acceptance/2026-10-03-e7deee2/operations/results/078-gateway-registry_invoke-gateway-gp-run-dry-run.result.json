@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "result": {
+    "success": true,
+    "data": {
+      "valid": true,
+      "dryRun": true,
+      "operation": "gp.run",
+      "tool": "analysis.Buffer",
+      "validated": true,
+      "toolSummary": {
+        "executionName": "analysis.Buffer",
+        "name": "Buffer",
+        "displayName": "Buffer",
+        "summary": "Creates buffer polygons around input features to a specified distance.",
+        "toolbox": "Analysis Tools",
+        "toolboxAlias": "analysis",
+        "toolset": "Proximity",
+        "toolType": "FunctionTool",
+        "riskTier": "Standard",
+        "deprecated": false,
+        "isSystem": true
+      },
+      "riskTier": "Standard",
+      "mutatesInput": false,
+      "executesUserCode": false,
+      "consumesCredits": false,
+      "riskReasons": [],
+      "requiresConfirmation": true,
+      "autonomousMode": false,
+      "wouldBeRefused": false,
+      "unattendedRefusal": null,
+      "approvalWarning": null,
+      "issues": [],
+      "flags": {
+        "addOutputsToMap": false,
+        "addToHistory": true,
+        "refreshProjectItems": false,
+        "overwriteOutput": false
+      },
+      "workspaceRevision": "d080afa78f54dbce"
+    },
+    "errorCode": null,
+    "message": null,
+    "workspaceRevision": "d080afa78f54dbce",
+    "notices": [],
+    "resources": []
+  },
+  "error": null
+}

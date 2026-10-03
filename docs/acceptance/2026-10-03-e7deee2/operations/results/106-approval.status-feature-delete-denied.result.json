@@ -1,0 +1,12 @@
+{
+  "requestId": "p8apElcaB_E7EwakuT9N-g",
+  "operationId": "feature.delete",
+  "operationVersion": "1.0.0",
+  "workspaceRevision": "d06a52c468b682de",
+  "status": "denied",
+  "requestedAt": "2026-10-03T05:39:08.3685277\u002B00:00",
+  "expiresAt": "2026-10-03T05:41:08.3685277\u002B00:00",
+  "confirmationToken": null,
+  "instructions": null,
+  "waitNotice": null
+}

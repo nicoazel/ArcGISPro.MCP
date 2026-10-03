@@ -182,11 +182,12 @@ public sealed class FeatureOperationTests
     {
         using var pro = Parcels(out _, out _, out _);
 
-        var unknown = await Assert.ThrowsAsync<ArgumentException>(() => pro.RunAsync("feature.query", """{"layer": "Parcels", "fields": ["NOPE"]}"""));
-        var shape = await Assert.ThrowsAsync<ArgumentException>(() => pro.RunAsync("feature.query", """{"layer": "Parcels", "fields": ["Shape"]}"""));
+        var unknown = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("feature.query", """{"layer": "Parcels", "fields": ["NOPE"]}"""));
+        var shape = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("feature.query", """{"layer": "Parcels", "fields": ["Shape"]}"""));
 
-        Assert.Equal("Unknown or unsupported field 'NOPE'. (Parameter 'requested')", unknown.Message);
-        Assert.StartsWith("Unknown or unsupported field 'Shape'.", shape.Message, StringComparison.Ordinal);
+        Assert.Equal(OperationErrorCodes.InvalidArguments, unknown.Code);
+        Assert.Equal("Unknown or unsupported field 'NOPE'.", unknown.Message);
+        Assert.Equal("Unknown or unsupported field 'Shape'.", shape.Message);
     }
 
     [Fact]
@@ -230,14 +231,16 @@ public sealed class FeatureOperationTests
     {
         using var pro = Parcels(out _, out _, out _);
 
-        var inverted = await Assert.ThrowsAsync<ArgumentException>(() => pro.RunAsync("feature.query",
+        var inverted = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("feature.query",
             """{"layer": "Parcels", "envelope": {"xmin": 5, "ymin": 0, "xmax": 1, "ymax": 1}}"""));
-        var relationship = await Assert.ThrowsAsync<ArgumentException>(() => pro.RunAsync("feature.query",
+        var relationship = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("feature.query",
             """{"layer": "Parcels", "spatialRelationship": "near"}"""));
 
-        Assert.Equal("envelope minimum coordinates must not exceed maximum coordinates. (Parameter 'envelope')", inverted.Message);
+        Assert.Equal(OperationErrorCodes.InvalidArguments, inverted.Code);
+        Assert.Equal(OperationErrorCodes.InvalidArguments, relationship.Code);
+        Assert.Equal("envelope minimum coordinates must not exceed maximum coordinates.", inverted.Message);
         Assert.Equal(
-            "spatialRelationship must be intersects, envelopeIntersects, contains, within, touches, crosses, or overlaps. (Parameter 'arguments')",
+            "spatialRelationship must be intersects, envelopeIntersects, contains, within, touches, crosses, or overlaps.",
             relationship.Message);
     }
 
@@ -291,9 +294,10 @@ public sealed class FeatureOperationTests
     {
         using var pro = Parcels(out _, out _, out _);
 
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => pro.RunAsync("feature.select", """{"layer": "Parcels", "mode": "toggle"}"""));
+        var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("feature.select", """{"layer": "Parcels", "mode": "toggle"}"""));
 
-        Assert.Equal("mode must be 'new' or 'add'. (Parameter 'arguments')", exception.Message);
+        Assert.Equal(OperationErrorCodes.InvalidArguments, exception.Code);
+        Assert.Equal("mode must be 'new' or 'add'.", exception.Message);
     }
 
     [Fact]
@@ -333,10 +337,11 @@ public sealed class FeatureOperationTests
     {
         using var pro = Parcels(out _, out _, out var table);
 
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => pro.RunAsync("feature.create",
+        var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("feature.create",
             $$"""{"layer": "Parcels", "geometry": {"type": "point", "x": 1, "y": 1}, "attributes": {{attributes}}}"""));
 
-        Assert.StartsWith(message, exception.Message, StringComparison.Ordinal);
+        Assert.Equal(OperationErrorCodes.InvalidArguments, exception.Code);
+        Assert.Equal(message, exception.Message);
         Assert.Empty(table.Rows);
     }
 
@@ -350,10 +355,11 @@ public sealed class FeatureOperationTests
     {
         using var pro = Parcels(out _, out _, out var table);
 
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => pro.RunAsync("feature.create",
+        var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("feature.create",
             $$"""{"layer": "Parcels", "geometry": {{geometry}}}"""));
 
-        Assert.StartsWith(message, exception.Message, StringComparison.Ordinal);
+        Assert.Equal(OperationErrorCodes.InvalidArguments, exception.Code);
+        Assert.Equal(message, exception.Message);
         Assert.Empty(table.Rows);
     }
 
@@ -415,9 +421,10 @@ public sealed class FeatureOperationTests
         using var pro = Parcels(out _, out _, out var table);
         table.AddRow(1, 1, "R1");
 
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => pro.RunAsync("feature.update", """{"layer": "Parcels", "target": {"objectId": 1}}"""));
+        var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("feature.update", """{"layer": "Parcels", "target": {"objectId": 1}}"""));
 
-        Assert.Equal("Specify attributes and/or geometry. (Parameter 'arguments')", exception.Message);
+        Assert.Equal(OperationErrorCodes.InvalidArguments, exception.Code);
+        Assert.Equal("Specify attributes and/or geometry.", exception.Message);
         Assert.Empty(pro.Features.Edits);
     }
 
@@ -430,13 +437,14 @@ public sealed class FeatureOperationTests
         table.AddRow(2, 2, "R1", globalId: duplicate);
         var missing = Guid.NewGuid();
 
-        var malformed = await Assert.ThrowsAsync<ArgumentException>(() => pro.RunAsync("feature.delete", """{"layer": "Parcels", "target": {"globalId": "not-a-guid"}}"""));
+        var malformed = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("feature.delete", """{"layer": "Parcels", "target": {"globalId": "not-a-guid"}}"""));
         var none = await Assert.ThrowsAsync<InvalidOperationException>(() => pro.RunAsync("feature.delete",
             JsonSerializer.Serialize(new { layer = "Parcels", target = new { globalId = missing.ToString("N") } })));
         var ambiguous = await Assert.ThrowsAsync<InvalidOperationException>(() => pro.RunAsync("feature.delete",
             JsonSerializer.Serialize(new { layer = "Parcels", target = new { globalId = duplicate.ToString() } })));
 
-        Assert.Equal("target must contain objectId or a valid globalId UUID. (Parameter 'target')", malformed.Message);
+        Assert.Equal(OperationErrorCodes.InvalidArguments, malformed.Code);
+        Assert.Equal("target must contain objectId or a valid globalId UUID.", malformed.Message);
         Assert.Equal($"No feature matches GlobalID '{missing:D}'.", none.Message);
         Assert.Equal($"GlobalID '{duplicate:D}' did not resolve uniquely.", ambiguous.Message);
         Assert.Equal(2, table.Rows.Count);

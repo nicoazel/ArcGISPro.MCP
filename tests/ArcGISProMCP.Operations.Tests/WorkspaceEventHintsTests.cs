@@ -26,4 +26,35 @@ public sealed class WorkspaceEventHintsTests
     [Fact]
     public void Hint_names_are_matched_exactly() =>
         Assert.False(WorkspaceEventHints.IsNonContentOnly(["connectionstatus"]));
+
+    [Theory]
+    [InlineData("MapFrameNavigated")]
+    [InlineData("MapFrameActivated")]
+    [InlineData("MapFrameDeactivated")]
+    [InlineData("SelectionChanged")]
+    public void Frame_navigation_and_selection_are_view_state(string hint) =>
+        Assert.True(WorkspaceEventHints.IsAutomaticElementChange(hint, ["other"]));
+
+    [Theory]
+    [InlineData("PropertyChanged", "surround")]
+    [InlineData("PropertyChanged", "mapframe")]
+    [InlineData("PropertyChanged", "surround", "mapframe")]
+    [InlineData("PlacementChanged", "surround")]
+    public void Surround_and_frame_refreshes_are_automatic(string hint, params string[] kinds) =>
+        Assert.True(WorkspaceEventHints.IsAutomaticElementChange(hint, kinds));
+
+    [Theory]
+    [InlineData("PropertyChanged", "other")]
+    [InlineData("PropertyChanged", "surround", "other")]
+    [InlineData("PlacementChanged", "mapframe")]
+    [InlineData("PlacementChanged", "other")]
+    [InlineData("ElementAdded", "surround")]
+    [InlineData("ElementRemoved", "mapframe")]
+    [InlineData("StyleChanged", "surround")]
+    public void Layout_edits_still_advance_the_revision(string hint, params string[] kinds) =>
+        Assert.False(WorkspaceEventHints.IsAutomaticElementChange(hint, kinds));
+
+    [Fact]
+    public void A_property_change_without_elements_counts_as_content() =>
+        Assert.False(WorkspaceEventHints.IsAutomaticElementChange("PropertyChanged", []));
 }

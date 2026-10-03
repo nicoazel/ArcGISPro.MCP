@@ -3,7 +3,8 @@
     Collects live ArcGIS Pro acceptance evidence for the exact build at HEAD.
 .DESCRIPTION
     Orchestrates the existing harnesses (verify-release.ps1, test-mcp.ps1,
-    run-live-feature-gp-arcpy.ps1, run-urban-stress.ps1) without modifying them, records
+    run-live-feature-gp-arcpy.ps1, run-urban-stress.ps1, run-live-operations.ps1) without
+    modifying them, records
     git/.NET/ArcGIS Pro facts and add-in DLL hashes, and writes manifest.json, summary.md
     and SHA256SUMS. This script itself is Windows PowerShell 5.1 compatible; the harnesses
     it invokes require PowerShell 7 (pwsh), which is resolved separately.
@@ -18,6 +19,11 @@
         REQUIRES THE HOST TO RUN IN AUTONOMOUS MODE (ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true at
         Pro startup) and additionally requires -AllowAutonomous, -AllowProjectMutation and a
         -DisposableRoot containing the open project.
+      * 'operations' runs every operation (run-live-operations.ps1) in DEFAULT mode: the
+        operator approves seven review cards and denies one in the MCP Studio dockpane, so its
+        prompts are shown on this console. It mutates the project, saves it and finally opens a
+        copy, so it requires -AllowProjectMutation and a -DisposableRoot containing the open
+        project, and it is refused while the host reports autonomous-control.
       * The host is a live ArcGIS Pro discovery record (hostKind arcgis-pro), never a FakeHost:
         an explicit -PipeName that matches no such record blocks every live step.
       * -PlanOnly (alias -DryRun) prints the plan and collects only facts that need no running
@@ -29,7 +35,12 @@
         before ': ' in each -VisuallyInspected note, are rewritten to the committed layout (for
         example stress/tod/final-layout.png -> images/layout-tod.png), and it records
         "evidencePathsRelative": true. A note whose path was not committed is prefixed with
-        'not committed: '.
+        'not committed: '. The committed stress/summary.json names each case's capture by its
+        committed image (images/layout-<case>.png), or 'not committed: <working path>'.
+      * -RunNotes records how the run was carried out (who decided the approval cards, prompts
+        answered on the host, anything else a reviewer needs) as runNotes[] in manifest.json and
+        a "Run notes" section of summary.md, so these disclosures are part of the checksummed
+        record instead of being added afterwards.
 
     Only the maintainer, on a workstation with ArcGIS Pro and the exact installed package,
     should produce committed evidence. See docs/acceptance/README.md.
@@ -39,12 +50,14 @@
     ./tools/run-acceptance.ps1 -PipeName ArcGISProMCP.v1.12345
 .EXAMPLE
     ./tools/run-acceptance.ps1 -Sections smoke,feature-gp-arcpy,stress -AllowProjectMutation -AllowAutonomous -DisposableRoot D:\scratch\mcp-acceptance -Commit
+.EXAMPLE
+    ./tools/run-acceptance.ps1 -Sections smoke,stress,operations -AllowProjectMutation -DisposableRoot D:\scratch\mcp-acceptance -Commit
 #>
 # An operator console script: coloured progress is for the person at the workstation, and every
 # result that matters is written to manifest.json and summary.md, so Write-Host is intended here.
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWriteHost', '', Justification = 'Operator console output; results are recorded in manifest.json and summary.md.')]
 # PSReviewUnusedParameter does not follow parameters into functions and step scriptblocks.
-[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'Configuration', Justification = 'Used by Invoke-DemoRunnerCall and the smoke, feature-gp-arcpy and stress step scriptblocks.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'Configuration', Justification = 'Used by Invoke-DemoRunnerCall and the smoke, feature-gp-arcpy, stress and operations step scriptblocks.')]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'RunsPerCase', Justification = 'Passed to run-urban-stress.ps1 by the stress step scriptblock.')]
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ImageUri', Justification = 'Passed to test-mcp.ps1 by the smoke step scriptblock.')]
 [CmdletBinding()]
@@ -64,6 +77,10 @@ param(
     # Where the -VisuallyInspected notes come from (for example 'operator review of the working
     # evidence, 2026-09-28'); recorded in manifest.json and summary.md.
     [string]$VisualNotesSource,
+    # Disclosures about how the run was carried out (for example who decided the approval cards,
+    # or a host prompt someone answered during the run); recorded as runNotes[] in manifest.json
+    # and under "Run notes" in summary.md.
+    [string[]]$RunNotes = @(),
     [string]$Operator,
     [string]$OutputDirectory,
     [switch]$SkipVerify,
@@ -104,6 +121,14 @@ $sectionCatalog = [ordered]@{
         mutatesProject = $true
         requiresAutonomousMode = $false
         description = 'Three urban layout workflows x RunsPerCase on tests/data fixtures, layout inspection and final capture PNG checks.'
+    }
+    'operations' = [ordered]@{
+        script = 'run-live-operations.ps1'
+        mutatesProject = $true
+        requiresAutonomousMode = $false
+        # Without review, its no-token negative cases would delete, save and open instead of failing closed.
+        requiresDefaultMode = $true
+        description = 'All 41 operations: happy paths, negative cases and 8 review cards (7 approve, 1 deny) decided by the operator in the dockpane; MCP gateway pass; ends by opening a saved copy. DEFAULT MODE ONLY.'
     }
 }
 
@@ -187,13 +212,19 @@ function Resolve-ChildPowerShell {
 function Format-PsLiteral([string]$Value) { return "'" + $Value.Replace("'", "''") + "'" }
 
 function Invoke-ChildScript {
-    <# Runs one harness in PowerShell 7 with stdout/stderr captured to log files. #>
+    <#
+        Runs one harness in PowerShell 7 with stdout/stderr captured to log files. -ShowConsole
+        leaves stdout on this console (operator prompts) and captures only stderr. -AllowNonZeroExit
+        returns the exit code instead of throwing, for harnesses that write their own summary.
+    #>
     param(
         [string]$Name,
         [string]$ScriptName,
         [string[]]$ArgumentTokens,
         [string]$LogDirectory,
-        [string]$ResultJsonPath
+        [string]$ResultJsonPath,
+        [switch]$ShowConsole,
+        [switch]$AllowNonZeroExit
     )
     if (-not $script:childShell) { throw 'PowerShell 7 (pwsh) is required to run the acceptance harnesses.' }
     $scriptPath = Join-Path $toolsRoot $ScriptName
@@ -205,13 +236,20 @@ function Invoke-ChildScript {
     $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
     $stdout = Join-Path $LogDirectory "$Name.stdout.log"
     $stderr = Join-Path $LogDirectory "$Name.stderr.log"
-    $process = Start-Process -FilePath $script:childShell.Path `
-        -ArgumentList @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded) `
-        -WorkingDirectory $repoRoot -NoNewWindow -PassThru `
-        -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    $startArguments = @{
+        FilePath = $script:childShell.Path
+        ArgumentList = @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded)
+        WorkingDirectory = $repoRoot
+        NoNewWindow = $true
+        PassThru = $true
+        RedirectStandardError = $stderr
+    }
+    if (-not $ShowConsole) { $startArguments.RedirectStandardOutput = $stdout }
+    $process = Start-Process @startArguments
     $null = $process.Handle
     $process.WaitForExit()
     $code = $process.ExitCode
+    if ($AllowNonZeroExit) { return $code }
     if ($code -ne 0) {
         $tail = @(Get-Content -LiteralPath $stderr -Tail 5 -ErrorAction SilentlyContinue) -join ' | '
         throw "$ScriptName exited with code $code. See $stderr. $tail"
@@ -270,6 +308,12 @@ function Invoke-Step {
             -DurationSeconds $watch.Elapsed.TotalSeconds -StartedAtUtc $started.ToString('o')
         return $false
     }
+}
+
+function Get-ModeRequirement($Info) {
+    if ($Info.requiresAutonomousMode) { return 'REQUIRED' }
+    if ($Info.Contains('requiresDefaultMode') -and $Info.requiresDefaultMode) { return 'must be OFF' }
+    return 'no'
 }
 
 # ---------------------------------------------------------------- argument checks
@@ -445,13 +489,13 @@ foreach ($section in $Sections) {
         Step = $section; Runs = $runs
         ReadOnly = $(if ($info.mutatesProject) { 'NO - mutates project' } else { 'yes' })
         NeedsPro = 'running'
-        Autonomous = $(if ($info.requiresAutonomousMode) { 'REQUIRED' } else { 'no' })
+        Autonomous = (Get-ModeRequirement $info)
         Invokes = "pwsh tools/$($info.script)"
     }
 }
-foreach ($section in @('smoke', 'feature-gp-arcpy', 'stress')) {
+foreach ($section in @($sectionCatalog.Keys)) {
     if ($section -notin $Sections) {
-        $plan += [pscustomobject]@{ Step = $section; Runs = 'not selected'; ReadOnly = $(if ($sectionCatalog[$section].mutatesProject) { 'NO - mutates project' } else { 'yes' }); NeedsPro = 'running'; Autonomous = $(if ($sectionCatalog[$section].requiresAutonomousMode) { 'REQUIRED' } else { 'no' }); Invokes = "pwsh tools/$($sectionCatalog[$section].script)" }
+        $plan += [pscustomobject]@{ Step = $section; Runs = 'not selected'; ReadOnly = $(if ($sectionCatalog[$section].mutatesProject) { 'NO - mutates project' } else { 'yes' }); NeedsPro = 'running'; Autonomous = (Get-ModeRequirement $sectionCatalog[$section]); Invokes = "pwsh tools/$($sectionCatalog[$section].script)" }
     }
 }
 $plan += [pscustomobject]@{ Step = 'commit'; Runs = $(if ($Commit) { "yes -> docs/acceptance/$commitFolderName" } else { 'no (pass -Commit)' }); ReadOnly = 'writes docs/acceptance only'; NeedsPro = 'no'; Autonomous = 'no'; Invokes = 'copy evidence, manifest.json, summary.md, SHA256SUMS' }
@@ -460,6 +504,7 @@ Write-Host ''
 Write-Host 'Plan' -ForegroundColor Cyan
 $plan | Format-Table -AutoSize | Out-String -Width 220 | Write-Host
 foreach ($section in $refusals.Keys) { Write-Host "  $section refused: $($refusals[$section])" -ForegroundColor Yellow }
+if ('operations' -in $Sections) { Write-Host '  operations: the ordered matrix and the review cards the operator will decide: ./tools/run-live-operations.ps1 -PlanOnly' -ForegroundColor Cyan }
 
 $facts = [ordered]@{
     sha = $gitSha
@@ -581,6 +626,10 @@ try {
             Add-Step -Name $section -Status 'blocked' -Detail "refused: open project '$projectPath' is not under disposable root '$DisposableRoot'" -MutatesProject $mutates -RequiresAutonomousMode $autonomous
             continue
         }
+        if ($info.Contains('requiresDefaultMode') -and $info.requiresDefaultMode -and $autonomousMode) {
+            Add-Step -Name $section -Status 'blocked' -Detail 'refused: the host reports autonomous-control; this section needs DEFAULT mode (restart Pro without ARCGIS_PRO_MCP_AUTONOMOUS_MODE)' -MutatesProject $mutates -RequiresAutonomousMode $autonomous
+            continue
+        }
         if ($autonomous -and -not $autonomousMode) {
             Add-Step -Name $section -Status 'blocked' -Detail 'refused: the host does not report the autonomous-control capability; restart Pro with ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true' -MutatesProject $mutates -RequiresAutonomousMode $autonomous
             continue
@@ -618,6 +667,23 @@ try {
                     foreach ($png in @(Get-ChildItem -LiteralPath $sectionDirectory -Filter 'final-layout.png' -File -Recurse)) { $null = $pngCandidates.Add($png.FullName) }
                     $cases = @(Get-Content -LiteralPath (Join-Path $sectionDirectory 'summary.json') -Raw | ConvertFrom-Json)
                     @{ detail = "$($cases.Count) workflows x $RunsPerCase runs; layouts inspected; captures non-blank"; evidence = @("$section/summary.json") }
+                } -MutatesProject $mutates -RequiresAutonomousMode $autonomous
+            }
+            'operations' {
+                $null = Invoke-Step $section {
+                    $tokens = @('-PipeName', (Format-PsLiteral $resolvedPipe), '-Configuration', (Format-PsLiteral $Configuration),
+                        '-DisposableRoot', (Format-PsLiteral $DisposableRoot), '-EvidenceDirectory', (Format-PsLiteral $sectionDirectory))
+                    # The operator reads the card prompts on this console, so stdout is not captured.
+                    $exit = Invoke-ChildScript -Name $section -ScriptName $info.script -ArgumentTokens $tokens -LogDirectory $logDirectory -ShowConsole -AllowNonZeroExit
+                    $summaryFile = Join-Path $sectionDirectory 'summary.json'
+                    if (-not (Test-Path -LiteralPath $summaryFile -PathType Leaf)) { throw "$($info.script) exited with code $exit and wrote no summary.json; see logs/$section.stderr.log." }
+                    $operations = Get-Content -LiteralPath $summaryFile -Raw | ConvertFrom-Json
+                    $detail = "$($operations.coverage.covered)/$($operations.coverage.total) operations covered; cases $($operations.cases.passed) passed, $($operations.cases.failed) failed, $($operations.cases.skipped) skipped; cards $($operations.approvals.approved) approved, $($operations.approvals.denied) denied, $($operations.approvals.skipped) skipped; $(@($operations.messageAudit.flagged).Count) messages flagged"
+                    if ($exit -ne 0 -or -not $operations.allPassed) {
+                        $uncovered = @($operations.coverage.uncovered) -join ', '
+                        throw "$detail. Not covered: $uncovered. See $section/summary.json and $section/errors.md."
+                    }
+                    @{ detail = $detail; evidence = @("$section/summary.json", "$section/errors.md", "$section/results") }
                 } -MutatesProject $mutates -RequiresAutonomousMode $autonomous
             }
         }
@@ -686,6 +752,8 @@ $manifest = [ordered]@{
 }
 if (@($VisuallyInspected).Count -gt 0) { $manifest['visuallyInspected'] = @($VisuallyInspected) }
 if ($VisualNotesSource) { $manifest['visualNotesSource'] = $VisualNotesSource }
+$runNoteList = @($RunNotes | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ })
+if ($runNoteList.Count -gt 0) { $manifest['runNotes'] = $runNoteList }
 if ($tag) { $manifest['tag'] = $tag }
 # Facts that exist only when the corresponding step produced them are omitted, never faked.
 if ($packageInfo) { $manifest['package'] = $packageInfo }
@@ -722,7 +790,7 @@ function ConvertTo-SummaryMarkdown {
     $null = $lines.Add('')
     $null = $lines.Add('## Live-tested')
     $null = $lines.Add('')
-    $live = @($script:steps | Where-Object { $_.status -eq 'passed' -and $_.name -in @('pro-install', 'host-probe', 'smoke', 'feature-gp-arcpy', 'stress') })
+    $live = @($script:steps | Where-Object { $_.status -eq 'passed' -and $_.name -in @('pro-install', 'host-probe', 'smoke', 'feature-gp-arcpy', 'stress', 'operations') })
     if ($live.Count -eq 0) { $null = $lines.Add('- Nothing.') }
     foreach ($step in $live) {
         $note = ''
@@ -738,10 +806,16 @@ function ConvertTo-SummaryMarkdown {
     foreach ($item in $inspected) { $null = $lines.Add("- $item") }
     if ($manifest.Contains('visualNotesSource')) { $null = $lines.Add('') ; $null = $lines.Add("Source of these notes: $($manifest['visualNotesSource'])") }
     $null = $lines.Add('')
+    if ($manifest.Contains('runNotes')) {
+        $null = $lines.Add('## Run notes')
+        $null = $lines.Add('')
+        foreach ($item in @($manifest['runNotes'])) { $null = $lines.Add("- $item") }
+        $null = $lines.Add('')
+    }
     $null = $lines.Add('## Blocked or not run')
     $null = $lines.Add('')
     $blocked = @($script:steps | Where-Object { $_.status -ne 'passed' })
-    $notSelected = @('smoke', 'feature-gp-arcpy', 'stress') | Where-Object { $_ -notin $Sections }
+    $notSelected = @($sectionCatalog.Keys) | Where-Object { $_ -notin $Sections }
     if ($blocked.Count -eq 0 -and @($notSelected).Count -eq 0) { $null = $lines.Add('- Nothing.') }
     foreach ($step in $blocked) { $null = $lines.Add("- $($step.name) ($($step.status)): $($step.detail)") }
     foreach ($name in @($notSelected)) { $null = $lines.Add("- $($name): not selected for this run.") }
@@ -856,6 +930,22 @@ if ($Commit) {
             $committedPaths[(ConvertTo-EvidenceKey $file.FullName)] = $relative
         }
     }
+    $operationsEvidence = Join-Path $OutputDirectory 'operations'
+    if (Test-Path -LiteralPath $operationsEvidence -PathType Container) {
+        # summary.json, errors.md and every request/result pair; JSON over 1 MB is left out and listed.
+        $operationFiles = @(@('summary.json', 'errors.md') | ForEach-Object { Join-Path $operationsEvidence $_ } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { Get-Item -LiteralPath $_ })
+        $resultsFolder = Join-Path $operationsEvidence 'results'
+        if (Test-Path -LiteralPath $resultsFolder -PathType Container) { $operationFiles += @(Get-ChildItem -LiteralPath $resultsFolder -Filter '*.json' -File | Sort-Object Name) }
+        foreach ($file in $operationFiles) {
+            $relative = Get-RelativePath $OutputDirectory $file.FullName
+            if ($file.Length -gt $maxCopiedJsonBytes) { $null = $skipped.Add("$relative (over 1 MB)"); continue }
+            $target = Join-Path $commitFolder $relative
+            $null = New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force
+            Copy-Item -LiteralPath $file.FullName -Destination $target
+            $null = $copied.Add($relative)
+            $committedPaths[(ConvertTo-EvidenceKey $relative)] = $relative
+        }
+    }
     $pngs = @(@($Screenshot | ForEach-Object { [IO.Path]::GetFullPath($_) }) + @($pngCandidates))
     $index = 0
     foreach ($png in $pngs) {
@@ -870,6 +960,26 @@ if ($Commit) {
             $index++
         }
         else { $null = $skipped.Add("$png (could not fit in 500 KB)") }
+    }
+    # The committed stress summary names each final layout capture by its committed image
+    # (images/layout-<case>.png) instead of the working-evidence path under artifacts/.
+    $stressSummary = Join-Path $commitFolder 'stress\summary.json'
+    if (Test-Path -LiteralPath $stressSummary -PathType Leaf) {
+        $stressCases = @(Get-Content -LiteralPath $stressSummary -Raw | ConvertFrom-Json | ForEach-Object { $_ })
+        foreach ($case in $stressCases) {
+            if (-not $case.PSObject.Properties['capture'] -or -not $case.capture) { continue }
+            $capture = [string]$case.capture
+            $resolved = @(Resolve-CommittedEvidence $committedPaths $capture)
+            if ($resolved.Count -eq 1) { $case.capture = $resolved[0] }
+            else {
+                $working = $capture
+                if ([IO.Path]::IsPathRooted($working) -and (Test-PathUnderRoot $working $OutputDirectory)) { $working = Get-RelativePath $OutputDirectory $working }
+                elseif ([IO.Path]::IsPathRooted($working)) { $working = Split-Path -Leaf $working }
+                $case.capture = 'not committed: ' + $working.Replace('\', '/')
+            }
+        }
+        # -InputObject keeps a one-case summary an array (piping would unwrap it).
+        Write-Utf8File $stressSummary (((ConvertTo-Json -InputObject $stressCases -Depth 20) -replace "`r`n", "`n") + "`n")
     }
     $manifest['evidence'] = @($copied)
     # List only files this folder contains, at their committed paths. Working evidence under

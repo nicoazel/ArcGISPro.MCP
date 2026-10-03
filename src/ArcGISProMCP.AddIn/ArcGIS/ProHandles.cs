@@ -1,6 +1,7 @@
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Layouts;
 using ArcGIS.Desktop.Mapping;
+using ArcGISProMCP.Core.Operations;
 
 namespace ArcGISProMCP.AddIn.ArcGIS;
 
@@ -18,14 +19,14 @@ internal static class ProHandles
         if (string.IsNullOrWhiteSpace(handleOrName))
         {
             return MapView.Active?.Map ?? maps.FirstOrDefault()?.GetMap()
-                ?? throw new InvalidOperationException("No map is available.");
+                ?? throw OperationException.MapNotFound(null);
         }
 
         var value = Decode(handleOrName, "pro://map/");
         return maps.Select(item => item.GetMap()).FirstOrDefault(map =>
                    string.Equals(map.URI, value, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(map.Name, value, StringComparison.OrdinalIgnoreCase))
-               ?? throw new InvalidOperationException($"Map '{handleOrName}' was not found.");
+               ?? throw OperationException.MapNotFound(handleOrName);
     }
 
     public static Layer ResolveLayer(Map map, string handleOrName)
@@ -34,7 +35,7 @@ internal static class ProHandles
         return map.GetLayersAsFlattenedList().FirstOrDefault(layer =>
                    string.Equals(layer.URI, value, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(layer.Name, value, StringComparison.OrdinalIgnoreCase))
-               ?? throw new InvalidOperationException($"Layer '{handleOrName}' was not found in map '{map.Name}'.");
+               ?? throw OperationException.LayerNotFound(handleOrName, map.Name);
     }
 
     public static Layout ResolveLayout(string handleOrName)
@@ -45,8 +46,14 @@ internal static class ProHandles
                    .FirstOrDefault(layout =>
                        string.Equals(layout.URI, value, StringComparison.OrdinalIgnoreCase) ||
                        string.Equals(layout.Name, value, StringComparison.OrdinalIgnoreCase))
-               ?? throw new InvalidOperationException($"Layout '{handleOrName}' was not found.");
+               ?? throw OperationException.LayoutNotFound(handleOrName);
     }
+
+    /// <summary>The map frame with this name (case-insensitive) on the layout.</summary>
+    public static MapFrame ResolveMapFrame(Layout layout, string name) =>
+        layout.GetElementsAsFlattenedList().OfType<MapFrame>()
+            .FirstOrDefault(frame => string.Equals(frame.Name, name, StringComparison.OrdinalIgnoreCase))
+        ?? throw OperationException.FrameNotFound(name, layout.Name);
 
     private static string Decode(string value, string prefix) =>
         value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)

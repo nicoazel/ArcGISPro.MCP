@@ -1,0 +1,29 @@
+[
+  {
+    "case": "tod",
+    "workflow": "workflow.urban-tod-corridor@1.2.0",
+    "runs": 3,
+    "elapsedSeconds": 91.685,
+    "layout": "Urban Test 1 - TOD Corridor",
+    "capture": "D:\\_11_Git\\ArcGISPro.MCP.wt\\phase-6\\artifacts\\acceptance\\20261003-012739\\stress\\tod\\final-layout.png",
+    "success": true
+  },
+  {
+    "case": "green",
+    "workflow": "workflow.urban-green-loop@1.2.0",
+    "runs": 3,
+    "elapsedSeconds": 94.537,
+    "layout": "Urban Test 2 - Green Loop",
+    "capture": "D:\\_11_Git\\ArcGISPro.MCP.wt\\phase-6\\artifacts\\acceptance\\20261003-012739\\stress\\green\\final-layout.png",
+    "success": true
+  },
+  {
+    "case": "mixed",
+    "workflow": "workflow.urban-mixed-use-massing@1.2.0",
+    "runs": 3,
+    "elapsedSeconds": 135.658,
+    "layout": "Urban Test 3 - Mixed Use Massing",
+    "capture": "D:\\_11_Git\\ArcGISPro.MCP.wt\\phase-6\\artifacts\\acceptance\\20261003-012739\\stress\\mixed\\final-layout.png",
+    "success": true
+  }
+]

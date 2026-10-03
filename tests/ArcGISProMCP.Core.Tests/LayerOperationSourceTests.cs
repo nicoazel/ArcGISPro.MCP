@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace ArcGISProMCP.Core.Tests;
 
 public sealed class LayerOperationSourceTests
@@ -79,6 +81,41 @@ public sealed class LayerOperationSourceTests
         var guard = File.ReadAllText(Path.Combine(root, "ArcGIS", "LayerData.cs"));
         Assert.Contains("ConnectionStatus.Broken", guard, StringComparison.Ordinal);
         Assert.Contains("OperationException.LayerDataSourceUnavailable", guard, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// ArcGIS keeps a table handle after the layer's files are renamed, so the open succeeds and the
+    /// next read throws a GeodatabaseException (found by the live operation matrix). Reads of layer
+    /// data run inside LayerData.Read, which reports that as layer_data_source_unavailable.
+    /// </summary>
+    [Fact]
+    public void Layer_data_reads_run_inside_the_missing_source_guard()
+    {
+        var root = AddInRoot();
+        var guard = File.ReadAllText(Path.Combine(root, "ArcGIS", "LayerData.cs"));
+        Assert.Contains("catch (GeodatabaseException exception) when (IndicatesMissingSource(member, exception))", guard, StringComparison.Ordinal);
+        Assert.Contains("OperationException.LayerDataSourceUnavailable(member.Name, exception)", guard, StringComparison.Ordinal);
+        Assert.Contains("LayerSources.LocalSourceMissing(", guard, StringComparison.Ordinal);
+
+        const string GuardedOpen = @"LayerData\.Read\(layer, \(\) =>\s+\{\s+using var table = LayerData\.OpenTable\(layer\);";
+        var tables = ReadSource("TableOperations.cs");
+        Assert.Equal(2, Regex.Count(tables, GuardedOpen));
+
+        var features = File.ReadAllText(Path.Combine(root, "ArcGIS", "Services", "ProFeatureService.cs"));
+        var opens = Regex.Count(features, @"using var table = LayerData\.OpenTable\(layer\);");
+        // CreateFilter opens the table too, but is only called from inside a guarded read.
+        Assert.Equal(opens - 1, Regex.Count(features, GuardedOpen));
+    }
+
+    [Fact]
+    public void Shared_resolvers_report_stable_not_found_codes()
+    {
+        var handles = File.ReadAllText(Path.Combine(AddInRoot(), "ArcGIS", "ProHandles.cs"));
+        Assert.Contains("OperationException.MapNotFound(", handles, StringComparison.Ordinal);
+        Assert.Contains("OperationException.LayerNotFound(handleOrName, map.Name)", handles, StringComparison.Ordinal);
+        Assert.Contains("OperationException.LayoutNotFound(handleOrName)", handles, StringComparison.Ordinal);
+        Assert.Contains("OperationException.FrameNotFound(name, layout.Name)", handles, StringComparison.Ordinal);
+        Assert.DoesNotContain("InvalidOperationException", handles, StringComparison.Ordinal);
     }
 
     private static string ReadSource(string fileName) =>

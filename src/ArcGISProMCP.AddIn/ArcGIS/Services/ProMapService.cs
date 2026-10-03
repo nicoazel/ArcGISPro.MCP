@@ -1,6 +1,7 @@
 using ArcGIS.Core.CIM;
 using ArcGIS.Desktop.Core;
 using ArcGIS.Desktop.Mapping;
+using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Operations;
 using ArcGISProMCP.Operations.Services;
 
@@ -60,7 +61,7 @@ internal sealed class ProMapService : IMapService
         var hostMap = HostMap(map);
         var existing = global::ArcGIS.Desktop.Framework.FrameworkApplication.Panes
             .OfType<IMapPane>()
-            .FirstOrDefault(pane => string.Equals(pane.MapView.Map.URI, hostMap.URI, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(pane => string.Equals(pane.MapView?.Map?.URI, hostMap.URI, StringComparison.OrdinalIgnoreCase));
         if (existing is global::ArcGIS.Desktop.Framework.Contracts.Pane pane)
             pane.Activate();
         else
@@ -73,7 +74,7 @@ internal sealed class ProMapService : IMapService
     internal static Basemap ParseBasemap(string value) =>
         Enum.TryParse<Basemap>(Basemaps.Normalize(value), true, out var basemap)
             ? basemap
-            : throw new ArgumentException(Basemaps.UnknownMessage(value));
+            : throw OperationException.InvalidArgument(Basemaps.UnknownMessage(value));
 
     internal static Map HostMap(ResolvedMap map) =>
         map.HostMap as Map ?? throw new ArgumentException("The resolved map does not belong to ArcGIS Pro.", nameof(map));

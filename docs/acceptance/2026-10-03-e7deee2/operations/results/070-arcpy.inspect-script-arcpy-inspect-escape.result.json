@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "arcpy_script_rejected",
+  "message": "scriptPath escapes the configured script root.",
+  "workspaceRevision": "fd4f1c82d7feff3c",
+  "notices": [],
+  "resources": []
+}

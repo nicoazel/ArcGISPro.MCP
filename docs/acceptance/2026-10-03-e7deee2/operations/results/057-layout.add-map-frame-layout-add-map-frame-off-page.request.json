@@ -1,0 +1,15 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.add-map-frame",
+    "arguments": {
+      "x": 40,
+      "width": 5,
+      "layout": "Ops Layout",
+      "name": "Off Page Frame",
+      "map": "Ops Map",
+      "height": 5,
+      "y": 40
+    }
+  }
+}

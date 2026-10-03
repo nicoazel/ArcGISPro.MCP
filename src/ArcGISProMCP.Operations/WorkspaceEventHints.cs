@@ -24,4 +24,34 @@ internal static class WorkspaceEventHints
         ArgumentNullException.ThrowIfNull(hintNames);
         return hintNames.Count > 0 && hintNames.All(NonContentHintNames.Contains);
     }
+
+    /// <summary>
+    /// Layout element hints (names of <c>ArcGIS.Desktop.Layouts.Events.ElementEventHint</c>) that
+    /// describe map frame navigation or activation: view state, not layout content.
+    /// </summary>
+    public static IReadOnlySet<string> NonContentElementHintNames { get; } =
+        new HashSet<string>(["SelectionChanged", "MapFrameNavigated", "MapFrameActivated", "MapFrameDeactivated"], StringComparer.Ordinal);
+
+    /// <summary>
+    /// True when a layout element event is an automatic consequence of a map change rather than a
+    /// layout edit: view-state hints, or a property/placement change where every element is a map
+    /// surround (legend, scale bar, north arrow), which ArcGIS redraws and resizes by itself when
+    /// layers, symbology or frame extents change; or a property change of map frames only.
+    /// Live acceptance showed these arriving up to ~1 s after symbology writes returned. Element
+    /// kinds are <c>"surround"</c>, <c>"mapframe"</c> or anything else; an event without elements
+    /// counts as content.
+    /// </summary>
+    public static bool IsAutomaticElementChange(string hintName, IReadOnlyCollection<string> elementKinds)
+    {
+        ArgumentNullException.ThrowIfNull(hintName);
+        ArgumentNullException.ThrowIfNull(elementKinds);
+        if (NonContentElementHintNames.Contains(hintName)) return true;
+        if (elementKinds.Count == 0) return false;
+        return hintName switch
+        {
+            "PropertyChanged" => elementKinds.All(static kind => kind is "surround" or "mapframe"),
+            "PlacementChanged" => elementKinds.All(static kind => kind == "surround"),
+            _ => false
+        };
+    }
 }

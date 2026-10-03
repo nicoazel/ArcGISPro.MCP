@@ -1,0 +1,26 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "feature.create",
+    "arguments": {
+      "geometry": {
+        "type": "polygon",
+        "coordinates": [
+          [
+            1366300.0,
+            416800.0
+          ],
+          [
+            1366310.0,
+            416810.0
+          ]
+        ]
+      },
+      "attributes": {
+        "Name": "Must Not Exist"
+      },
+      "map": "Ops Map",
+      "layer": "Design Sites"
+    }
+  }
+}

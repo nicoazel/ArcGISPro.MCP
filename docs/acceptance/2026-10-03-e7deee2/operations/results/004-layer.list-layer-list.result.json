@@ -1,0 +1,75 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DUD3_Mixed_Use_Massing%2FUD3_Mixed_Use_Massing.json",
+    "layers": [
+      {
+        "id": "pro://layer/CIMPATH%3DUD3_Mixed_Use_Massing%2FBoundary_Multipart_Polygon.json",
+        "Name": "Public Realm",
+        "type": "FeatureLayer",
+        "IsVisible": true,
+        "Transparency": 0,
+        "drawingOrder": 0,
+        "isFeatureLayer": true,
+        "elevation": {
+          "mode": "on-ground",
+          "offset": 0,
+          "verticalExaggeration": null
+        }
+      },
+      {
+        "id": "pro://layer/CIMPATH%3DUD3_Mixed_Use_Massing%2FPolygons_Single_Buildings.json",
+        "Name": "Existing Context",
+        "type": "FeatureLayer",
+        "IsVisible": true,
+        "Transparency": 0,
+        "drawingOrder": 1,
+        "isFeatureLayer": true,
+        "elevation": {
+          "mode": "on-ground",
+          "offset": 0,
+          "verticalExaggeration": null
+        }
+      },
+      {
+        "id": "pro://layer/CIMPATH%3DUD3_Mixed_Use_Massing%2FMultipatch_Single_Building.json",
+        "Name": "Proposed Massing",
+        "type": "FeatureLayer",
+        "IsVisible": true,
+        "Transparency": 0,
+        "drawingOrder": 2,
+        "isFeatureLayer": true,
+        "elevation": {
+          "mode": "relative-to-ground",
+          "offset": 0,
+          "verticalExaggeration": 1
+        }
+      },
+      {
+        "id": "pro://layer/CIMPATH%3D6bf3e9be792145ef9ef4a35ed67c53f0.json",
+        "Name": "Light Gray Reference",
+        "type": "VectorTileLayer",
+        "IsVisible": true,
+        "Transparency": 0,
+        "drawingOrder": 3,
+        "isFeatureLayer": false,
+        "elevation": null
+      },
+      {
+        "id": "pro://layer/CIMPATH%3D8d06b4bc7f7f478895854494cd105224.json",
+        "Name": "Light Gray Base",
+        "type": "VectorTileLayer",
+        "IsVisible": true,
+        "Transparency": 0,
+        "drawingOrder": 4,
+        "isFeatureLayer": false,
+        "elevation": null
+      }
+    ]
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "c91ddcb509a3d4b0",
+  "notices": [],
+  "resources": []
+}

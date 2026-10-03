@@ -60,8 +60,9 @@ public sealed class LayerListOperationTests
         using var pro = new FakePro();
         pro.State.AddMap("City");
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => pro.RunAsync("layer.list", """{"map": "Nowhere"}"""));
+        var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("layer.list", """{"map": "Nowhere"}"""));
 
+        Assert.Equal("map_not_found", exception.Code);
         Assert.Equal("Map 'Nowhere' was not found.", exception.Message);
     }
 }
