@@ -133,7 +133,7 @@ public sealed class ProjectOperationTests
 
             Assert.False(result.Success);
             Assert.Equal("pending_edits", result.ErrorCode);
-            Assert.Contains("does not spend", result.Message, StringComparison.Ordinal);
+            Assert.Contains("did not spend", result.Message, StringComparison.Ordinal);
             Assert.Empty(pro.State.Calls);
             Assert.Equal("Fixture", pro.State.ProjectName);
         }
@@ -144,20 +144,65 @@ public sealed class ProjectOperationTests
     }
 
     [Fact]
-    public async Task Open_does_not_refuse_for_the_project_dirty_flag_alone()
+    public async Task Open_refuses_while_the_project_has_unsaved_changes()
     {
-        // ArcGIS Pro reports IsDirty even on an untouched, freshly opened project, and live runs
-        // only ever observed the "Save all edits?" prompt for pending feature edits.
+        // Live (ArcGIS Pro 3.7.1): a dirty project, including a freshly opened untouched one, makes
+        // Project.OpenAsync stop on the modal "Save changes to <project>?" prompt.
         using var pro = new FakePro();
         pro.State.IsDirty = true;
         var path = TempProject(out var directory);
         try
         {
-            var result = await pro.RunAsync("project.open", Json(new { path }));
+            var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("project.open", Json(new { path })));
 
-            Assert.True(result.Success);
-            Assert.Equal([$"project.open {path}"], pro.State.Calls);
-            Assert.Equal("City", pro.State.ProjectName);
+            Assert.Equal("unsaved_project_changes", exception.Code);
+            Assert.Contains("Save changes?", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("project.save", exception.Message, StringComparison.Ordinal);
+            Assert.Empty(pro.State.Calls);
+            Assert.Equal("Fixture", pro.State.ProjectName);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Open_refuses_unsaved_changes_through_the_executor_precondition_before_the_token_is_checked()
+    {
+        using var pro = new FakePro();
+        pro.State.IsDirty = true;
+        var path = TempProject(out var directory);
+        try
+        {
+            var result = await pro.InvokeAsync("project.open", Json(new { path }));
+
+            Assert.False(result.Success);
+            Assert.Equal("unsaved_project_changes", result.ErrorCode);
+            Assert.Contains("did not spend", result.Message, StringComparison.Ordinal);
+            Assert.Empty(pro.State.Calls);
+            Assert.Equal("rev-0", pro.Workspace.Revision);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Pending_edits_take_precedence_over_unsaved_project_changes()
+    {
+        using var pro = new FakePro();
+        pro.State.HasEdits = true;
+        pro.State.IsDirty = true;
+        var path = TempProject(out var directory);
+        try
+        {
+            var direct = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("project.open", Json(new { path })));
+            var invoked = await pro.InvokeAsync("project.open", Json(new { path }));
+
+            Assert.Equal("pending_edits", direct.Code);
+            Assert.Equal("pending_edits", invoked.ErrorCode);
         }
         finally
         {

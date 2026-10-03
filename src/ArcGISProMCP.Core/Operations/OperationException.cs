@@ -99,6 +99,13 @@ public static class OperationErrorCodes
     /// </summary>
     public const string PendingEdits = "pending_edits";
 
+    /// <summary>
+    /// The open project has unsaved project changes (ArcGIS Pro reports it dirty, which it also does
+    /// right after opening a project). Opening another project would make ArcGIS Pro show its modal
+    /// "Save changes?" prompt and block the call until a person answers it.
+    /// </summary>
+    public const string UnsavedProjectChanges = "unsaved_project_changes";
+
     /// <summary>ArcGIS Pro reported that saving the pending feature edits failed.</summary>
     public const string EditsNotSaved = "edits_not_saved";
 

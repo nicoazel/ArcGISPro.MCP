@@ -15,13 +15,22 @@ internal sealed class FakeProjectService(FakeProState state) : IProjectService
         }
     }
 
+    public bool IsDirty
+    {
+        get
+        {
+            FakeDispatcher.Require(FakeThread.Ui, nameof(IsDirty));
+            return state.IsOpen && state.IsDirty;
+        }
+    }
+
     public Task OpenAsync(string path)
     {
         FakeDispatcher.Require(FakeThread.Ui, nameof(OpenAsync));
-        // ArcGIS Pro would block on its modal "Save all edits?" prompt here; the operation must refuse first.
-        // Unsaved project (.aprx) changes alone were not observed to prompt, so they do not block.
-        if (state.HasEdits)
-            throw new InvalidOperationException("ArcGIS Pro would prompt to save pending edits before opening another project.");
+        // ArcGIS Pro would block on its modal "Save all edits?" (pending edits) or "Save changes?"
+        // (dirty project) prompt here; the operation must refuse first.
+        if (state.HasEdits || state.IsDirty)
+            throw new InvalidOperationException("ArcGIS Pro would prompt to save unsaved work before opening another project.");
         state.Calls.Add($"project.open {path}");
         state.ProjectUri = path;
         state.ProjectName = Path.GetFileNameWithoutExtension(path);

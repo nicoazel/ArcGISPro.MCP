@@ -26,6 +26,9 @@ internal interface IProjectService
     /// <summary>True when the open project has unsaved feature (data) edits; false with no project.</summary>
     bool HasEdits { get; }
 
+    /// <summary>True when the open project has unsaved project (.aprx) changes; false with no project.</summary>
+    bool IsDirty { get; }
+
     /// <summary>Opens an existing .aprx, replacing the current project.</summary>
     Task OpenAsync(string path);
 

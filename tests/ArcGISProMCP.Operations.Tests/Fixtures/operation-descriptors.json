@@ -2637,7 +2637,7 @@
     "id": "project.open",
     "version": "1.0.0",
     "title": "Open project",
-    "summary": "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Refuses while the current project has unsaved feature edits; save them first with project.save.",
+    "summary": "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Refuses while the current project has unsaved feature edits or project changes (ArcGIS Pro marks a project changed right after opening it); save them first with project.save.",
     "risk": "SafeWrite",
     "executionTarget": "ArcGISUiThread",
     "requiresConfirmation": true,
