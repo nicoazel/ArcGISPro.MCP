@@ -1,6 +1,6 @@
 # Test data
 
-Synthetic fixture data for the live urban stress workflows (`tools/run-urban-stress.ps1`, run by the `stress` section of `tools/run-acceptance.ps1`) and the live acceptance drivers. Portable tests do not open these files with ArcGIS. The Core test `TestDataFixtureTests` checks that each shapefile set is complete, that only generated files are present, that no local path or third-party name is embedded in any file, and that `expected-statistics.json` is consistent.
+Synthetic fixture data for the live urban stress workflows (`tools/run-urban-stress.ps1`, run by the `stress` section of `tools/run-acceptance.ps1`) and the live acceptance drivers. Portable tests do not open these files with ArcGIS. The Core test `TestDataFixtureTests` checks that each shapefile set is complete, that only generated files are present, that no local or drive-letter path and no third-party, vendor or place name is embedded in the generated data (`SHP/`, `MasterPlan.gdb/` and `expected-statistics.json`; this README is not scanned), and that `expected-statistics.json` is consistent.
 
 Everything here is invented by `tools/create-synthetic-test-data.py`. It is not planning, parcel, street or building data for any real place, and nothing produced from it is a planning result.
 
@@ -13,7 +13,7 @@ Everything here is invented by `tools/create-synthetic-test-data.py`. It is not 
 
 ## Coordinate system
 
-Every layer uses **NAD 1983 StatePlane Pennsylvania South FIPS 3702 (US feet), EPSG:2272**. The `.prj` files are identical. Linear units are US survey feet, so buffer distances, extrusion heights and areas in the workflows are in feet or square feet (`area_gross` is in acres). All features fall within x 1,363,100–1,368,100 and y 414,800–418,800. Attribute encoding is UTF-8 (`.cpg`).
+Every layer uses **NAD 1983 StatePlane Pennsylvania South FIPS 3702 (US feet), EPSG:2272**. The `.prj` files are identical. Linear units are US survey feet, so buffer distances, extrusion heights and areas in the workflows are in feet or square feet (`area_gross` is in acres). Every layer's extent lies within the window x 1,363,100–1,368,100, y 414,800–418,800 (the street grid); the generator checks this. The window is a bound, not the exact extent of each layer. Attribute encoding is UTF-8 (`.cpg`).
 
 ## Layout
 
@@ -51,13 +51,16 @@ Each set has `.shp`, `.shx`, `.dbf`, `.prj` and `.cpg`. The first four are requi
 With the ArcGIS Pro Python interpreter (ArcPy with 3D Analyst):
 
 ```powershell
+$env:PYTHONHASHSEED = '0'
 & "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3\python.exe" tools\create-synthetic-test-data.py `
     --template-aprx <copy of any disposable .aprx> --output tests\data --replace
 ```
 
-The script builds everything in a temporary folder (`--work-dir` to choose it) with geoprocessing history and metadata logging turned off, derives `ProposedMassing` (the template project is opened in memory only and never saved), compacts the geodatabase, validates counts and geometry types, and byte-scans the build for local paths and third-party names before it replaces `SHP/`, `MasterPlan.gdb/` and `expected-statistics.json`. This README is left alone. It is not run in CI.
+The script builds everything in a temporary folder (`--work-dir` to choose it) with geoprocessing history and metadata logging turned off, derives `ProposedMassing` (the template project is opened in memory only and never saved), compacts the geodatabase, and validates counts, geometry types, the spatial reference, the extent window above, the `DesignSites` GlobalID field and the Z-enabled `ProposedMassing` multipatch. It then byte-scans the build, and this README for names only (it quotes the interpreter path), for local paths and third-party, vendor and place names before it replaces `SHP/`, `MasterPlan.gdb/` and `expected-statistics.json`. This README is left alone. `PYTHONHASHSEED=0` pins Python's string hashing, so nothing in the run depends on hash order. It is not run in CI.
 
-The same seed always produces the same geometry and attributes, and the shapefiles come out byte-identical on the same day (the `.dbf` header holds the write date). Geodatabase files also contain generated dataset identifiers, GlobalIDs and timestamps, so they differ byte-wise between runs even when the content does not. Commit a regenerated set only when the fixture is meant to change, together with any documentation that quotes its counts.
+The same seed always produces the same geometry and attributes. For the shapefiles, the write date in the `.dbf` header is the only byte that differs between runs. The geodatabase is not byte-reproducible: it holds generated dataset identifiers, GlobalIDs, timestamps and item-metadata creation stamps, which differ between runs even when the content does not.
+
+The street name `Hawthorn` replaced an earlier name by editing the `NAME` and `FULL_NAME` values of the eight affected records in `Polyline_MultipartMix_Streets.dbf` in place (same field widths, same record order), so the committed set matches what the current generator writes apart from the `.dbf` header date; `expected-statistics.json` was unaffected. Commit a regenerated set only when the fixture is meant to change, together with any documentation that quotes its counts.
 
 ## Rules
 

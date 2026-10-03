@@ -24,11 +24,20 @@ public sealed class TestDataFixtureTests
         "Boundary_Multipart_Polygon",
     ];
 
-    // Strings that must never ship in fixture files: local paths and names of the
-    // third-party data the synthetic set replaced. Matched case-insensitively as ASCII
-    // and as UTF-16LE, which file geodatabases use for text.
+    // Strings that must never ship in fixture files: local paths (including any drive-letter
+    // path, ":\"), and names of the third-party data, vendors and places the synthetic set
+    // replaced. Matched case-insensitively as ASCII and as UTF-16LE, which file geodatabases
+    // use for text. Keep in sync with FORBIDDEN in tools/create-synthetic-test-data.py.
     private static readonly string[] ForbiddenStrings =
-        ["_11_Git", "Users", "rhino", "scratch", "Dynamap", "T068437", "UrbanFootprint"];
+    [
+        "_11_Git", "Users", "rhino", "scratch", "Dynamap", "T068437", "UrbanFootprint",
+        "TomTom", "PICTOMETRY", "Pittsburgh", "Calthorpe", "Allegheny", "nicoazel", "azel",
+        ":\\",
+    ];
+
+    // The generated data the byte scan covers. tests/data/README.md is documentation and
+    // legitimately quotes the ArcGIS Pro Python path, so it is not scanned.
+    private static readonly string[] GeneratedEntries = ["SHP", "MasterPlan.gdb", "expected-statistics.json"];
 
     private static string DataRoot() => Path.Combine(AcceptanceManifestTests.RepositoryRoot(), "tests", "data");
 
@@ -89,23 +98,55 @@ public sealed class TestDataFixtureTests
     [Fact]
     public void No_fixture_file_contains_a_forbidden_string()
     {
-        var patterns = ForbiddenStrings
-            .Select(text => (Text: text,
-                Ascii: Encoding.ASCII.GetBytes(text.ToLowerInvariant()),
-                Utf16: Encoding.Unicode.GetBytes(text.ToLowerInvariant())))
-            .ToArray();
         var hits = new List<string>();
-        foreach (var path in Directory.EnumerateFiles(DataRoot(), "*", SearchOption.AllDirectories))
+        foreach (var entry in GeneratedEntries)
         {
-            var bytes = File.ReadAllBytes(path);
-            for (var i = 0; i < bytes.Length; i++)
-                if (bytes[i] is >= (byte)'A' and <= (byte)'Z')
-                    bytes[i] = (byte)(bytes[i] + 32);
-            foreach (var (text, ascii, utf16) in patterns)
-                if (bytes.AsSpan().IndexOf(ascii) >= 0 || bytes.AsSpan().IndexOf(utf16) >= 0)
+            var full = Path.Combine(DataRoot(), entry);
+            Assert.True(Directory.Exists(full) || File.Exists(full), $"Missing generated fixture entry {entry}.");
+            var files = Directory.Exists(full)
+                ? Directory.EnumerateFiles(full, "*", SearchOption.AllDirectories)
+                : [full];
+            foreach (var path in files)
+                foreach (var text in FindForbiddenStrings(File.ReadAllBytes(path)))
                     hits.Add($"{Path.GetRelativePath(DataRoot(), path)}: '{text}'");
         }
         Assert.True(hits.Count == 0, "Fixture files contain forbidden strings:\n" + string.Join("\n", hits));
+    }
+
+    [Theory]
+    [InlineData(@"C:\Data\parcels.shp", @":\")]
+    [InlineData("Street data (c) TOMTOM", "TomTom")]
+    [InlineData("Hazel Avenue", "azel")]
+    [InlineData("ALLEGHENY county", "Allegheny")]
+    [InlineData("pictometry imagery", "PICTOMETRY")]
+    public void Forbidden_string_scan_matches_ascii_and_utf16_case_insensitively(string content, string expected)
+    {
+        Assert.Contains(expected, FindForbiddenStrings(Encoding.ASCII.GetBytes(content)));
+        Assert.Contains(expected, FindForbiddenStrings(Encoding.Unicode.GetBytes(content)));
+    }
+
+    [Fact]
+    public void Forbidden_string_scan_accepts_the_synthetic_street_names()
+    {
+        Assert.Empty(FindForbiddenStrings(Encoding.ASCII.GetBytes("Hawthorn Avenue, Ginkgo Avenue, 4th Street")));
+        Assert.Empty(FindForbiddenStrings(Encoding.Unicode.GetBytes("Hawthorn Avenue, Ginkgo Avenue, 4th Street")));
+    }
+
+    /// <summary>The forbidden strings found in <paramref name="content"/>, ASCII-case-insensitively.</summary>
+    private static string[] FindForbiddenStrings(byte[] content)
+    {
+        var bytes = (byte[])content.Clone();
+        for (var i = 0; i < bytes.Length; i++)
+            if (bytes[i] is >= (byte)'A' and <= (byte)'Z')
+                bytes[i] = (byte)(bytes[i] + 32);
+        return ForbiddenStrings
+            .Where(text =>
+            {
+                var lower = text.ToLowerInvariant();
+                return bytes.AsSpan().IndexOf(Encoding.ASCII.GetBytes(lower)) >= 0
+                    || bytes.AsSpan().IndexOf(Encoding.Unicode.GetBytes(lower)) >= 0;
+            })
+            .ToArray();
     }
 
     [Fact]
