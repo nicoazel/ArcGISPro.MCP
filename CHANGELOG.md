@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+## [0.3.1] - unreleased
+
+### Fixed
+
+- Operation results use camelCase keys throughout `data`, at every depth, on success, on failure and in dry runs. Results built from member shorthand or records were serialized with .NET default names and mixed PascalCase into otherwise camelCase payloads (previously `gp.run` returned `IsFailed`, `IsCanceled`, `ErrorCode`, `ReturnValue` and messages with `Text`/`ErrorCode` where `gp.query` returned `isFailed`, `project.open` and `project.save` returned `Name`, and `project.get` returned `Project`/`Revision`/`CapturedAt`). Also renamed: `map.list`, `map.activate`, `layer.list`, `layer.set-appearance`, `layer.set-elevation`, `basemap.set`, `layout.list`, `layout.inspect`, `layout.activate`, `layout.set-text`, `symbology.set-simple` and `label.configure` (`name`, plus `isVisible`/`transparency` on layers); `map.ensure`, `layout.ensure` and `layout.add-map-frame` (`id`, `name`, `created`, ...); `layer.add` (`id`, `name`, `map`, `source`, `requestedSource`, `created`, `repaired`, `replaced`, `dataSourceStatus`); `feature.layer.describe` (`name`, and `name`, `aliasName`, `isNullable`, `isEditable`, `length` per field); `metadata.get`/`metadata.update` (`metadata.title`, `summary`, `description`, `tags`, `credits`, `useLimitations`, and `changed`); `layout.set-frame-extent` (`scale`, `heading`, `pitch`, `x`, `y`, `z`, `viewportWidth`, `viewportHeight`); `style.search` (`name`, `category`, `tags`); `arcpy.inspect-script` (`sha256`); `arcpy.run-script` (`exitCode`); and the generic dry run (`risk`, `executionTarget`). The declared output schemas changed to match. Keys that are user data are unchanged: attribute field names in `feature.query` and `table.query` rows. Clients that read the PascalCase keys must switch.
+
 ## [0.3.0] - 2026-10-03
 
 Second development preview: typed MCP results with output schemas, resources and prompts; geoprocessing discovery, risk tiers and dry runs; approval for project and feature edits; deterministic agent evaluations; synthetic CC0 test data; a live operation matrix over every operation; and committed live ArcGIS Pro acceptance evidence, including the first full operation matrix run. Unsigned; not a production release.
