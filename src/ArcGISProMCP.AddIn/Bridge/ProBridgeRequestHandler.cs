@@ -215,7 +215,9 @@ internal sealed class ProBridgeRequestHandler(
             // Keep faulted executions cached too: an exception may follow an accepted write.
             // Eviction must not turn an uncertain outcome into an accidental duplicate mutation.
             result = await entry.Result.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
-            if (result.ErrorCode == "confirmation_required")
+            // Nothing ran for these refusals, so evicting them is as safe as for confirmation_required:
+            // a retry with the same key after saving in ArcGIS Pro must not replay the stale refusal.
+            if (result.ErrorCode is "confirmation_required" or OperationErrorCodes.PendingEdits or OperationErrorCodes.UnsavedProjectChanges)
                 _idempotency.TryRemove(new KeyValuePair<string, IdempotencyEntry>(idempotencyKey, entry));
         }
         return JsonSerializer.SerializeToElement(result, JsonOptions);
