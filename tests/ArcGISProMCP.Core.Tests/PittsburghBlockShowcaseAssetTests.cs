@@ -18,7 +18,7 @@ public sealed class PittsburghBlockShowcaseAssetTests
             .ToHashSet(StringComparer.Ordinal);
 
         Assert.Equal("workflow.pittsburgh-block-mixed-use-showcase", root.GetProperty("id").GetString());
-        Assert.Equal("1.1.0", root.GetProperty("version").GetString());
+        Assert.Equal("1.2.0", root.GetProperty("version").GetString());
         Assert.Contains("illustrative", source, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("EPSG:2272", source, StringComparison.Ordinal);
         Assert.DoesNotContain("D:\\", source, StringComparison.Ordinal);

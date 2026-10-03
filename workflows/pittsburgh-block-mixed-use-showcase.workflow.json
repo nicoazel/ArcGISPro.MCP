@@ -1,6 +1,6 @@
 {
   "id": "workflow.pittsburgh-block-mixed-use-showcase",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "title": "Illustrative Pittsburgh block mixed-use showcase",
   "summary": "Presents a reproducible, illustrative Pittsburgh block study with varied massing, active uses, connected public realm, and three coordinated final layout frames.",
   "tags": ["illustrative", "pittsburgh", "urban-design", "mixed-use", "massing", "public-realm", "layout"],
@@ -67,8 +67,8 @@
     { "id": "fit-program", "operation": "layout.set-frame-extent", "arguments": { "layout": "Illustrative Pittsburgh Block Showcase", "frame": "Program Plan", "layer": "Mixed-Use Program", "padding": 2.1 }, "dependsOn": ["fit-scene"] },
     { "id": "fit-realm", "operation": "layout.set-frame-extent", "arguments": { "layout": "Illustrative Pittsburgh Block Showcase", "frame": "Public Realm Plan", "layer": "Connected Public Realm", "padding": 2.4 }, "dependsOn": ["fit-program"] },
     { "id": "north", "operation": "layout.ensure-surround", "arguments": { "layout": "Illustrative Pittsburgh Block Showcase", "frame": "Program Plan", "name": "Pittsburgh North", "kind": "north-arrow", "x": 15.85, "y": 8.5, "width": 0.4, "height": 0.68 }, "dependsOn": ["fit-realm"] },
-    { "id": "scale", "operation": "layout.ensure-surround", "arguments": { "layout": "Illustrative Pittsburgh Block Showcase", "frame": "Program Plan", "name": "Pittsburgh Scale", "kind": "scale-bar", "x": 10.55, "y": 5.92, "width": 1.7, "height": 0.28 }, "dependsOn": ["north"] },
-    { "id": "legend", "operation": "layout.ensure-surround", "arguments": { "layout": "Illustrative Pittsburgh Block Showcase", "frame": "Program Plan", "name": "Pittsburgh Program Legend", "kind": "legend", "x": 8.0, "y": 1.55, "width": 1.7, "height": 2.05 }, "dependsOn": ["scale"] },
+    { "id": "scale", "operation": "layout.ensure-surround", "arguments": { "layout": "Illustrative Pittsburgh Block Showcase", "frame": "Program Plan", "name": "Pittsburgh Scale", "kind": "scale-bar", "x": 10.55, "y": 6.15, "width": 2.2, "height": 0.28 }, "dependsOn": ["north"] },
+    { "id": "legend", "operation": "layout.ensure-surround", "arguments": { "layout": "Illustrative Pittsburgh Block Showcase", "frame": "Program Plan", "name": "Pittsburgh Program Legend", "kind": "legend", "x": 8.0, "y": 2.0, "width": 1.7, "height": 2.3 }, "dependsOn": ["scale"] },
     { "id": "dynamic-status", "operation": "layout.set-text", "arguments": { "layout": "Illustrative Pittsburgh Block Showcase", "name": "dynamic-status", "text": "PROJECT  <dyn type=\"project\" property=\"name\"/>  /  GENERATED  <dyn type=\"date\" format=\"short\"/>  /  PLAN SCALE  <dyn type=\"mapFrame\" name=\"Program Plan\" property=\"camera.scale\" preStr=\"1:\" decimalPlaces=\"0\"/>", "x": 10.25, "y": 0.38, "fontFamily": "Aptos", "fontStyle": "Regular", "size": 6.5, "color": "#756D70" }, "dependsOn": ["legend"] },
     { "id": "stats-units", "operation": "table.statistics", "arguments": { "map": "Pittsburgh Showcase Program", "layer": "Mixed-Use Program", "field": "res_units" }, "dependsOn": ["dynamic-status"] },
     { "id": "stats-jobs", "operation": "table.statistics", "arguments": { "map": "Pittsburgh Showcase Program", "layer": "Mixed-Use Program", "field": "jobs" }, "dependsOn": ["stats-units"] },

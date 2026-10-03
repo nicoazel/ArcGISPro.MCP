@@ -150,7 +150,7 @@ Each host publishes a discovery record under `%LOCALAPPDATA%\ArcGISProMCP\hosts`
 
 ## Bundled workflows and skills
 
-All bundled workflows are version 1.1.0 and none of them save the project; save with an explicit, approved `project.save` call. They are seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` on first load without overwriting existing files.
+All bundled workflows are version 1.2.0 and none of them save the project; save with an explicit, approved `project.save` call. They are seeded into `%LOCALAPPDATA%\ArcGISProMCP\workflows` on first load without overwriting existing files.
 
 | File | Title |
 | --- | --- |
