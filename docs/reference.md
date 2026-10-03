@@ -220,4 +220,5 @@ Codes a client should handle. The message carries the details.
 | `tools/test-mcp.ps1` | Live handshake, tool discovery, state, registry search, and skill read. |
 | `tools/run-live-feature-gp-arcpy.ps1` | Live feature, geoprocessing, and ArcPy acceptance driver. |
 | `tools/run-urban-stress.ps1` | Repeats the urban layout workflows as a stress test. |
+| `tools/create-synthetic-test-data.py` | Generates the synthetic `tests/data` fixture and `expected-statistics.json` (ArcGIS Pro Python; `--template-aprx`, `--output tests\data --replace`). Not run in CI. |
 | `tools/create-*.py` | Generate the Pittsburgh showcase and urban massing fixtures. |
