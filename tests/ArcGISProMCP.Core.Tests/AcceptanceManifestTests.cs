@@ -199,7 +199,52 @@ public sealed class AcceptanceManifestTests
             Assert.True(paths.Count == 0, $"{name}: " + string.Join("; ", paths));
             var sums = ChecksumProblems(folder);
             Assert.True(sums.Count == 0, $"{name}: " + string.Join("; ", sums));
+            var operations = OperationsEvidenceProblems(manifest, folder);
+            Assert.True(operations.Count == 0, $"{name}: " + string.Join("; ", operations));
         }
+    }
+
+    /// <summary>
+    /// A passed operations step is backed by its summary in the folder; otherwise the summary rules
+    /// (Committed_operations_summaries_cover_every_registered_operation) would never run for it.
+    /// </summary>
+    private static List<string> OperationsEvidenceProblems(JsonElement manifest, string folder)
+    {
+        var problems = new List<string>();
+        var passed = manifest.GetProperty("sections").EnumerateArray().Any(section =>
+            section.GetProperty("name").GetString() == "operations" && section.GetProperty("status").GetString() == "passed");
+        if (passed && !File.Exists(Path.Combine(folder, "operations", "summary.json")))
+            problems.Add("the operations step passed but operations/summary.json is not in the folder");
+        return problems;
+    }
+
+    [Fact]
+    public void A_passed_operations_step_requires_its_summary_in_the_folder()
+    {
+        var folder = Directory.CreateTempSubdirectory("acceptance-operations-");
+        try
+        {
+            var manifest = SampleNode();
+            Assert.Empty(OperationsEvidenceProblems(ToElement(manifest), folder.FullName));
+
+            manifest["sections"]!.AsArray().Add(new JsonObject
+            {
+                ["name"] = "operations", ["status"] = "passed", ["mutatesProject"] = true, ["requiresAutonomousMode"] = false,
+                ["startedAtUtc"] = "2026-10-02T10:00:00.0000000Z", ["durationSeconds"] = 1200, ["detail"] = "41/41 operations covered",
+                ["evidence"] = new JsonArray("operations/summary.json"),
+            });
+            Assert.Contains(OperationsEvidenceProblems(ToElement(manifest), folder.FullName), p => p.Contains("operations/summary.json", StringComparison.Ordinal));
+
+            Directory.CreateDirectory(Path.Combine(folder.FullName, "operations"));
+            File.WriteAllText(Path.Combine(folder.FullName, "operations", "summary.json"), "{}\n");
+            Assert.Empty(OperationsEvidenceProblems(ToElement(manifest), folder.FullName));
+
+            var sections = manifest["sections"]!.AsArray();
+            sections[sections.Count - 1]!["status"] = "skipped";
+            File.Delete(Path.Combine(folder.FullName, "operations", "summary.json"));
+            Assert.Empty(OperationsEvidenceProblems(ToElement(manifest), folder.FullName));
+        }
+        finally { folder.Delete(recursive: true); }
     }
 
     /// <summary>Rules beyond the schema that committed (as opposed to working) evidence must meet.</summary>
@@ -432,12 +477,13 @@ public sealed class AcceptanceManifestTests
                 [
                     ("cards", JsonSchemas.Integer(minimum: 0)),
                     ("requested", JsonSchemas.Integer(minimum: 0)),
+                    ("queued", JsonSchemas.Integer(minimum: 0)),
                     ("approved", JsonSchemas.Integer(minimum: 0)),
                     ("denied", JsonSchemas.Integer(minimum: 0)),
                     ("expired", JsonSchemas.Integer(minimum: 0)),
                     ("skipped", JsonSchemas.Integer(minimum: 0)),
                 ],
-                ["cards", "requested", "approved", "denied", "expired", "skipped"])),
+                ["cards", "requested", "queued", "approved", "denied", "expired", "skipped"])),
             ("messageAudit", JsonSchemas.Object(
                 [
                     ("checked", JsonSchemas.Integer(minimum: 0)),
@@ -446,10 +492,11 @@ public sealed class AcceptanceManifestTests
                         ["case", "findings"]))),
                 ],
                 ["checked", "flagged"])),
+            ("skipCards", JsonSchemas.Boolean()),
             ("allPassed", JsonSchemas.Boolean()),
             ("aborted", JsonSchemas.String(maxLength: 4096)),
         ],
-        ["schemaVersion", "host", "capabilities", "operations", "coverage", "cases", "approvals", "messageAudit", "allPassed"]);
+        ["schemaVersion", "host", "capabilities", "operations", "coverage", "cases", "approvals", "messageAudit", "skipCards", "allPassed"]);
 
     private sealed record Descriptor(string Id, bool RequiresConfirmation);
 
@@ -473,6 +520,20 @@ public sealed class AcceptanceManifestTests
             problems.Add("operations evidence must come from ArcGIS Pro, not a FakeHost");
         if (!summary.GetProperty("allPassed").GetBoolean())
             problems.Add("operations allPassed is false");
+        if (summary.GetProperty("skipCards").GetBoolean())
+            problems.Add("operations evidence comes from a -SkipCards pre-run");
+        if (summary.TryGetProperty("aborted", out _))
+            problems.Add("the operations run was aborted");
+
+        // Each card case is counted once, by its final decision, however often its card was queued.
+        var approvals = summary.GetProperty("approvals");
+        var requested = approvals.GetProperty("requested").GetInt32();
+        var decided = approvals.GetProperty("approved").GetInt32() + approvals.GetProperty("denied").GetInt32() +
+            approvals.GetProperty("skipped").GetInt32();
+        if (decided != requested)
+            problems.Add($"approvals: approved + denied + skipped is {decided}, but {requested} card cases requested a card");
+        if (approvals.GetProperty("queued").GetInt32() < requested)
+            problems.Add("approvals: fewer cards queued than card cases requested");
 
         var operations = summary.GetProperty("operations").EnumerateArray().ToArray();
         var listed = operations.Select(operation => operation.GetProperty("id").GetString()!).ToHashSet(StringComparer.Ordinal);
@@ -536,8 +597,9 @@ public sealed class AcceptanceManifestTests
             ["operations"] = operations,
             ["coverage"] = new JsonObject { ["total"] = descriptors.Length, ["covered"] = descriptors.Length, ["uncovered"] = new JsonArray() },
             ["cases"] = new JsonObject { ["total"] = descriptors.Length, ["happy"] = descriptors.Length, ["negative"] = 0, ["passed"] = descriptors.Length, ["failed"] = 0, ["skipped"] = 0 },
-            ["approvals"] = new JsonObject { ["cards"] = 8, ["requested"] = 8, ["approved"] = 7, ["denied"] = 1, ["expired"] = 0, ["skipped"] = 0 },
+            ["approvals"] = new JsonObject { ["cards"] = 8, ["requested"] = 8, ["queued"] = 9, ["approved"] = 7, ["denied"] = 1, ["expired"] = 1, ["skipped"] = 0 },
             ["messageAudit"] = new JsonObject { ["checked"] = 29, ["flagged"] = new JsonArray() },
+            ["skipCards"] = false,
             ["allPassed"] = true,
         };
     }
@@ -573,6 +635,28 @@ public sealed class AcceptanceManifestTests
         var badStatus = CompleteOperationsSummary();
         badStatus["operations"]![0]!["cases"]![0]!["status"] = "ok";
         Assert.NotEmpty(OperationArgumentValidator.Validate(ToElement(badStatus), OperationsSummarySchema()));
+    }
+
+    [Fact]
+    public void Operations_summary_rules_reject_pre_runs_aborted_runs_and_double_counted_cards()
+    {
+        var preRun = CompleteOperationsSummary();
+        preRun["skipCards"] = true;
+        Assert.Empty(OperationArgumentValidator.Validate(ToElement(preRun), OperationsSummarySchema()));
+        Assert.Contains(OperationsSummaryProblems(ToElement(preRun)), p => p.Contains("-SkipCards", StringComparison.Ordinal));
+
+        var unrecorded = CompleteOperationsSummary();
+        unrecorded.Remove("skipCards");
+        Assert.NotEmpty(OperationArgumentValidator.Validate(ToElement(unrecorded), OperationsSummarySchema()));
+
+        var aborted = CompleteOperationsSummary();
+        aborted["aborted"] = "The operator APPROVED the DENY card.";
+        Assert.Contains(OperationsSummaryProblems(ToElement(aborted)), p => p.Contains("aborted", StringComparison.Ordinal));
+
+        // A card queued again after a refused token must not count as a second approval.
+        var doubleCounted = CompleteOperationsSummary();
+        doubleCounted["approvals"]!["approved"] = 8;
+        Assert.Contains(OperationsSummaryProblems(ToElement(doubleCounted)), p => p.Contains("approved + denied + skipped", StringComparison.Ordinal));
     }
 
     [Fact]

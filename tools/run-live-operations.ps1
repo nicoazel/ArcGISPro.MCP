@@ -35,9 +35,12 @@
     the start until someone answers it.
 
     Evidence (under -EvidenceDirectory): results/NNN-<operation>-<case>.request.json and
-    .result.json for every bridge and gateway call, summary.json (per-operation cases, coverage,
-    approvals, message audit), errors.md (every negative case: operation, error code, message and
-    message-audit findings) and console.log (what the operator was shown).
+    .result.json for every bridge call (approval calls use approval.request-<case> and the like),
+    results/NNN-gateway-<tool>-<case>.* for every MCP gateway call, summary.json (per-operation
+    cases, coverage, approvals, message audit, skipCards, aborted), errors.md (a Markdown table of
+    every negative case: operation, error code, message and message-audit findings) and console.log
+    (what the operator was shown; working evidence only, never committed). The script exits 1
+    unless summary.json reports allPassed, so a -SkipCards pre-run always exits 1.
 
     -AllowFakeHost is for shaking out this script against tools/ArcGISProMCP.FakeHost (run it with
     --auto-approve on its own pipe). Operations the FakeHost does not implement are recorded as
@@ -334,16 +337,35 @@ Register-Case 'layer-set-appearance-stale-revision' { Invoke-Op 'layer.set-appea
 Register-Case 'layer-set-appearance-no-revision' { Invoke-Op 'layer.set-appearance' @{ map = $map; layer = 'Boundary'; transparency = 45 } -NoRevision }
 Register-Case 'layer-add-broken-source' { Invoke-Op 'layer.add' @{ map = $map; source = (Assert-Context 'brokenPath'); name = 'Broken' } } {
     # Break the source: rename every file of the shapefile copy while the layer still points at it.
+    # ArcGIS Pro can hold a file open (seen as a sharing violation); rename what can be renamed and,
+    # if the .shp itself stays locked, put the renamed files back and skip the broken-layer query
+    # with the reason instead of running it against a half-broken layer.
     $brokenPath = Assert-Context 'brokenPath'
     $folder = Split-Path -Parent $brokenPath
     $base = [IO.Path]::GetFileNameWithoutExtension($brokenPath)
+    $moved = New-Object System.Collections.ArrayList
+    $locked = New-Object System.Collections.ArrayList
     foreach ($file in @(Get-ChildItem -LiteralPath $folder -File | Where-Object { $_.BaseName -eq $base })) {
-        Rename-Item -LiteralPath $file.FullName -NewName ('Moved_' + $file.Name)
+        try {
+            Rename-Item -LiteralPath $file.FullName -NewName ('Moved_' + $file.Name)
+            $null = $moved.Add($file.Name)
+        }
+        catch { $null = $locked.Add("$($file.Name) ($($_.Exception.Message))") }
     }
-    Assert-True (-not (Test-Path -LiteralPath $brokenPath)) "Could not move $brokenPath away (is it locked?)."
+    if (Test-Path -LiteralPath $brokenPath) {
+        foreach ($name in $moved) {
+            try { Rename-Item -LiteralPath (Join-Path $folder ('Moved_' + $name)) -NewName $name }
+            catch { $null = $locked.Add("restoring $name failed ($($_.Exception.Message))") }
+        }
+        $script:ctx.brokenSkipReason = "the source files could not be renamed while ArcGIS Pro held them: $($locked -join '; ')"
+        Write-Operator "  [warning] $($script:ctx.brokenSkipReason). table-query-broken-layer will be skipped." 'Yellow'
+        return
+    }
+    if ($locked.Count -gt 0) { Write-Operator "  [note] Renamed the .shp but not: $($locked -join '; ')" 'Yellow' }
     $script:ctx.brokenRenamed = $true
 }
 Register-Case 'table-query-broken-layer' {
+    if ($script:ctx['brokenSkipReason']) { return @{ Skipped = $script:ctx.brokenSkipReason } }
     $null = Assert-Context 'brokenRenamed'
     Invoke-Op 'table.query' @{ map = $map; layer = 'Broken'; limit = 1 }
 }
@@ -735,8 +757,21 @@ function Invoke-Op {
 
 function Read-LineWithin($Reader, [int]$Seconds) {
     $task = $Reader.ReadLineAsync()
-    if (-not $task.Wait([TimeSpan]::FromSeconds($Seconds))) { throw "Timed out after $Seconds s waiting for the gateway." }
+    if (-not $task.Wait([TimeSpan]::FromSeconds($Seconds))) {
+        # The pending read cannot be cancelled and a late reply would be read by the next call, so the
+        # gateway is unusable: kill it. The next gateway call starts a fresh one.
+        Stop-Gateway
+        throw "Timed out after $Seconds s waiting for the gateway; the gateway process was stopped."
+    }
     return $task.Result
+}
+
+function Stop-Gateway {
+    $gateway = $script:gateway
+    $script:gateway = $null
+    if ($null -eq $gateway) { return }
+    try { if (-not $gateway.Process.HasExited) { $gateway.Process.Kill() } }
+    catch { Write-Verbose "Could not stop the gateway process: $($_.Exception.Message)" }
 }
 
 function Open-Gateway {
@@ -812,7 +847,10 @@ function Invoke-GatewayTool {
 
 # ---------------------------------------------------------------- live run: approval cards
 
-$script:approvalCounts = [ordered]@{ requested = 0; approved = 0; denied = 0; expired = 0; cancelled = 0; skipped = 0 }
+# Per case: requested (a card case that asked for a card) and exactly one of approved, denied or
+# skipped (its final decision). Per request: queued (every approval request sent, including
+# re-queues after expiry or a refused token) and expired.
+$script:approvalCounts = [ordered]@{ requested = 0; queued = 0; approved = 0; denied = 0; expired = 0; skipped = 0 }
 $script:cardNumber = 0
 $script:cardTotal = 0
 
@@ -858,7 +896,7 @@ function Wait-OperatorDecision($Case, $Spec) {
     while ($true) {
         $attempt++
         $request = Request-Approval $Spec $Case.Via
-        $script:approvalCounts.requested++
+        $script:approvalCounts.queued++
         if (-not $request.Success) {
             Write-Operator "  approval request for Card $($script:cardNumber)/$($script:cardTotal) was refused ($($request.ErrorCode)); no card is waiting." 'Red'
             return [pscustomobject]@{ Status = 'request-failed'; Token = $null; RequestId = $null; Result = $request }
@@ -906,36 +944,46 @@ function Invoke-CardCase($Case, $Implementation, $Record) {
     # Card numbers follow the plan order of the cards this run can show, so they match -PlanOnly.
     $script:cardNumber = $script:cardIndex[$Case.Key]
     $spec = & $Implementation.Invoke
-    for ($round = 1; $round -le 2; $round++) {
-        $decision = Wait-OperatorDecision $Case $spec
-        if ($decision.Status -eq 'request-failed') { return $decision.Result }
-        switch ($decision.Status) {
+    $script:approvalCounts.requested++
+    $decision = $null
+    try {
+        for ($round = 1; $round -le 2; $round++) {
+            $decision = Wait-OperatorDecision $Case $spec
+            if ($decision.Status -eq 'request-failed') { return $decision.Result }
+            $Record.approval = $decision.Status
+            if ($Case.Card -eq 'deny') {
+                if ($decision.Status -eq 'approved') {
+                    if ($fakeHostRun) { return @{ Skipped = 'the FakeHost auto-approves, so the DENY card cannot be exercised' } }
+                    # Withdraw the issued token so nothing can use it, then fail the case.
+                    $cancelNote = 'it was cancelled (approval.cancel)'
+                    try { Undo-Approval $decision.RequestId $Case.Via }
+                    catch { $cancelNote = "cancelling it failed ($($_.Exception.Message)); it expires on its own" }
+                    throw "The operator APPROVED the DENY card. Its token was NOT used and $cancelNote; the baseline feature was not deleted."
+                }
+                if ($decision.Status -ne 'denied') { return @{ Skipped = "operator did not deny the card ($($decision.Status))" } }
+                Write-Operator "  Card $($script:cardNumber)/$($script:cardTotal) denied, as asked. Checking that the operation still refuses to run without a token." 'Green'
+                return Invoke-WithToken $spec $null $Case.Via
+            }
+            if ($decision.Status -ne 'approved') { return @{ Skipped = "skipped by the operator ($($decision.Status))" } }
+            Write-Operator "  Card $($script:cardNumber)/$($script:cardTotal) approved. Running $($spec.OperationId) with the token." 'Green'
+            $result = Invoke-WithToken $spec $decision.Token $Case.Via
+            if (-not $result.Success -and $result.ErrorCode -in @('confirmation_required', 'workspace_revision_mismatch') -and $round -eq 1) {
+                # The workspace moved between the approval and the call (late settle): ask once more.
+                Write-Operator "  The token was refused ($($result.ErrorCode): the workspace changed after approval). The same card is queued once more." 'Yellow'
+                $Record.retriedAfter = $result.ErrorCode
+                continue
+            }
+            return $result
+        }
+    }
+    finally {
+        # One decision per case: a re-queued card (expiry, refused token) is not counted twice.
+        $final = if ($null -ne $decision) { [string]$decision.Status } else { $null }
+        switch ($final) {
             'approved' { $script:approvalCounts.approved++ }
             'denied' { $script:approvalCounts.denied++ }
-            'cancelled' { $script:approvalCounts.cancelled++ }
             default { $script:approvalCounts.skipped++ }
         }
-        if ($Case.Card -eq 'deny') {
-            $Record.approval = $decision.Status
-            if ($decision.Status -eq 'approved') {
-                if ($fakeHostRun) { return @{ Skipped = 'the FakeHost auto-approves, so the DENY card cannot be exercised' } }
-                throw 'The operator APPROVED the DENY card. Its token was NOT used; the baseline feature was not deleted.'
-            }
-            if ($decision.Status -ne 'denied') { return @{ Skipped = "operator did not deny the card ($($decision.Status))" } }
-            Write-Operator "  Card $($script:cardNumber)/$($script:cardTotal) denied, as asked. Checking that the operation still refuses to run without a token." 'Green'
-            return Invoke-WithToken $spec $null $Case.Via
-        }
-        $Record.approval = $decision.Status
-        if ($decision.Status -ne 'approved') { return @{ Skipped = "skipped by the operator ($($decision.Status))" } }
-        Write-Operator "  Card $($script:cardNumber)/$($script:cardTotal) approved. Running $($spec.OperationId) with the token." 'Green'
-        $result = Invoke-WithToken $spec $decision.Token $Case.Via
-        if (-not $result.Success -and $result.ErrorCode -in @('confirmation_required', 'workspace_revision_mismatch') -and $round -eq 1) {
-            # The workspace moved between the approval and the call (late settle): ask once more.
-            Write-Operator "  The token was refused ($($result.ErrorCode): the workspace changed after approval). The same card is queued once more." 'Yellow'
-            $Record.retriedAfter = $result.ErrorCode
-            continue
-        }
-        return $result
     }
 }
 
@@ -1053,6 +1101,8 @@ function Copy-TestData([string]$Destination) {
 }
 
 $startedAtUtc = [DateTime]::UtcNow
+# Set by the catch below; read by the summary (allPassed is false and summary.aborted is written).
+$script:aborted = $null
 $exitCode = 1
 try {
     Write-Operator "ArcGIS Pro MCP live operation matrix - evidence: $EvidenceDirectory" 'Cyan'
@@ -1151,8 +1201,7 @@ $operations = foreach ($descriptor in $descriptors) {
 $failed = @($script:records | Where-Object { $_.status -eq 'failed' })
 $coveredCount = @($operations | Where-Object { $_.covered }).Count
 $flagged = @($script:audits | Where-Object { @($_.findings).Count -gt 0 })
-$aborted = $null
-if (Get-Variable -Name aborted -Scope Script -ErrorAction SilentlyContinue) { $aborted = $script:aborted }
+$aborted = $script:aborted
 $summary = [ordered]@{
     schemaVersion = 1
     startedAtUtc = $startedAtUtc.ToString('o')
@@ -1180,16 +1229,19 @@ $summary = [ordered]@{
     approvals = [ordered]@{
         cards = $script:cardTotal
         requested = $script:approvalCounts.requested
+        queued = $script:approvalCounts.queued
         approved = $script:approvalCounts.approved
         denied = $script:approvalCounts.denied
         expired = $script:approvalCounts.expired
-        skipped = $script:approvalCounts.skipped + $script:approvalCounts.cancelled
+        skipped = $script:approvalCounts.skipped
     }
     messageAudit = [ordered]@{
         checked = $script:audits.Count
         flagged = @($flagged | ForEach-Object { [ordered]@{ case = $_.case; findings = @($_.findings) } })
     }
-    allPassed = ($null -eq $aborted) -and $failed.Count -eq 0 -and $coveredCount -eq @($descriptors).Count
+    # A -SkipCards pre-run is never evidence: it is recorded and can never pass.
+    skipCards = [bool]$SkipCards
+    allPassed = ($null -eq $aborted) -and (-not $SkipCards) -and $failed.Count -eq 0 -and $coveredCount -eq @($descriptors).Count
 }
 if ($aborted) { $summary.aborted = $aborted }
 Write-Utf8File (Join-Path $EvidenceDirectory 'summary.json') (ConvertTo-JsonText $summary)
@@ -1216,4 +1268,4 @@ Write-Operator ("Cases: {0} passed, {1} failed, {2} skipped of {3}. Operations c
 foreach ($record in $failed) { Write-Operator ("  FAILED {0} ({1}): {2}" -f $record.name, $record.operation, $record.detail) 'Red' }
 if (@($summary.coverage.uncovered).Count -gt 0) { Write-Operator ("  Not covered: {0}" -f (@($summary.coverage.uncovered) -join ', ')) 'Yellow' }
 Write-Operator "Summary: $(Join-Path $EvidenceDirectory 'summary.json')" 'Cyan'
-if ($exitCode -ne 0 -or $failed.Count -gt 0) { exit 1 }
+if ($exitCode -ne 0 -or -not $summary.allPassed) { exit 1 }
