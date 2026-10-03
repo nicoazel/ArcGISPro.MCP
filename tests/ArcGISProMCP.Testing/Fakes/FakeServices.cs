@@ -1,4 +1,5 @@
 using System.Text;
+using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Operations.Services;
 
 namespace ArcGISProMCP.Testing;
@@ -98,7 +99,7 @@ internal sealed class FakeMapService(FakeProState state) : IMapService
         {
             return state.Maps.FirstOrDefault(map => string.Equals(map.Name, state.ActiveMapName, StringComparison.Ordinal))
                 ?? state.Maps.FirstOrDefault()
-                ?? throw new InvalidOperationException("No map is available.");
+                ?? throw OperationException.MapNotFound(null);
         }
 
         const string prefix = "pro://map/";
@@ -108,7 +109,7 @@ internal sealed class FakeMapService(FakeProState state) : IMapService
         return state.Maps.FirstOrDefault(map =>
                    string.Equals(map.Uri, value, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(map.Name, value, StringComparison.OrdinalIgnoreCase))
-               ?? throw new InvalidOperationException($"Map '{handleOrName}' was not found.");
+               ?? throw OperationException.MapNotFound(handleOrName);
     }
 
     private static ResolvedMap ToResolved(FakeMap map) => new(FakeProState.MapHandle(map), map.Name, map);
@@ -160,7 +161,7 @@ internal sealed class FakeViewCaptureService(FakeProState state) : IViewCaptureS
             : state.Layouts.FirstOrDefault(candidate =>
                   string.Equals(candidate.Name, layoutReference, StringComparison.OrdinalIgnoreCase) ||
                   string.Equals(FakeProState.LayoutHandle(candidate), layoutReference, StringComparison.OrdinalIgnoreCase))
-              ?? throw new InvalidOperationException($"Layout '{layoutReference}' was not found.");
+              ?? throw OperationException.LayoutNotFound(layoutReference);
         ExportedPaths.Add(outputPath);
         File.WriteAllBytes(outputPath, Png($"layout:{layout.Name}", width + LayoutOvershootPixels, height + LayoutOvershootPixels));
         state.Calls.Add($"view.export-layout {layout.Name} {width}x{height}");

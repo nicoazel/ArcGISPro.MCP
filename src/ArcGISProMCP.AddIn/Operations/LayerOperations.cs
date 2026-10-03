@@ -302,9 +302,9 @@ internal sealed class LayerSetElevationOperation() : ProOperationBase(OperationD
         {
             var map = ProHandles.ResolveMap(mapReference);
             if (map.MapType != MapType.Scene)
-                throw new ArgumentException("Layer elevation placement requires a scene map.", nameof(arguments));
+                throw OperationException.InvalidArgument($"Map '{map.Name}' is not a scene; layer elevation placement requires a scene map.");
             var layer = ProHandles.ResolveLayer(map, layerReference) as FeatureLayer
-                ?? throw new ArgumentException("Layer elevation placement requires a feature layer.", nameof(arguments));
+                ?? throw OperationException.InvalidArgument($"Layer '{layerReference}' is not a feature layer; layer elevation placement requires one.");
             var definition = layer.GetElevationTypeDefinition();
             definition.ElevationType = mode;
             if (hasOffset) definition.CartographicOffset = offset;

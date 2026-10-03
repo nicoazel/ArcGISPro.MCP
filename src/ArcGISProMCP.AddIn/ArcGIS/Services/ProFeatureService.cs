@@ -11,108 +11,126 @@ internal sealed class ProFeatureService : IFeatureService
     public FeatureLayerInfo Describe(FeatureLayerTarget target)
     {
         var (map, layer) = Resolve(target);
-        using var table = LayerData.OpenTable(layer);
-        var definition = table.GetDefinition();
-        using var featureClassDefinition = definition as FeatureClassDefinition;
-        var spatialReference = featureClassDefinition?.GetSpatialReference();
-        return new FeatureLayerInfo(
-            ProHandles.ForMap(map),
-            ProHandles.ForLayer(layer),
-            layer.Name,
-            layer.IsEditable && layer.CanEditData(),
-            featureClassDefinition is not null,
-            definition.GetObjectIDField(),
-            LayerData.HasGlobalId(definition) ? definition.GetGlobalIDField() : null,
-            featureClassDefinition?.GetShapeField(),
-            featureClassDefinition?.GetShapeType().ToString(),
-            spatialReference is null ? null : new FeatureSpatialReference(spatialReference.Wkid, spatialReference.Name),
-            definition.GetFields().Select(field => new FeatureFieldInfo(
-                field.Name,
-                field.AliasName,
-                field.FieldType.ToString(),
-                field.IsNullable,
-                field.IsEditable,
-                field.Length)).ToArray());
+        return LayerData.Read(layer, () =>
+        {
+            using var table = LayerData.OpenTable(layer);
+            var definition = table.GetDefinition();
+            using var featureClassDefinition = definition as FeatureClassDefinition;
+            var spatialReference = featureClassDefinition?.GetSpatialReference();
+            return new FeatureLayerInfo(
+                ProHandles.ForMap(map),
+                ProHandles.ForLayer(layer),
+                layer.Name,
+                layer.IsEditable && layer.CanEditData(),
+                featureClassDefinition is not null,
+                definition.GetObjectIDField(),
+                LayerData.HasGlobalId(definition) ? definition.GetGlobalIDField() : null,
+                featureClassDefinition?.GetShapeField(),
+                featureClassDefinition?.GetShapeType().ToString(),
+                spatialReference is null ? null : new FeatureSpatialReference(spatialReference.Wkid, spatialReference.Name),
+                definition.GetFields().Select(field => new FeatureFieldInfo(
+                    field.Name,
+                    field.AliasName,
+                    field.FieldType.ToString(),
+                    field.IsNullable,
+                    field.IsEditable,
+                    field.Length)).ToArray());
+        });
     }
 
     public FeatureLayerSchema Schema(FeatureLayerTarget target)
     {
         var (map, layer) = Resolve(target);
-        using var table = LayerData.OpenTable(layer);
-        using var definition = table.GetDefinition();
-        return new FeatureLayerSchema(
-            ProHandles.ForMap(map),
-            ProHandles.ForLayer(layer),
-            layer.Name,
-            definition is FeatureClassDefinition,
-            definition.GetObjectIDField(),
-            LayerData.HasGlobalId(definition) ? definition.GetGlobalIDField() : null,
-            definition.GetFields().Select(field => new FeatureSchemaField(field.Name, field.FieldType.ToString())).ToArray());
+        return LayerData.Read(layer, () =>
+        {
+            using var table = LayerData.OpenTable(layer);
+            using var definition = table.GetDefinition();
+            return new FeatureLayerSchema(
+                ProHandles.ForMap(map),
+                ProHandles.ForLayer(layer),
+                layer.Name,
+                definition is FeatureClassDefinition,
+                definition.GetObjectIDField(),
+                LayerData.HasGlobalId(definition) ? definition.GetGlobalIDField() : null,
+                definition.GetFields().Select(field => new FeatureSchemaField(field.Name, field.FieldType.ToString())).ToArray());
+        });
     }
 
     public IReadOnlyList<FeatureRow> Query(FeatureLayerTarget target, FeatureQueryFilter filter, int limit)
     {
         var (_, layer) = Resolve(target);
-        using var table = LayerData.OpenTable(layer);
-        using var definition = table.GetDefinition();
-        var hasGlobalId = LayerData.HasGlobalId(definition);
-        var rows = new List<FeatureRow>();
-        using var cursor = table.Search(CreateFilter(layer, filter), false);
-        while (rows.Count < limit && cursor.MoveNext())
+        return LayerData.Read(layer, () =>
         {
-            using var row = cursor.Current;
-            rows.Add(new FeatureRow(
-                row.GetObjectID(),
-                hasGlobalId ? row.GetGlobalID() : null,
-                filter.SubFields.Select(field => (object?)row[field]).ToArray()));
-        }
-        return rows;
+            using var table = LayerData.OpenTable(layer);
+            using var definition = table.GetDefinition();
+            var hasGlobalId = LayerData.HasGlobalId(definition);
+            var rows = new List<FeatureRow>();
+            using var cursor = table.Search(CreateFilter(layer, filter), false);
+            while (rows.Count < limit && cursor.MoveNext())
+            {
+                using var row = cursor.Current;
+                rows.Add(new FeatureRow(
+                    row.GetObjectID(),
+                    hasGlobalId ? row.GetGlobalID() : null,
+                    filter.SubFields.Select(field => (object?)row[field]).ToArray()));
+            }
+            return rows;
+        });
     }
 
     public FeatureSelectionResult Select(FeatureLayerTarget target, FeatureQueryFilter filter, int limit, bool add)
     {
         var (_, layer) = Resolve(target);
-        using var table = LayerData.OpenTable(layer);
-        var ids = new List<long>();
-        using (var cursor = table.Search(CreateFilter(layer, filter), false))
+        return LayerData.Read(layer, () =>
         {
-            while (ids.Count < limit && cursor.MoveNext())
+            using var table = LayerData.OpenTable(layer);
+            var ids = new List<long>();
+            using (var cursor = table.Search(CreateFilter(layer, filter), false))
             {
-                using var row = cursor.Current;
-                ids.Add(row.GetObjectID());
+                while (ids.Count < limit && cursor.MoveNext())
+                {
+                    using var row = cursor.Current;
+                    ids.Add(row.GetObjectID());
+                }
             }
-        }
-        if (!add && ids.Count == 0) layer.Select(new QueryFilter { ObjectIDs = [] }, SelectionCombinationMethod.New);
-        else if (ids.Count > 0)
-            layer.Select(new QueryFilter { ObjectIDs = ids }, add ? SelectionCombinationMethod.Add : SelectionCombinationMethod.New);
-        return new FeatureSelectionResult(ids.Count, layer.SelectionCount);
+            if (!add && ids.Count == 0) layer.Select(new QueryFilter { ObjectIDs = [] }, SelectionCombinationMethod.New);
+            else if (ids.Count > 0)
+                layer.Select(new QueryFilter { ObjectIDs = ids }, add ? SelectionCombinationMethod.Add : SelectionCombinationMethod.New);
+            return new FeatureSelectionResult(ids.Count, layer.SelectionCount);
+        });
     }
 
     public IReadOnlyList<long> FindObjectIdsByGlobalId(FeatureLayerTarget target, Guid globalId, int maximum)
     {
         var (_, layer) = Resolve(target);
-        using var table = LayerData.OpenTable(layer);
-        var definition = table.GetDefinition();
-        var filter = new QueryFilter { WhereClause = $"{definition.GetGlobalIDField()} = '{globalId:B}'", SubFields = definition.GetObjectIDField() };
-        var ids = new List<long>();
-        using var cursor = table.Search(filter, false);
-        while (ids.Count < maximum && cursor.MoveNext())
+        return LayerData.Read(layer, () =>
         {
-            using var row = cursor.Current;
-            ids.Add(row.GetObjectID());
-        }
-        return ids;
+            using var table = LayerData.OpenTable(layer);
+            var definition = table.GetDefinition();
+            var filter = new QueryFilter { WhereClause = $"{definition.GetGlobalIDField()} = '{globalId:B}'", SubFields = definition.GetObjectIDField() };
+            var ids = new List<long>();
+            using var cursor = table.Search(filter, false);
+            while (ids.Count < maximum && cursor.MoveNext())
+            {
+                using var row = cursor.Current;
+                ids.Add(row.GetObjectID());
+            }
+            return ids;
+        });
     }
 
     public FeatureCreateResult Create(FeatureLayerTarget target, FeatureGeometry geometry, IReadOnlyDictionary<string, object> attributes)
     {
         var (_, layer) = Resolve(target);
-        using var table = LayerData.OpenTable(layer);
-        using var featureClassDefinition = FeatureClass(table);
-        var edit = new EditOperation { Name = "MCP create feature", SelectNewFeatures = false };
-        var token = edit.Create(layer, ToGeometry(geometry, featureClassDefinition.GetSpatialReference()), Values(attributes));
-        if (!edit.Execute()) throw new InvalidOperationException($"ArcGIS could not create the feature: {edit.ErrorMessage}");
-        return new FeatureCreateResult(token.ObjectID, token.GlobalID);
+        return LayerData.Read(layer, () =>
+        {
+            using var table = LayerData.OpenTable(layer);
+            using var featureClassDefinition = FeatureClass(table);
+            var edit = new EditOperation { Name = "MCP create feature", SelectNewFeatures = false };
+            var token = edit.Create(layer, ToGeometry(geometry, featureClassDefinition.GetSpatialReference()), Values(attributes));
+            if (!edit.Execute()) throw new InvalidOperationException($"ArcGIS could not create the feature: {edit.ErrorMessage}");
+            return new FeatureCreateResult(token.ObjectID, token.GlobalID);
+        });
     }
 
     public void Update(FeatureLayerTarget target, long objectId, FeatureGeometry? geometry, IReadOnlyDictionary<string, object> attributes)
@@ -121,9 +139,12 @@ internal sealed class ProFeatureService : IFeatureService
         var edit = new EditOperation { Name = "MCP update feature", SelectModifiedFeatures = false };
         if (geometry is not null)
         {
-            using var table = LayerData.OpenTable(layer);
-            using var featureClassDefinition = FeatureClass(table);
-            edit.Modify(layer, objectId, ToGeometry(geometry, featureClassDefinition.GetSpatialReference()), Values(attributes));
+            LayerData.Read(layer, () =>
+            {
+                using var table = LayerData.OpenTable(layer);
+                using var featureClassDefinition = FeatureClass(table);
+                edit.Modify(layer, objectId, ToGeometry(geometry, featureClassDefinition.GetSpatialReference()), Values(attributes));
+            });
         }
         else edit.Modify(layer, objectId, Values(attributes));
         if (!edit.Execute()) throw new InvalidOperationException($"ArcGIS could not update ObjectID {objectId}: {edit.ErrorMessage}");
@@ -155,6 +176,7 @@ internal sealed class ProFeatureService : IFeatureService
         var subFields = string.Join(",", filter.SubFields);
         if (filter.Envelope is not { } envelope)
             return new QueryFilter { WhereClause = filter.Where, SubFields = subFields };
+        // Called inside the callers' LayerData.Read.
         using var table = LayerData.OpenTable(layer);
         using var definition = FeatureClass(table);
         return new SpatialQueryFilter

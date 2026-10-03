@@ -3,6 +3,7 @@ using ArcGIS.Core.Data;
 using ArcGIS.Core.Data.Exceptions;
 using ArcGIS.Desktop.Mapping;
 using ArcGISProMCP.Core.Operations;
+using ArcGISProMCP.Operations;
 
 namespace ArcGISProMCP.AddIn.ArcGIS;
 
@@ -59,6 +60,45 @@ internal static class LayerData
         EnsureAvailable(layer);
         return Open(layer, layer.GetFeatureClass);
     }
+
+    /// <summary>
+    /// Runs a read of the member's data (definition, search, cursor iteration, counts). ArcGIS keeps a
+    /// layer's table handle after its files are renamed or deleted and flags the layer
+    /// <see cref="ConnectionStatus.Broken"/> only later, so the open succeeds and the next read throws a
+    /// <see cref="GeodatabaseException"/> (seen live: the untranslated base type, "A geodatabase exception has
+    /// occurred.", when a shapefile's files were renamed). That failure becomes
+    /// <c>layer_data_source_unavailable</c>, with the original kept as the inner exception for the audit
+    /// trail, when it says the dataset was not found or the layer's local files are gone. Any other
+    /// geodatabase failure (an invalid where clause, an edit rule) propagates unchanged.
+    /// </summary>
+    public static T Read<T>(MapMember member, Func<T> read)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        try
+        {
+            return read();
+        }
+        catch (GeodatabaseException exception) when (IndicatesMissingSource(member, exception))
+        {
+            throw OperationException.LayerDataSourceUnavailable(member.Name, exception);
+        }
+    }
+
+    /// <inheritdoc cref="Read{T}(MapMember, Func{T})"/>
+    public static void Read(MapMember member, Action read)
+    {
+        ArgumentNullException.ThrowIfNull(read);
+        Read(member, () =>
+        {
+            read();
+            return true;
+        });
+    }
+
+    private static bool IndicatesMissingSource(MapMember member, GeodatabaseException exception) =>
+        exception is GeodatabaseNotFoundOrOpenedException ||
+        IsBroken(member) ||
+        LayerSources.LocalSourceMissing(TryGetPath(member), System.IO.File.Exists, System.IO.Directory.Exists) == true;
 
     /// <summary>The dataset path ArcGIS reports for the member, or null when it has none or cannot be read.</summary>
     public static Uri? TryGetPath(MapMember member)

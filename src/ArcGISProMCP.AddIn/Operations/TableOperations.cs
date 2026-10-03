@@ -33,35 +33,38 @@ internal sealed class TableQueryOperation() : ProOperationBase(OperationDescript
         {
             var map = ProHandles.ResolveMap(mapReference);
             var layer = ProHandles.ResolveLayer(map, layerReference) as BasicFeatureLayer
-                ?? throw new InvalidOperationException("Attribute queries require a feature layer.");
-            using var table = LayerData.OpenTable(layer);
-            var definition = table.GetDefinition();
-            var available = definition.GetFields().Where(field => field.FieldType != FieldType.Geometry).ToArray();
-            var selected = requestedFields.Length == 0
-                ? available.Select(field => field.Name).ToArray()
-                : requestedFields.Select(name => available.FirstOrDefault(field => string.Equals(field.Name, name, StringComparison.OrdinalIgnoreCase))?.Name
-                    ?? throw new ArgumentException($"Unknown or unsupported field '{name}'.", nameof(arguments))).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-            var filter = new QueryFilter { WhereClause = where, SubFields = string.Join(",", selected) };
-            var rows = new List<Dictionary<string, object?>>();
-            using var cursor = table.Search(filter, false);
-            while (rows.Count < limit && cursor.MoveNext())
+                ?? throw OperationException.InvalidArgument($"Layer '{layerReference}' is not a feature layer; attribute queries require one.");
+            return LayerData.Read(layer, () =>
             {
-                using var row = cursor.Current;
-                var values = new Dictionary<string, object?>(StringComparer.Ordinal);
-                foreach (var field in selected) values[field] = PlainValue(row[field]);
-                rows.Add(values);
-            }
+                using var table = LayerData.OpenTable(layer);
+                var definition = table.GetDefinition();
+                var available = definition.GetFields().Where(field => field.FieldType != FieldType.Geometry).ToArray();
+                var selected = requestedFields.Length == 0
+                    ? available.Select(field => field.Name).ToArray()
+                    : requestedFields.Select(name => available.FirstOrDefault(field => string.Equals(field.Name, name, StringComparison.OrdinalIgnoreCase))?.Name
+                        ?? throw OperationException.InvalidArgument($"Unknown or unsupported field '{name}' on layer '{layer.Name}'.")).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+                var filter = new QueryFilter { WhereClause = where, SubFields = string.Join(",", selected) };
+                var rows = new List<Dictionary<string, object?>>();
+                using var cursor = table.Search(filter, false);
+                while (rows.Count < limit && cursor.MoveNext())
+                {
+                    using var row = cursor.Current;
+                    var values = new Dictionary<string, object?>(StringComparer.Ordinal);
+                    foreach (var field in selected) values[field] = PlainValue(row[field]);
+                    rows.Add(values);
+                }
 
-            return new
-            {
-                map = ProHandles.ForMap(map),
-                layer = ProHandles.ForLayer(layer),
-                where,
-                fields = selected,
-                returned = rows.Count,
-                limit,
-                rows
-            };
+                return new
+                {
+                    map = ProHandles.ForMap(map),
+                    layer = ProHandles.ForLayer(layer),
+                    where,
+                    fields = selected,
+                    returned = rows.Count,
+                    limit,
+                    rows
+                };
+            });
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);
@@ -102,59 +105,62 @@ internal sealed class TableStatisticsOperation() : ProOperationBase(OperationDes
         {
             var map = ProHandles.ResolveMap(mapReference);
             var layer = ProHandles.ResolveLayer(map, layerReference) as BasicFeatureLayer
-                ?? throw new InvalidOperationException("Statistics require a feature layer.");
-            using var table = LayerData.OpenTable(layer);
-            var field = table.GetDefinition().GetFields().FirstOrDefault(candidate =>
-                string.Equals(candidate.Name, requestedField, StringComparison.OrdinalIgnoreCase))
-                ?? throw new ArgumentException($"Unknown field '{requestedField}'.", nameof(arguments));
-            if (field.FieldType is not (FieldType.SmallInteger or FieldType.Integer or FieldType.BigInteger or FieldType.Single or FieldType.Double))
-                throw new ArgumentException($"Field '{field.Name}' is not numeric.", nameof(arguments));
-
-            var filter = new QueryFilter { WhereClause = where, SubFields = field.Name };
-            long inspected = 0;
-            long nullCount = 0;
-            double sum = 0;
-            double mean = 0;
-            double? minimum = null;
-            double? maximum = null;
-            using var cursor = table.Search(filter, false);
-            while (inspected < sampleLimit && cursor.MoveNext())
+                ?? throw OperationException.InvalidArgument($"Layer '{layerReference}' is not a feature layer; statistics require one.");
+            return LayerData.Read(layer, () =>
             {
-                using var row = cursor.Current;
-                var value = row[field.Name];
-                inspected++;
-                if (value is null or DBNull)
+                using var table = LayerData.OpenTable(layer);
+                var field = table.GetDefinition().GetFields().FirstOrDefault(candidate =>
+                    string.Equals(candidate.Name, requestedField, StringComparison.OrdinalIgnoreCase))
+                    ?? throw OperationException.InvalidArgument($"Unknown field '{requestedField}' on layer '{layer.Name}'.");
+                if (field.FieldType is not (FieldType.SmallInteger or FieldType.Integer or FieldType.BigInteger or FieldType.Single or FieldType.Double))
+                    throw OperationException.InvalidArgument($"Field '{field.Name}' on layer '{layer.Name}' is not numeric.");
+
+                var filter = new QueryFilter { WhereClause = where, SubFields = field.Name };
+                long inspected = 0;
+                long nullCount = 0;
+                double sum = 0;
+                double mean = 0;
+                double? minimum = null;
+                double? maximum = null;
+                using var cursor = table.Search(filter, false);
+                while (inspected < sampleLimit && cursor.MoveNext())
                 {
-                    nullCount++;
-                    continue;
+                    using var row = cursor.Current;
+                    var value = row[field.Name];
+                    inspected++;
+                    if (value is null or DBNull)
+                    {
+                        nullCount++;
+                        continue;
+                    }
+
+                    var number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                    var valueCount = inspected - nullCount;
+                    sum += number;
+                    mean += (number - mean) / valueCount;
+                    minimum = minimum is null ? number : Math.Min(minimum.Value, number);
+                    maximum = maximum is null ? number : Math.Max(maximum.Value, number);
                 }
 
-                var number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
-                var valueCount = inspected - nullCount;
-                sum += number;
-                mean += (number - mean) / valueCount;
-                minimum = minimum is null ? number : Math.Min(minimum.Value, number);
-                maximum = maximum is null ? number : Math.Max(maximum.Value, number);
-            }
-
-            var matched = table.GetCount(filter);
-            return new
-            {
-                map = ProHandles.ForMap(map),
-                layer = ProHandles.ForLayer(layer),
-                field = field.Name,
-                fieldType = field.FieldType.ToString(),
-                where,
-                matched,
-                inspected,
-                sampled = inspected < matched,
-                nullCount,
-                valueCount = inspected - nullCount,
-                minimum,
-                maximum,
-                sum,
-                mean = inspected == nullCount ? (double?)null : mean
-            };
+                var matched = table.GetCount(filter);
+                return new
+                {
+                    map = ProHandles.ForMap(map),
+                    layer = ProHandles.ForLayer(layer),
+                    field = field.Name,
+                    fieldType = field.FieldType.ToString(),
+                    where,
+                    matched,
+                    inspected,
+                    sampled = inspected < matched,
+                    nullCount,
+                    valueCount = inspected - nullCount,
+                    minimum,
+                    maximum,
+                    sum,
+                    mean = inspected == nullCount ? (double?)null : mean
+                };
+            });
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(data), snapshot.Revision);

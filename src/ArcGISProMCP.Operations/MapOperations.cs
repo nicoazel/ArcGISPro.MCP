@@ -129,5 +129,5 @@ internal static class Basemaps
     public static string Parse(IMapService maps, string value) =>
         maps.TryGetBasemap(Normalize(value), out var canonical)
             ? canonical
-            : throw new ArgumentException(UnknownMessage(value));
+            : throw OperationException.InvalidArgument(UnknownMessage(value));
 }

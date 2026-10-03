@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Operations.Services;
 using ArcGISProMCP.Operations.Tests.Fakes;
 
@@ -83,9 +84,10 @@ public sealed class MapOperationTests
     {
         using var pro = new FakePro();
 
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+        var exception = await Assert.ThrowsAsync<OperationException>(() =>
             pro.RunAsync("map.ensure", """{"name": "Base", "basemap": "Moon"}"""));
 
+        Assert.Equal("invalid_arguments", exception.Code);
         Assert.Equal(
             "Unknown basemap 'Moon'. Use a Pro basemap name such as None, Topographic, Streets, Imagery, or OpenStreetMap.",
             exception.Message);
@@ -128,8 +130,9 @@ public sealed class MapOperationTests
         using var pro = new FakePro();
         pro.State.AddMap("Zoning");
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => pro.RunAsync("map.activate", """{"map": "Nope"}"""));
+        var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("map.activate", """{"map": "Nope"}"""));
 
+        Assert.Equal("map_not_found", exception.Code);
         Assert.Equal("Map 'Nope' was not found.", exception.Message);
         Assert.Equal(0, pro.Dispatcher.UiCalls);
     }
