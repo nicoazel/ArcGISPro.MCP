@@ -13,7 +13,7 @@ namespace ArcGISProMCP.Core.Tests;
 public sealed class AcceptanceManifestTests
 {
     private static readonly string[] StepNames =
-        ["preflight", "verify", "pro-install", "host-probe", "smoke", "feature-gp-arcpy", "stress"];
+        ["preflight", "verify", "pro-install", "host-probe", "smoke", "feature-gp-arcpy", "stress", "operations"];
 
     private static readonly string[] StepStatuses = ["passed", "failed", "skipped", "blocked"];
 
@@ -369,6 +369,290 @@ public sealed class AcceptanceManifestTests
             if (relative != "SHA256SUMS" && !listed.Contains(relative)) problems.Add($"not listed in SHA256SUMS: {relative}");
         }
         return problems;
+    }
+
+    // ------------------------------------------------------------ live operation matrix
+
+    private static readonly string[] CaseStatuses = ["passed", "failed", "skipped"];
+
+    private static JsonElement AnyValue() => JsonSchemas.Parse("{}");
+
+    /// <summary>operations/summary.json as written by tools/run-live-operations.ps1.</summary>
+    internal static JsonElement OperationsSummarySchema() => JsonSchemas.Object(
+        [
+            ("schemaVersion", JsonSchemas.Integer(minimum: 1, maximum: 1)),
+            ("startedAtUtc", JsonSchemas.String(minLength: 1)),
+            ("finishedAtUtc", JsonSchemas.String(minLength: 1)),
+            ("host", JsonSchemas.Object(
+                [
+                    ("kind", JsonSchemas.Enum("arcgis-pro", "fakehost")),
+                    ("processId", AnyValue()),
+                    ("operationCount", JsonSchemas.Integer(minimum: 0)),
+                ],
+                ["kind"])),
+            ("capabilities", JsonSchemas.Object(
+                [("arcpy", JsonSchemas.Boolean()), ("online", JsonSchemas.Boolean())],
+                ["arcpy", "online"])),
+            ("operations", JsonSchemas.Array(JsonSchemas.Object(
+                [
+                    ("id", JsonSchemas.String(minLength: 1, maxLength: 128)),
+                    ("cases", JsonSchemas.Array(JsonSchemas.Object(
+                        [
+                            ("name", JsonSchemas.String(minLength: 1, maxLength: 128)),
+                            ("kind", JsonSchemas.Enum("happy", "negative")),
+                            ("status", JsonSchemas.Enum(CaseStatuses)),
+                            ("errorCode", AnyValue()),
+                            ("durationMs", JsonSchemas.Integer(minimum: 0)),
+                            ("approval", AnyValue()),
+                            ("detail", JsonSchemas.String(maxLength: 4096)),
+                            ("via", JsonSchemas.Enum("gateway")),
+                        ],
+                        ["name", "kind", "status", "errorCode", "durationMs", "approval"]), maxItems: 64)),
+                    ("covered", JsonSchemas.Boolean()),
+                ],
+                ["id", "cases", "covered"]), maxItems: 256)),
+            ("coverage", JsonSchemas.Object(
+                [
+                    ("total", JsonSchemas.Integer(minimum: 0)),
+                    ("covered", JsonSchemas.Integer(minimum: 0)),
+                    ("uncovered", JsonSchemas.Array(JsonSchemas.String(minLength: 1))),
+                ],
+                ["total", "covered", "uncovered"])),
+            ("cases", JsonSchemas.Object(
+                [
+                    ("total", JsonSchemas.Integer(minimum: 0)),
+                    ("happy", JsonSchemas.Integer(minimum: 0)),
+                    ("negative", JsonSchemas.Integer(minimum: 0)),
+                    ("passed", JsonSchemas.Integer(minimum: 0)),
+                    ("failed", JsonSchemas.Integer(minimum: 0)),
+                    ("skipped", JsonSchemas.Integer(minimum: 0)),
+                ],
+                ["total", "happy", "negative", "passed", "failed", "skipped"])),
+            ("approvals", JsonSchemas.Object(
+                [
+                    ("cards", JsonSchemas.Integer(minimum: 0)),
+                    ("requested", JsonSchemas.Integer(minimum: 0)),
+                    ("approved", JsonSchemas.Integer(minimum: 0)),
+                    ("denied", JsonSchemas.Integer(minimum: 0)),
+                    ("expired", JsonSchemas.Integer(minimum: 0)),
+                    ("skipped", JsonSchemas.Integer(minimum: 0)),
+                ],
+                ["cards", "requested", "approved", "denied", "expired", "skipped"])),
+            ("messageAudit", JsonSchemas.Object(
+                [
+                    ("checked", JsonSchemas.Integer(minimum: 0)),
+                    ("flagged", JsonSchemas.Array(JsonSchemas.Object(
+                        [("case", JsonSchemas.String(minLength: 1)), ("findings", JsonSchemas.Array(JsonSchemas.String(minLength: 1)))],
+                        ["case", "findings"]))),
+                ],
+                ["checked", "flagged"])),
+            ("allPassed", JsonSchemas.Boolean()),
+            ("aborted", JsonSchemas.String(maxLength: 4096)),
+        ],
+        ["schemaVersion", "host", "capabilities", "operations", "coverage", "cases", "approvals", "messageAudit", "allPassed"]);
+
+    private sealed record Descriptor(string Id, bool RequiresConfirmation);
+
+    private static Descriptor[] Descriptors()
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "operation-descriptors.json")));
+        return [.. document.RootElement.EnumerateObject()
+            .Select(entry => new Descriptor(entry.Name, entry.Value.GetProperty("requiresConfirmation").GetBoolean()))
+            .OrderBy(descriptor => descriptor.Id, StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// Rules beyond the schema for committed operations evidence: a live ArcGIS Pro host, every
+    /// selected case passed, and exactly the registered operations covered by a passing happy path.
+    /// </summary>
+    private static List<string> OperationsSummaryProblems(JsonElement summary)
+    {
+        var problems = new List<string>();
+        var ids = Descriptors().Select(descriptor => descriptor.Id).ToHashSet(StringComparer.Ordinal);
+        if (summary.GetProperty("host").GetProperty("kind").GetString() != "arcgis-pro")
+            problems.Add("operations evidence must come from ArcGIS Pro, not a FakeHost");
+        if (!summary.GetProperty("allPassed").GetBoolean())
+            problems.Add("operations allPassed is false");
+
+        var operations = summary.GetProperty("operations").EnumerateArray().ToArray();
+        var listed = operations.Select(operation => operation.GetProperty("id").GetString()!).ToHashSet(StringComparer.Ordinal);
+        foreach (var id in ids.Except(listed, StringComparer.Ordinal).Order(StringComparer.Ordinal))
+            problems.Add($"operation {id} is not listed");
+        foreach (var id in listed.Except(ids, StringComparer.Ordinal).Order(StringComparer.Ordinal))
+            problems.Add($"operation {id} is not a registered operation");
+
+        var covered = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var operation in operations)
+        {
+            var id = operation.GetProperty("id").GetString()!;
+            var cases = operation.GetProperty("cases").EnumerateArray().ToArray();
+            foreach (var failed in cases.Where(c => c.GetProperty("status").GetString() == "failed"))
+                problems.Add($"{id} case {failed.GetProperty("name").GetString()} failed");
+            var happyPassed = cases.Any(c => c.GetProperty("kind").GetString() == "happy" && c.GetProperty("status").GetString() == "passed");
+            if (operation.GetProperty("covered").GetBoolean() != happyPassed)
+                problems.Add($"{id} covered flag does not match its passing happy cases");
+            if (happyPassed) covered.Add(id);
+        }
+        foreach (var id in ids.Except(covered, StringComparer.Ordinal).Order(StringComparer.Ordinal))
+            problems.Add($"operation {id} has no passing happy-path case");
+
+        var coverage = summary.GetProperty("coverage");
+        if (coverage.GetProperty("total").GetInt32() != ids.Count)
+            problems.Add($"coverage.total is {coverage.GetProperty("total").GetInt32()}, expected {ids.Count}");
+        if (coverage.GetProperty("covered").GetInt32() != covered.Count)
+            problems.Add($"coverage.covered is {coverage.GetProperty("covered").GetInt32()}, but {covered.Count} operations have a passing happy case");
+        return problems;
+    }
+
+    /// <summary>A summary in which every registered operation passed one happy and, if gated, one card case.</summary>
+    private static JsonObject CompleteOperationsSummary()
+    {
+        var descriptors = Descriptors();
+        var operations = new JsonArray();
+        foreach (var descriptor in descriptors)
+        {
+            operations.Add(new JsonObject
+            {
+                ["id"] = descriptor.Id,
+                ["cases"] = new JsonArray(new JsonObject
+                {
+                    ["name"] = descriptor.Id.Replace('.', '-') + "-happy",
+                    ["kind"] = "happy",
+                    ["status"] = "passed",
+                    ["errorCode"] = null,
+                    ["durationMs"] = 12,
+                    ["approval"] = descriptor.RequiresConfirmation ? "approved" : null,
+                }),
+                ["covered"] = true,
+            });
+        }
+        return new JsonObject
+        {
+            ["schemaVersion"] = 1,
+            ["startedAtUtc"] = "2026-10-02T10:00:00.0000000Z",
+            ["finishedAtUtc"] = "2026-10-02T10:20:00.0000000Z",
+            ["host"] = new JsonObject { ["kind"] = "arcgis-pro", ["processId"] = 4242, ["operationCount"] = descriptors.Length },
+            ["capabilities"] = new JsonObject { ["arcpy"] = true, ["online"] = true },
+            ["operations"] = operations,
+            ["coverage"] = new JsonObject { ["total"] = descriptors.Length, ["covered"] = descriptors.Length, ["uncovered"] = new JsonArray() },
+            ["cases"] = new JsonObject { ["total"] = descriptors.Length, ["happy"] = descriptors.Length, ["negative"] = 0, ["passed"] = descriptors.Length, ["failed"] = 0, ["skipped"] = 0 },
+            ["approvals"] = new JsonObject { ["cards"] = 8, ["requested"] = 8, ["approved"] = 7, ["denied"] = 1, ["expired"] = 0, ["skipped"] = 0 },
+            ["messageAudit"] = new JsonObject { ["checked"] = 29, ["flagged"] = new JsonArray() },
+            ["allPassed"] = true,
+        };
+    }
+
+    [Fact]
+    public void Operations_summary_rules_accept_full_coverage_and_reject_gaps()
+    {
+        var complete = CompleteOperationsSummary();
+        Assert.Empty(OperationArgumentValidator.Validate(ToElement(complete), OperationsSummarySchema()));
+        Assert.Empty(OperationsSummaryProblems(ToElement(complete)));
+
+        var fakeHost = CompleteOperationsSummary();
+        fakeHost["host"]!["kind"] = "fakehost";
+        Assert.Contains(OperationsSummaryProblems(ToElement(fakeHost)), p => p.Contains("FakeHost", StringComparison.Ordinal));
+
+        var missing = CompleteOperationsSummary();
+        missing["operations"]!.AsArray().RemoveAt(0);
+        Assert.Contains(OperationsSummaryProblems(ToElement(missing)), p => p.Contains("arcpy.inspect-script", StringComparison.Ordinal));
+
+        var skipped = CompleteOperationsSummary();
+        var firstCase = skipped["operations"]![1]!["cases"]![0]!;
+        firstCase["status"] = "skipped";
+        Assert.Contains(OperationsSummaryProblems(ToElement(skipped)), p => p.Contains("arcpy.run-script", StringComparison.Ordinal));
+
+        var failed = CompleteOperationsSummary();
+        failed["operations"]![2]!["cases"]!.AsArray().Add(new JsonObject
+        {
+            ["name"] = "basemap-set-unknown", ["kind"] = "negative", ["status"] = "failed",
+            ["errorCode"] = "operation_failed", ["durationMs"] = 5, ["approval"] = null,
+        });
+        Assert.Contains(OperationsSummaryProblems(ToElement(failed)), p => p.Contains("basemap-set-unknown", StringComparison.Ordinal));
+
+        var badStatus = CompleteOperationsSummary();
+        badStatus["operations"]![0]!["cases"]![0]!["status"] = "ok";
+        Assert.NotEmpty(OperationArgumentValidator.Validate(ToElement(badStatus), OperationsSummarySchema()));
+    }
+
+    [Fact]
+    public void Committed_operations_summaries_cover_every_registered_operation()
+    {
+        var root = Path.Combine(RepositoryRoot(), "docs", "acceptance");
+        if (!Directory.Exists(root)) return;
+
+        foreach (var folder in Directory.EnumerateDirectories(root))
+        {
+            var path = Path.Combine(folder, "operations", "summary.json");
+            if (!File.Exists(path)) continue;
+            var name = Path.GetFileName(folder);
+            var summary = JsonSchemas.Parse(File.ReadAllText(path));
+            var issues = OperationArgumentValidator.Validate(summary, OperationsSummarySchema());
+            Assert.True(issues.Count == 0, $"{name}: " + string.Join("; ", issues.Select(i => $"{i.Path} {i.Message}")));
+            var problems = OperationsSummaryProblems(summary);
+            Assert.True(problems.Count == 0, $"{name}: " + string.Join("; ", problems));
+            Assert.True(File.Exists(Path.Combine(folder, "operations", "errors.md")), $"{name}: operations/errors.md is missing.");
+        }
+    }
+
+    private sealed record PlanCase(string Key, string Operation, string Kind, string? Card, string? ExpectErrorCode, string[] Requires);
+
+    private static PlanCase[] LivePlanCases()
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepositoryRoot(), "tools", "live-operations-plan.json")));
+        static string? Optional(JsonElement element, string name) =>
+            element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        return [.. document.RootElement.GetProperty("phases").EnumerateArray()
+            .SelectMany(phase => phase.GetProperty("cases").EnumerateArray())
+            .Select(item => new PlanCase(
+                item.GetProperty("key").GetString()!,
+                item.GetProperty("operation").GetString()!,
+                item.GetProperty("kind").GetString()!,
+                Optional(item, "card"),
+                Optional(item, "expectErrorCode"),
+                item.TryGetProperty("requires", out var requires) ? [.. requires.EnumerateArray().Select(r => r.GetString()!)] : []))];
+    }
+
+    [Fact]
+    public void Live_operation_plan_covers_every_descriptor_and_gated_operation()
+    {
+        var cases = LivePlanCases();
+        var descriptors = Descriptors();
+        var ids = descriptors.Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
+
+        Assert.Empty(cases.GroupBy(c => c.Key, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key));
+        Assert.Empty(cases.Where(c => !ids.Contains(c.Operation)).Select(c => $"{c.Key}: {c.Operation}"));
+        Assert.All(cases, c => Assert.Contains(c.Kind, new[] { "happy", "negative" }));
+        Assert.All(cases, c => Assert.All(c.Requires, r => Assert.Contains(r, new[] { "arcpy", "online" })));
+        Assert.Empty(descriptors.Where(d => !cases.Any(c => c.Operation == d.Id && c.Kind == "happy")).Select(d => d.Id));
+
+        foreach (var gated in descriptors.Where(d => d.RequiresConfirmation))
+        {
+            Assert.True(cases.Any(c => c.Operation == gated.Id && c.Kind == "happy" && c.Card == "approve"),
+                $"{gated.Id} has no approve card");
+            Assert.True(cases.Any(c => c.Operation == gated.Id && c.Card is null && c.ExpectErrorCode == "confirmation_required"),
+                $"{gated.Id} has no no-token confirmation_required case");
+        }
+        Assert.All(cases.Where(c => c.Card is not null), c => Assert.Contains(c.Operation, descriptors.Where(d => d.RequiresConfirmation).Select(d => d.Id)));
+        Assert.Equal(7, cases.Count(c => c.Card == "approve"));
+        var deny = Assert.Single(cases, c => c.Card == "deny");
+        Assert.Equal("confirmation_required", deny.ExpectErrorCode);
+        // project.open replaces the project, so it is the final call of the run.
+        Assert.Equal("project.open", cases[^1].Operation);
+        Assert.Equal("approve", cases[^1].Card);
+    }
+
+    [Fact]
+    public void Every_live_plan_case_is_implemented_by_the_runner()
+    {
+        var script = File.ReadAllText(Path.Combine(RepositoryRoot(), "tools", "run-live-operations.ps1"));
+        var implemented = System.Text.RegularExpressions.Regex.Matches(script, @"(?m)^Register-Case '([^']+)'")
+            .Select(match => match.Groups[1].Value)
+            .ToArray();
+        Assert.Empty(implemented.GroupBy(key => key, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key));
+        var planned = LivePlanCases().Select(c => c.Key).ToHashSet(StringComparer.Ordinal);
+        Assert.Empty(planned.Except(implemented, StringComparer.Ordinal));
+        Assert.Empty(implemented.Except(planned, StringComparer.Ordinal));
     }
 
     private static string HashFile(string path)
