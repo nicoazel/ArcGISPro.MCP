@@ -43,6 +43,20 @@ if (-not (Test-Path -LiteralPath $proposalGeodatabase -PathType Container) -or
     @((Get-ChildItem -LiteralPath $proposalGeodatabase -Filter '*.gdbtable' -File -ErrorAction SilentlyContinue)).Count -eq 0) {
     throw "Standalone proposal geodatabase is missing or incomplete: $proposalGeodatabase"
 }
+
+# ArcGIS Pro locks data it has open (*.sr.lock next to shapefiles, *.lock inside the geodatabase).
+# Run against a stable, git-ignored copy so a live session never leaves locks in tests\data.
+$fixtureCopyRoot = Join-Path $repoRoot 'artifacts\urban-stress\fixtures'
+if (-not (Test-Path -LiteralPath (Join-Path $fixtureCopyRoot 'MasterPlan.gdb') -PathType Container)) {
+    $null = New-Item -ItemType Directory -Path $fixtureCopyRoot -Force
+    Copy-Item -LiteralPath $fixtureRoot -Destination (Join-Path $fixtureCopyRoot 'SHP') -Recurse -Force
+    Copy-Item -LiteralPath $proposalGeodatabase -Destination (Join-Path $fixtureCopyRoot 'MasterPlan.gdb') -Recurse -Force
+    Get-ChildItem -LiteralPath $fixtureCopyRoot -Recurse -File -Filter '*.lock' | Remove-Item -Force
+}
+$fixtureRoot = Join-Path $fixtureCopyRoot 'SHP'
+$proposalGeodatabase = Join-Path $fixtureCopyRoot 'MasterPlan.gdb'
+$proposal = Join-Path $proposalGeodatabase 'ProposedBuildings'
+$massing = Join-Path $proposalGeodatabase 'ProposedMassing'
 # Written by tools/create-synthetic-test-data.py alongside the fixture it describes.
 $expectedStatisticsPath = Join-Path $repoRoot 'tests\data\expected-statistics.json'
 $expectedStatistics = Get-Content -LiteralPath $expectedStatisticsPath -Raw | ConvertFrom-Json
