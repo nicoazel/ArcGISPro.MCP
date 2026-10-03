@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [0.3.0] - unreleased
 
-Second development preview: typed MCP results with output schemas, resources and prompts; geoprocessing discovery, risk tiers and dry runs; approval for project and feature edits; deterministic agent evaluations; synthetic CC0 test data; a live operation matrix over every operation; and the first committed live ArcGIS Pro acceptance evidence. Unsigned; not a production release.
+Second development preview: typed MCP results with output schemas, resources and prompts; geoprocessing discovery, risk tiers and dry runs; approval for project and feature edits; deterministic agent evaluations; synthetic CC0 test data; live operation matrix tooling over every operation, whose first recorded run is to be part of the release evidence (not recorded yet); and the first committed live ArcGIS Pro acceptance evidence. Unsigned; not a production release.
 
 ### Added
 
