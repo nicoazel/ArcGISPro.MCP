@@ -66,6 +66,7 @@ C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview\
     INSTALL.txt
     ArcGISProMCP.AddIn.esriAddinX
     server\arcgis-pro-mcp.exe        <- the command your MCP client runs
+    server\*.pdb                     (debug symbols)
     server\skills\*.skill.json
     docs\  workflows\  README.md  LICENSE  release.json  checksums.sha256
 ```
@@ -281,6 +282,7 @@ The archive has one versioned root directory, `ArcGISProMCP-<version>-win-x64-de
 INSTALL.txt
 ArcGISProMCP.AddIn.esriAddinX
 server/arcgis-pro-mcp.exe
+server/*.pdb
 server/skills/*.skill.json
 docs/*.md
 workflows/*.workflow.json
