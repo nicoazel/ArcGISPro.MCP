@@ -14,11 +14,11 @@
     writes -OutputPath.
 
 .EXAMPLE
-    ./tools/extract-release-notes.ps1 -Version 0.3.0 -Ref v0.3.0 -OutputPath artifacts/release-notes.md
+    ./tools/extract-release-notes.ps1 -Version 0.3.1 -Ref v0.3.1 -OutputPath artifacts/release-notes.md
 #>
 [CmdletBinding()]
 param(
-    # Version without the leading v and without a prerelease suffix, for example 0.3.0.
+    # Version without the leading v and without a prerelease suffix, for example 0.3.1.
     [Parameter(Mandatory)]
     [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+$')]
     [string]$Version,
