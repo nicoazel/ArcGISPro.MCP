@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
-## [0.3.0] - unreleased
+## [0.3.0] - 2026-10-03
 
 Second development preview: typed MCP results with output schemas, resources and prompts; geoprocessing discovery, risk tiers and dry runs; approval for project and feature edits; deterministic agent evaluations; synthetic CC0 test data; a live operation matrix over every operation; and committed live ArcGIS Pro acceptance evidence, including the first full operation matrix run. Unsigned; not a production release.
 
