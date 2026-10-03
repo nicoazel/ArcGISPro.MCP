@@ -76,7 +76,8 @@ public sealed class AcceptanceManifestTests
             ("evidence", JsonSchemas.Array(JsonSchemas.String(minLength: 1), maxItems: 256)),
             ("evidenceSkipped", JsonSchemas.Array(JsonSchemas.String(minLength: 1), maxItems: 256)),
             // Written by run-acceptance.ps1 -Commit once it rewrote evidence paths to the committed
-            // layout; older folders (2026-09-28-5f34f16) list working-evidence paths and omit it.
+            // layout; older folders (such as the first run, kept in the private archive) list
+            // working-evidence paths and omit it.
             ("evidencePathsRelative", JsonSchemas.Boolean()),
             ("visualNotesSource", JsonSchemas.String(minLength: 1, maxLength: 1024)),
             // Disclosures about how the run was carried out, from -RunNotes, when given.
@@ -389,7 +390,7 @@ public sealed class AcceptanceManifestTests
     [Fact]
     public void Manifests_without_relative_evidence_paths_are_exempt()
     {
-        // The first committed folder (2026-09-28-5f34f16) predates the rule and is immutable.
+        // Folders written before the rule (the first run, kept in the private archive) are immutable.
         var sample = SampleNode();
         Assert.Null(sample["evidencePathsRelative"]);
         Assert.Empty(EvidencePathProblems(ToElement(sample), Path.GetTempPath()));
