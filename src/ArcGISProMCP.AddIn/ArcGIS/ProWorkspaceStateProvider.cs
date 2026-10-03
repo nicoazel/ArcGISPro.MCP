@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Collections.Immutable;
 using System.Security.Cryptography;
@@ -43,18 +44,55 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
     /// Drains the host once (main CIM thread, then WPF dispatcher application-idle, then the main CIM
     /// thread again) so host events queued by the write are published, then samples until the
     /// revision is quiet. The whole settle is bounded by <see cref="SettleBudget"/>; when it runs
-    /// out, a plain snapshot is returned and the revision log records it.
+    /// out, a plain snapshot is returned. With revision logging on, every settle is timed and logged
+    /// (see <see cref="GetSettledSnapshotLoggedAsync"/>); with it off, nothing is timed or formatted.
     /// </summary>
     public async Task<WorkspaceSnapshot> GetSettledSnapshotAsync(CancellationToken cancellationToken)
     {
+        if (RevisionLog.Enabled) return await GetSettledSnapshotLoggedAsync(cancellationToken).ConfigureAwait(false);
         var result = await WorkspaceSnapshotSettler.SettleWithinBudgetAsync(
             DrainHostAsync, GetSnapshotAsync, SettleBudget, cancellationToken).ConfigureAwait(false);
-        if (!RevisionLog.Enabled) return result.Snapshot;
-        if (result.TimedOut)
-            RevisionLog.Append($"settle-timeout\t{Interlocked.Read(ref _mutationSequence)}\t{result.Snapshot.Revision}\tbudget {SettleBudget.TotalMilliseconds:0} ms elapsed; published a plain sample");
-        else if (!result.Settled)
-            RevisionLog.Append($"settle-unsettled\t{Interlocked.Read(ref _mutationSequence)}\t{result.Snapshot.Revision}\t{result.Samples} samples without {WorkspaceSnapshotSettler.RequiredQuietSamples} quiet in a row");
         return result.Snapshot;
+    }
+
+    /// <summary>
+    /// The same settle, timed for tuning: appends
+    /// <c>settle-ok|settle-timeout|settle-unsettled \t drainMs \t sampleMs \t samples \t revision</c>.
+    /// <c>drainMs</c> runs from the start of the settle to the end of the host drain and
+    /// <c>sampleMs</c> from there to the end of the settle (the quiet samples, or the budget fallback
+    /// sample). When the drain did not finish within the budget, <c>drainMs</c> covers the whole
+    /// settle and <c>sampleMs</c> is 0. Measurement only: the settle itself is unchanged.
+    /// </summary>
+    private async Task<WorkspaceSnapshot> GetSettledSnapshotLoggedAsync(CancellationToken cancellationToken)
+    {
+        var timing = new SettleTiming();
+        var started = Stopwatch.GetTimestamp();
+        var result = await WorkspaceSnapshotSettler.SettleWithinBudgetAsync(
+            timing.DrainAsync, GetSnapshotAsync, SettleBudget, cancellationToken).ConfigureAwait(false);
+        var ended = Stopwatch.GetTimestamp();
+        // A drain abandoned by the budget may still finish later; only a drain that ended inside
+        // this settle splits it.
+        var drained = timing.DrainedAt;
+        var drainEnd = drained != 0 && drained <= ended ? drained : ended;
+        var drainMs = (long)Stopwatch.GetElapsedTime(started, drainEnd).TotalMilliseconds;
+        var sampleMs = (long)Stopwatch.GetElapsedTime(drainEnd, ended).TotalMilliseconds;
+        var outcome = result.TimedOut ? "settle-timeout" : result.Settled ? "settle-ok" : "settle-unsettled";
+        RevisionLog.Append($"{outcome}\t{drainMs}\t{sampleMs}\t{result.Samples}\t{result.Snapshot.Revision}");
+        return result.Snapshot;
+    }
+
+    /// <summary>Records when the host drain of one settle finished (a <see cref="Stopwatch"/> timestamp).</summary>
+    private sealed class SettleTiming
+    {
+        private long _drainedAt;
+
+        public long DrainedAt => Interlocked.Read(ref _drainedAt);
+
+        public async Task DrainAsync(CancellationToken cancellationToken)
+        {
+            await DrainHostAsync(cancellationToken).ConfigureAwait(false);
+            Interlocked.Exchange(ref _drainedAt, Stopwatch.GetTimestamp());
+        }
     }
 
     private static async Task DrainHostAsync(CancellationToken cancellationToken)
@@ -171,7 +209,7 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
 
 /// <summary>
 /// Opt-in diagnostics: <c>ARCGIS_PRO_MCP_REVISION_LOG=1</c> (or <c>true</c>) appends revision changes,
-/// the host events behind them and settle outcomes to
+/// the host events behind them and the outcome and timing of every post-write settle to
 /// <c>%LOCALAPPDATA%\ArcGISProMCP\diagnostics\revisions-&lt;pid&gt;.log</c>, one file per ArcGIS Pro
 /// process. Lines include the project URI and map and layout names. Writing stops once the file
 /// reaches <see cref="MaximumBytes"/>. Callers check <see cref="Enabled"/> before building a line.
