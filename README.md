@@ -151,3 +151,5 @@ The build uses the `Esri.ArcGISPro.Extensions30` NuGet package, so it and the po
 ## Contributing, security and license
 
 Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md). Licensed under [Apache-2.0](LICENSE). ArcGIS Pro and other Esri products require their own licenses.
+
+ArcGIS and ArcGIS Pro are trademarks of Esri; this project is not affiliated with or endorsed by Esri.
