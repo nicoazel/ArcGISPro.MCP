@@ -35,7 +35,8 @@
         before ': ' in each -VisuallyInspected note, are rewritten to the committed layout (for
         example stress/tod/final-layout.png -> images/layout-tod.png), and it records
         "evidencePathsRelative": true. A note whose path was not committed is prefixed with
-        'not committed: '.
+        'not committed: '. The committed stress/summary.json names each case's capture by its
+        committed image (images/layout-<case>.png), or 'not committed: <working path>'.
       * -RunNotes records how the run was carried out (who decided the approval cards, prompts
         answered on the host, anything else a reviewer needs) as runNotes[] in manifest.json and
         a "Run notes" section of summary.md, so these disclosures are part of the checksummed
@@ -959,6 +960,26 @@ if ($Commit) {
             $index++
         }
         else { $null = $skipped.Add("$png (could not fit in 500 KB)") }
+    }
+    # The committed stress summary names each final layout capture by its committed image
+    # (images/layout-<case>.png) instead of the working-evidence path under artifacts/.
+    $stressSummary = Join-Path $commitFolder 'stress\summary.json'
+    if (Test-Path -LiteralPath $stressSummary -PathType Leaf) {
+        $stressCases = @(Get-Content -LiteralPath $stressSummary -Raw | ConvertFrom-Json | ForEach-Object { $_ })
+        foreach ($case in $stressCases) {
+            if (-not $case.PSObject.Properties['capture'] -or -not $case.capture) { continue }
+            $capture = [string]$case.capture
+            $resolved = @(Resolve-CommittedEvidence $committedPaths $capture)
+            if ($resolved.Count -eq 1) { $case.capture = $resolved[0] }
+            else {
+                $working = $capture
+                if ([IO.Path]::IsPathRooted($working) -and (Test-PathUnderRoot $working $OutputDirectory)) { $working = Get-RelativePath $OutputDirectory $working }
+                elseif ([IO.Path]::IsPathRooted($working)) { $working = Split-Path -Leaf $working }
+                $case.capture = 'not committed: ' + $working.Replace('\', '/')
+            }
+        }
+        # -InputObject keeps a one-case summary an array (piping would unwrap it).
+        Write-Utf8File $stressSummary (((ConvertTo-Json -InputObject $stressCases -Depth 20) -replace "`r`n", "`n") + "`n")
     }
     $manifest['evidence'] = @($copied)
     # List only files this folder contains, at their committed paths. Working evidence under
