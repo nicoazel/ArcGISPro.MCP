@@ -150,6 +150,74 @@ public sealed class RegistryAndWorkflowAssetTests
         Assert.Equal("view.capture", steps[^1].GetProperty("operation").GetString());
     }
 
+    // Legends and scale bars sit at least this far above the bottom edge of the
+    // map frame that contains them, clear of the basemap attribution text that
+    // ArcGIS Pro draws along that edge.
+    private const double AttributionClearance = 0.35;
+
+    [Theory]
+    [InlineData("master-cartography.workflow.json")]
+    [InlineData("pittsburgh-block-mixed-use-showcase.workflow.json")]
+    [InlineData("urban-tod-corridor.workflow.json")]
+    [InlineData("urban-green-loop.workflow.json")]
+    [InlineData("urban-mixed-use-massing.workflow.json")]
+    public void Bundled_workflow_surrounds_stay_inside_a_frame_clear_of_attribution_and_each_other(string fileName)
+    {
+        using var document = JsonDocument.Parse(ReadAsset("workflows", fileName));
+        var steps = document.RootElement.GetProperty("steps").EnumerateArray().ToArray();
+        var frames = steps
+            .Where(step => step.GetProperty("operation").GetString() == "layout.add-map-frame")
+            .Select(step => PlacedBox(step.GetProperty("arguments"), "map-frame"))
+            .ToArray();
+        var surrounds = steps
+            .Where(step => step.GetProperty("operation").GetString() == "layout.ensure-surround")
+            .Select(step => step.GetProperty("arguments"))
+            .Select(arguments => (Box: PlacedBox(arguments, arguments.GetProperty("kind").GetString()!),
+                Frame: arguments.GetProperty("frame").GetString()!))
+            .ToArray();
+
+        foreach (var (box, linkedFrame) in surrounds)
+        {
+            Assert.Contains(frames, frame => frame.Layout == box.Layout && frame.Name == linkedFrame);
+            var container = frames.FirstOrDefault(frame => frame.Layout == box.Layout && frame.Contains(box));
+            Assert.True(container is not null, $"{fileName}: {box.Kind} '{box.Name}' is not inside any map frame.");
+            if (box.Kind is "legend" or "scale-bar")
+                Assert.True(box.Y >= container!.Y + AttributionClearance - 1e-9,
+                    $"{fileName}: {box.Kind} '{box.Name}' bottom {box.Y} is less than {AttributionClearance} in above frame '{container.Name}' bottom {container.Y}.");
+        }
+
+        for (var i = 0; i < surrounds.Length; i++)
+            for (var j = i + 1; j < surrounds.Length; j++)
+            {
+                var (a, b) = (surrounds[i].Box, surrounds[j].Box);
+                Assert.False(a.Layout == b.Layout && a.Overlaps(b),
+                    $"{fileName}: {a.Kind} '{a.Name}' overlaps {b.Kind} '{b.Name}'.");
+            }
+    }
+
+    private static Box PlacedBox(JsonElement arguments, string kind) => new(
+        arguments.GetProperty("layout").GetString()!,
+        arguments.GetProperty("name").GetString()!,
+        kind,
+        arguments.GetProperty("x").GetDouble(),
+        arguments.GetProperty("y").GetDouble(),
+        arguments.GetProperty("width").GetDouble(),
+        arguments.GetProperty("height").GetDouble());
+
+    private sealed record Box(string Layout, string Name, string Kind, double X, double Y, double Width, double Height)
+    {
+        private const double Tolerance = 1e-9;
+        public double XMax => X + Width;
+        public double YMax => Y + Height;
+
+        public bool Contains(Box other) =>
+            other.X >= X - Tolerance && other.Y >= Y - Tolerance &&
+            other.XMax <= XMax + Tolerance && other.YMax <= YMax + Tolerance;
+
+        public bool Overlaps(Box other) =>
+            X < other.XMax && other.X < XMax && Y < other.YMax && other.Y < YMax;
+    }
+
     private static bool IsAcyclic(JsonElement[] steps)
     {
         var edges = steps.ToDictionary(s => s.GetProperty("id").GetString()!, s => s.GetProperty("dependsOn").EnumerateArray().Select(d => d.GetString()!).ToArray(), StringComparer.Ordinal);
