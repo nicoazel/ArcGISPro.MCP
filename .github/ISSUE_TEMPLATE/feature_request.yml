@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose a new operation, workflow, gateway capability or documentation improvement.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ArcGIS Pro MCP Studio is a single-maintainer development preview, so small, focused proposals are the easiest to take on. New operations follow the [extension rules](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/architecture.md#extension-rules).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do in ArcGIS Pro through an MCP client, and what stops you today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: The operation, arguments, workflow step or behaviour you have in mind. Existing operation ids or ArcGIS Pro SDK APIs are welcome.
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Expected risk level
+      description: How the change would touch the user's project. Anything destructive or with external side effects requires a dockpane approval.
+      options:
+        - ReadOnly (inspects state only)
+        - SafeWrite (changes the open project, reversible)
+        - Destructive (deletes or overwrites data)
+        - ExternalSideEffect (files, network, credits, other processes)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: For example an existing `gp.run` tool, a workflow, or an ArcPy script.
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to open a pull request for this.
