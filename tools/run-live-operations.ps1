@@ -55,6 +55,8 @@ param(
     [int]$OperatorTimeoutSeconds = 600,
     [switch]$Offline,
     [switch]$AllowFakeHost,
+    # Pre-run without an operator: approval-card cases are recorded as skipped (the section then cannot pass).
+    [switch]$SkipCards,
     [Alias('DryRun')]
     [switch]$PlanOnly
 )
@@ -956,6 +958,11 @@ function Invoke-PlanCase($Case) {
     $missing = @($Case.Requires | Where-Object { -not $script:capabilities[$_] })
     if ($missing.Count -gt 0) {
         $record.detail = "requires $($missing -join ', '), which this run does not have"
+        Write-Operator ('[skipped] {0}: {1}' -f $Case.Key, $record.detail) 'DarkGray'
+        return
+    }
+    if ($SkipCards -and $Case.Card) {
+        $record.detail = 'approval card skipped (-SkipCards pre-run)'
         Write-Operator ('[skipped] {0}: {1}' -f $Case.Key, $record.detail) 'DarkGray'
         return
     }
