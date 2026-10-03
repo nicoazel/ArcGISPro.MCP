@@ -8,7 +8,7 @@
 
 An ArcGIS Pro 3.7 add-in and a small stdio MCP gateway that let an MCP client (Claude Desktop, Claude Code or any other) work inside the ArcGIS Pro session you already have open. The model sees 16 gateway tools, searches a registry of 41 typed, schema-validated operations and the 2,200+ installed geoprocessing tools, and invokes them by stable id. Every write is checked against the current workspace revision, every risky write waits for a person to approve those exact arguments in an ArcGIS Pro dockpane, and every invocation is audited.
 
-**Status: development preview (0.3.0, unsigned).** Supported: an interactive, same-user Windows workstation with dockpane approvals. Autonomous mode is an opt-in expert setting and is not recommended. The latest live acceptance evidence, [`docs/acceptance/2026-09-29-96f6a5b`](docs/acceptance/2026-09-29-96f6a5b/summary.md), covers default mode on ArcGIS Pro 3.7.1; see [Verification](#verification-and-acceptance-evidence) for what it does and does not cover.
+**Status: development preview (0.3.0, unsigned).** Supported: an interactive, same-user Windows workstation with dockpane approvals. Autonomous mode is an opt-in expert setting and is not recommended. The latest live acceptance evidence, [`docs/acceptance/2026-10-03-e7deee2`](docs/acceptance/2026-10-03-e7deee2/summary.md), covers default mode on ArcGIS Pro 3.7.1, including all 41 operations; see [Verification](#verification-and-acceptance-evidence) for what it does and does not cover.
 
 ## Why this design
 
@@ -95,11 +95,11 @@ Build: .NET 10 with `TreatWarningsAsErrors`; 0 warnings. Tests (xUnit v3), all p
 | Project | Tests | What it covers |
 | --- | ---: | --- |
 | `ArcGISProMCP.Core.Tests` | 490 | Executor policy, approvals, schemas, search, toolbox catalog and risk tiers, workflows and their layout placement, audit, acceptance manifests and the operation matrix plan, synthetic test data |
-| `ArcGISProMCP.Operations.Tests` | 223 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
+| `ArcGISProMCP.Operations.Tests` | 246 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
 | `ArcGISProMCP.Server.Tests` | 123 | MCP contract snapshots, envelopes against output schemas, end-to-end runs through the real bridge handler, E3 trajectories |
 | `ArcGISProMCP.Bridge.Tests` | 67 | Pipe framing, discovery, host scheduling and the request handler |
 | `ArcGISProMCP.Evals.Tests` | 19 | Retrieval suites gated on a measured baseline, scorecard writing, descriptor dump checks |
-| **Total** | **922** | |
+| **Total** | **945** | |
 
 Eval scorecard ([evals/README.md](evals/README.md); gp suites measured against ArcGIS Pro 3.7.1, 2,210 system tools):
 
@@ -115,11 +115,16 @@ CI (GitHub Actions, pinned to commit SHAs, read-only permissions): a Windows bui
 
 ## Verification and acceptance evidence
 
-Portable tests are not host acceptance. The live acceptance tooling exists: `tools/run-acceptance.ps1` records the commit, ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into `docs/acceptance/<date>-<sha7>/`, and a Core test validates every committed folder against the [evidence contract](docs/acceptance/README.md). The latest committed evidence is [`docs/acceptance/2026-09-29-96f6a5b`](docs/acceptance/2026-09-29-96f6a5b/summary.md): verify, the loaded-DLL match, host probe, the MCP smoke test and the three bundled urban workflows x 3 runs on ArcGIS Pro 3.7.1 (3.7.1.1904; registry 3.7.0) in default mode, with the layouts visually inspected (cosmetic legend/scale-bar overlaps are recorded). It does not cover autonomous mode or the feature/GP/ArcPy section.
+Portable tests are not host acceptance. The live acceptance tooling: `tools/run-acceptance.ps1` records the commit, ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into `docs/acceptance/<date>-<sha7>/`, and a Core test validates every committed folder against the [evidence contract](docs/acceptance/README.md).
 
-The live operation matrix, `tools/run-live-operations.ps1` (the `operations` section of `run-acceptance.ps1`), exercises all 41 operations against a disposable project in default mode, with happy paths, negative cases and eight review cards that the operator approves or denies in the dockpane. Its first recorded run is pending the next live session; until then, the committed evidence above exercises only the operations the smoke test and the bundled workflows use.
+The latest committed evidence is [`docs/acceptance/2026-10-03-e7deee2`](docs/acceptance/2026-10-03-e7deee2/summary.md) (version 0.3.0 at commit e7deee2, ArcGIS Pro 3.7.1.1904, registry 3.7.0, default mode). It covers:
 
-<!-- LIVE-RESULTS: after the live session, replace the paragraph above with the operation matrix result from the new evidence folder (docs/acceptance/<date>-<sha7>/operations/summary.json): operations covered, cases passed/failed/skipped, cards approved/denied, and the link. -->
+- verify: Release build, every test project and the package contents;
+- the four loaded add-in DLLs matching the package, the host probe (41 operations) and the MCP smoke test (16 tools);
+- the three bundled urban workflows x 3 runs, with the layouts visually inspected (cosmetic legend and scale-bar overlaps are recorded);
+- the live operation matrix (`tools/run-live-operations.ps1`, the `operations` section of `run-acceptance.ps1`): 41 of 41 operations covered, 90 of 90 cases passed (58 happy paths, 32 negative cases, none skipped), and eight dockpane approval cards, 7 approved and 1 denied ([operations/summary.json](docs/acceptance/2026-10-03-e7deee2/operations/summary.json)).
+
+The approval cards in that run were decided by Claude, operating the dockpane through computer use at the maintainer's direction, not clicked by the maintainer. The run shows that each risky call is gated by a card and that approve and deny behave as specified; it does not test a human reviewer's judgement. It does not cover autonomous mode or the separate feature/GP/ArcPy section of the acceptance script (not selected for this run). During the final `project.open` card ArcGIS Pro showed its modal "Save all edits?" prompt, because the matrix's feature edits were still pending; it was answered by the same means so the run could finish ([details](docs/acceptance/README.md)). An MCP client cannot answer that prompt, so this is a defect, fixed after the evidence commit: `project.open` now refuses with `pending_edits` and `project.save` also saves pending edits (see the [changelog](CHANGELOG.md)).
 
 For anything an evidence folder does not cover, run the [manual acceptance](docs/manual-acceptance.md) checklist on your own installation and read the [known limits](docs/deployment.md#known-limits).
 

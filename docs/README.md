@@ -40,7 +40,7 @@ flowchart LR
 
 ### Verify and release
 - **[Manual acceptance](manual-acceptance.md)**: the live checklist for feature data, metadata, geoprocessing, ArcPy, and stability on a disposable project.
-- **[Acceptance evidence](acceptance/README.md)**: the committed evidence folder contract, how `tools/run-acceptance.ps1` produces an entry, and what the manifest test checks. Two entries are committed; the latest is [2026-09-29-96f6a5b](acceptance/2026-09-29-96f6a5b/summary.md). Live operation matrix evidence is still pending.
+- **[Acceptance evidence](acceptance/README.md)**: the committed evidence folder contract, how `tools/run-acceptance.ps1` produces an entry, and what the manifest test checks. Three entries are committed; the latest, [2026-10-03-e7deee2](acceptance/2026-10-03-e7deee2/summary.md), includes the first full live operation matrix (41/41 operations, 90/90 cases).
 - **[Evaluations](../evals/README.md)**: retrieval suites (E1 registry search, E2 geoprocessing search), golden trajectories (E3), the current scorecard, and the live harness against ArcGIS Pro or FakeHost.
 - **[Demos and fixtures](demos.md)**: the demo runner, the Pittsburgh showcase workflow, fixture generators, and the live probe scripts.
 - **[Roadmap](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/ROADMAP.md)**: planned work, in priority order. Released changes are in the [changelog](https://github.com/nicoazel/ArcGISPro.MCP/blob/main/CHANGELOG.md).
