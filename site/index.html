@@ -14,14 +14,8 @@
 <meta property="og:title" content="ArcGIS Pro MCP Studio">
 <meta property="og:description" content="Let an MCP client work inside the ArcGIS Pro session you already have open: 41 typed operations, revision-checked writes, approvals a person gives in a Pro dockpane, and an audit log.">
 <meta property="og:url" content="https://nicoazel.github.io/ArcGISPro.MCP/">
-<meta property="og:image" content="https://nicoazel.github.io/ArcGISPro.MCP/img/layout-tod.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="776">
-<meta property="og:image:alt" content="An ArcGIS Pro layout produced by a bundled urban workflow during live acceptance">
-<meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<!-- OG-IMAGE: once img/layout-tod.png is a live capture, restore og:image (https://nicoazel.github.io/ArcGISPro.MCP/img/layout-tod.png, 1200 x 776, with og:image:alt) and set twitter:card to summary_large_image. -->
+<meta name="twitter:card" content="summary">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -196,7 +190,7 @@
         </ul>
       </div>
       <div>
-        <h3 class="eyebrow" style="font-size:var(--step--1);margin-bottom:.6rem">The 16 gateway tools</h3>
+        <h3 class="eyebrow tools-title">The 16 gateway tools</h3>
         <ul class="tools">
           <li>system_get_state</li>
           <li>registry_search</li>
@@ -230,7 +224,7 @@
       <div class="prose">
         <div class="table-wrap">
           <table>
-            <caption class="note" style="text-align:left;padding:.6rem .85rem;caption-side:bottom">Default mode. <code>project.open</code>, <code>project.save</code> and <code>feature.update</code> are SafeWrite but also need approval.</caption>
+            <caption class="note table-note">Default mode. <code>project.open</code>, <code>project.save</code> and <code>feature.update</code> are SafeWrite but also need approval.</caption>
             <thead><tr><th scope="col">Risk tier</th><th scope="col">What it takes to run</th></tr></thead>
             <tbody>
               <tr><td class="tier">ReadOnly</td><td>Runs freely.</td></tr>
@@ -250,8 +244,8 @@
         <p><code>gp.run</code> can execute arbitrary Python through Python toolboxes, script tools and expressions, with your GIS authority. Read <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/security.md">security and limits</a> before connecting a client you do not fully trust.</p>
       </div>
       <figure class="figure card-figure">
-        <img src="img/approval-card.png" width="720" height="900" alt="An approval card in the MCP Studio dockpane in ArcGIS Pro, showing the operation id, its arguments and the Approve and Deny buttons.">
-        <figcaption>An approval card in the MCP Studio dockpane. The person reviewing sees the operation and its exact arguments.</figcaption>
+        <img src="img/approval-card.png" width="720" height="900" alt="Placeholder illustration of an approval card in the MCP Studio dockpane, with the operation id, its arguments and the Approve and Deny buttons. A screenshot from a live ArcGIS Pro session will replace it.">
+        <figcaption>Placeholder illustration of an approval card in the MCP Studio dockpane; a live screenshot will replace it. The person reviewing sees the operation and its exact arguments.</figcaption>
       </figure>
     </div>
   </div>
@@ -304,20 +298,21 @@
       <h2 id="evidence-title">Recorded on a real ArcGIS Pro 3.7.1 session</h2>
       <!-- LIVE-RESULTS: after the live session, move the operation matrix item from "Not covered" to "Covered" with its result (operations covered, cases passed, cards approved/denied) from docs/acceptance/<date>-<sha7>/operations/summary.json. -->
       <!-- EVIDENCE: when the new evidence run is committed, point these links at docs/acceptance/<date>-<sha7>/ and update the scope lists below to match its summary.md. -->
-      <p><code>tools/run-acceptance.ps1</code> records the commit, the ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into a dated folder under <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance">docs/acceptance</a>, and a test validates every committed folder against the evidence contract. These layouts were produced by the three bundled urban workflows from synthetic test data.</p>
+      <p><code>tools/run-acceptance.ps1</code> records the commit, the ArcGIS Pro version and the hashes of the built and loaded add-in DLLs into a dated folder under <a href="https://github.com/nicoazel/ArcGISPro.MCP/tree/main/docs/acceptance">docs/acceptance</a>, and a test validates every committed folder against the evidence contract. The latest committed run covers the three bundled urban workflows on synthetic test data.</p>
+      <p class="note">The three images below are placeholders, not captures from that run. Layout captures from the live session will replace them.</p>
     </div>
     <div class="gallery">
       <figure>
-        <a href="img/layout-tod.png"><img src="img/layout-tod.png" width="1200" height="776" loading="lazy" alt="Layout from the transit-oriented corridor workflow: land-use categories, development program, transit network and existing fabric."></a>
-        <figcaption>Transit-oriented corridor</figcaption>
+        <a href="img/layout-tod.png"><img src="img/layout-tod.png" width="1200" height="776" loading="lazy" alt="Placeholder for the layout from the transit-oriented corridor workflow, to be replaced by a live capture: land-use categories, development program, transit network and existing fabric."></a>
+        <figcaption>Transit-oriented corridor (placeholder)</figcaption>
       </figure>
       <figure>
-        <a href="img/layout-green.png"><img src="img/layout-green.png" width="1200" height="776" loading="lazy" alt="Layout from the green loop workflow: green infrastructure sites, loop corridors and neighborhood nodes."></a>
-        <figcaption>Green loop</figcaption>
+        <a href="img/layout-green.png"><img src="img/layout-green.png" width="1200" height="776" loading="lazy" alt="Placeholder for the layout from the green loop workflow, to be replaced by a live capture: green infrastructure sites, loop corridors and neighborhood nodes."></a>
+        <figcaption>Green loop (placeholder)</figcaption>
       </figure>
       <figure>
-        <a href="img/layout-mixed.png"><img src="img/layout-mixed.png" width="1200" height="776" loading="lazy" alt="Layout from the mixed-use massing workflow: 3D building massing over the public realm with mixed-use categories."></a>
-        <figcaption>Mixed-use massing (3D scene)</figcaption>
+        <a href="img/layout-mixed.png"><img src="img/layout-mixed.png" width="1200" height="776" loading="lazy" alt="Placeholder for the layout from the mixed-use massing workflow, to be replaced by a live capture: 3D building massing over the public realm with mixed-use categories."></a>
+        <figcaption>Mixed-use massing, 3D scene (placeholder)</figcaption>
       </figure>
     </div>
     <div class="scope">

@@ -14,9 +14,10 @@
   --signal-bg: #fbeee8;
   --code-bg: #e6ecf0;
 
-  --font-display: "Archivo", "Segoe UI", system-ui, sans-serif;
-  --font-body: "Archivo", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+  /* System font stacks only: the page makes no external requests. */
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
   --step--1: 0.875rem;
   --step-0: 1.0625rem;
@@ -225,6 +226,8 @@ tfoot td { font-weight: 700; border-top: 1.5px solid var(--ink); }
 .gallery a { display: block; }
 .gallery img { border: 1px solid var(--line); border-radius: 3px; aspect-ratio: 1200 / 776; object-fit: cover; width: 100%; }
 .gallery figcaption { font-size: var(--step--1); color: var(--muted); }
+.tools-title { font-size: var(--step--1); margin-bottom: 0.6rem; }
+.table-note { text-align: left; padding: 0.6rem 0.85rem; caption-side: bottom; }
 
 .scope { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; }
 .scope > div { min-width: 0; display: grid; gap: 0.5rem; align-content: start; }
