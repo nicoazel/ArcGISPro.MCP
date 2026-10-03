@@ -94,6 +94,21 @@ public static class OperationErrorCodes
     public const string ElementOutsidePage = "element_outside_page";
 
     /// <summary>
+    /// The open project has unsaved feature edits. Opening another project would make ArcGIS Pro
+    /// show a modal "save edits?" prompt and block the call until a person answers it.
+    /// </summary>
+    public const string PendingEdits = "pending_edits";
+
+    /// <summary>
+    /// The open project has unsaved project changes. Opening another project would make ArcGIS Pro
+    /// show a modal "save changes?" prompt and block the call until a person answers it.
+    /// </summary>
+    public const string UnsavedProjectChanges = "unsaved_project_changes";
+
+    /// <summary>ArcGIS Pro reported that saving the pending feature edits failed.</summary>
+    public const string EditsNotSaved = "edits_not_saved";
+
+    /// <summary>
     /// Arguments that do not match the schema, or (through <see cref="OperationException.InvalidArgument"/>)
     /// an argument value nothing in the project accepts. Reserved: only that factory may raise it.
     /// </summary>

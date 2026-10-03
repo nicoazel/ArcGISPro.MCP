@@ -21,7 +21,7 @@ internal sealed class ProjectGetOperation() : ProOperationBase(OperationDescript
 
 internal sealed class ProjectOpenOperation(IProjectService project) : ProOperationBase(OperationDescriptor.Create(
     "project.open", "Open project",
-    "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Unsaved changes are handled by ArcGIS Pro's normal project lifecycle.",
+    "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Refuses while the current project has unsaved feature edits or project changes; save them first with project.save.",
     ProjectOperationSchemas.OpenInput,
     risk: OperationRisk.SafeWrite, requiresConfirmation: true, executionTarget: ExecutionTarget.ArcGISUiThread,
     tags: ["project", "workspace", "open"], aliases: ["open aprx", "switch project"],
@@ -36,17 +36,34 @@ internal sealed class ProjectOpenOperation(IProjectService project) : ProOperati
 
         await context.Dispatcher.OnUiThreadAsync(async () =>
         {
+            // With unsaved work ArcGIS Pro asks "save edits?" / "save changes?" in a modal dialog
+            // before closing the current project, and the call blocks until a person answers.
+            // Refuse instead, checked on the same UI turn that opens the project.
+            if (project.HasEdits) throw PendingEdits();
+            if (project.IsDirty) throw UnsavedProjectChanges();
             await project.OpenAsync(path).ConfigureAwait(true);
             return true;
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         return OperationResult.Ok(Json(new { opened = true, path, snapshot.Project.Name }), snapshot.Revision);
     }
+
+    internal static OperationException PendingEdits() =>
+        new(OperationErrorCodes.PendingEdits,
+            "The current project has unsaved feature edits, so ArcGIS Pro would stop to ask whether to save them. " +
+            "Nothing was opened. Save the edits with an approved project.save (it saves pending edits and the project), " +
+            "or save or discard them in ArcGIS Pro, then request a new approval for project.open.");
+
+    internal static OperationException UnsavedProjectChanges() =>
+        new(OperationErrorCodes.UnsavedProjectChanges,
+            "The current project has unsaved changes, so ArcGIS Pro would stop to ask whether to save them. " +
+            "Nothing was opened. Save the project with an approved project.save, or save it in ArcGIS Pro, " +
+            "then request a new approval for project.open.");
 }
 
 internal sealed class ProjectSaveOperation(IProjectService project) : ProOperationBase(OperationDescriptor.Create(
     "project.save", "Save project",
-    "Saves the current ArcGIS Pro project to disk. Requires local approval because it persists every pending change in the .aprx.",
+    "Saves the current ArcGIS Pro project to disk, first saving any pending feature edits. Requires local approval because it persists every pending change: unsaved data edits and the .aprx.",
     JsonSchemas.EmptyObject,
     risk: OperationRisk.SafeWrite, requiresConfirmation: true, executionTarget: ExecutionTarget.ArcGISUiThread,
     tags: ["project", "workspace", "save"], aliases: ["save aprx", "persist project"],
@@ -60,10 +77,22 @@ internal sealed class ProjectSaveOperation(IProjectService project) : ProOperati
 
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
-        await context.Dispatcher.OnUiThreadAsync(async () =>
+        var editsSaved = await context.Dispatcher.OnUiThreadAsync(async () =>
         {
+            // Project.SaveAsync writes only the .aprx; feature edits stay pending in the edit
+            // session (and make a later project.open prompt) until they are saved separately.
+            // Save them first so a failed edit save leaves the project file untouched.
+            var savedEdits = false;
+            if (project.HasEdits)
+            {
+                if (!await project.SaveEditsAsync().ConfigureAwait(true))
+                    throw new OperationException(OperationErrorCodes.EditsNotSaved,
+                        "ArcGIS Pro could not save the pending feature edits, so the project was not saved either. " +
+                        "Check the edited layers in ArcGIS Pro (for example a locked or read-only data source) and retry.");
+                savedEdits = true;
+            }
             await project.SaveAsync().ConfigureAwait(true);
-            return true;
+            return savedEdits;
         }, cancellationToken).ConfigureAwait(false);
         var snapshot = await context.Workspace.GetSnapshotAsync(cancellationToken).ConfigureAwait(false);
         // ArcGIS can complete SaveAsync before its observable IsDirty transition reaches the
@@ -78,6 +107,6 @@ internal sealed class ProjectSaveOperation(IProjectService project) : ProOperati
         }
         if (snapshot.Project.IsDirty)
             throw new InvalidOperationException("ArcGIS Pro did not reach a clean project state after SaveAsync.");
-        return OperationResult.Ok(Json(new { saved = true, snapshot.Project.Name }), snapshot.Revision);
+        return OperationResult.Ok(Json(new { saved = true, editsSaved, snapshot.Project.Name }), snapshot.Revision);
     }
 }

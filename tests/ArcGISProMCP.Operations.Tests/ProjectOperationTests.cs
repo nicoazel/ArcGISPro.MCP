@@ -1,5 +1,6 @@
 using ArcGISProMCP.Core.Operations;
 using ArcGISProMCP.Operations.Tests.Fakes;
+using ArcGISProMCP.Testing;
 
 namespace ArcGISProMCP.Operations.Tests;
 
@@ -96,6 +97,141 @@ public sealed class ProjectOperationTests
     }
 
     [Fact]
+    public async Task Open_refuses_while_feature_edits_are_pending_instead_of_letting_ArcGIS_prompt()
+    {
+        using var pro = new FakePro();
+        pro.State.HasEdits = true;
+        var path = TempProject(out var directory);
+        try
+        {
+            var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("project.open", Json(new { path })));
+
+            Assert.Equal("pending_edits", exception.Code);
+            Assert.Contains("project.save", exception.Message, StringComparison.Ordinal);
+            Assert.Empty(pro.State.Calls);
+            Assert.Equal("Fixture", pro.State.ProjectName);
+            Assert.True(pro.State.HasEdits);
+            Assert.Equal("rev-0", pro.Workspace.Revision);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Open_refuses_while_the_project_has_unsaved_changes()
+    {
+        using var pro = new FakePro();
+        pro.State.IsDirty = true;
+        var path = TempProject(out var directory);
+        try
+        {
+            var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("project.open", Json(new { path })));
+
+            Assert.Equal("unsaved_project_changes", exception.Code);
+            Assert.Contains("project.save", exception.Message, StringComparison.Ordinal);
+            Assert.Empty(pro.State.Calls);
+            Assert.Equal("Fixture", pro.State.ProjectName);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Pending_edits_take_precedence_over_unsaved_project_changes()
+    {
+        using var pro = new FakePro();
+        pro.State.HasEdits = true;
+        pro.State.IsDirty = true;
+        var path = TempProject(out var directory);
+        try
+        {
+            var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("project.open", Json(new { path })));
+
+            Assert.Equal("pending_edits", exception.Code);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task A_feature_edit_then_save_then_open_succeeds()
+    {
+        using var pro = new FakePro();
+        pro.State.TrackDirty = true;
+        pro.State.AddMap("City", "Map", FakeLayer.Feature("Parcels"));
+        var path = TempProject(out var directory);
+        try
+        {
+            var created = await pro.RunAsync("feature.create", """{"layer": "Parcels", "geometry": {"type": "point", "x": 5, "y": 6}, "attributes": {"zone": "R2", "FLOORS": 3}}""");
+            Assert.True(created.Success, created.Message);
+            Assert.True(pro.State.HasEdits);
+
+            var refused = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("project.open", Json(new { path })));
+            Assert.Equal("pending_edits", refused.Code);
+
+            var saved = await pro.RunAsync("project.save");
+            Assert.True(saved.Data!.Value.GetProperty("editsSaved").GetBoolean());
+            Assert.False(pro.State.HasEdits);
+
+            var opened = await pro.RunAsync("project.open", Json(new { path }));
+            Assert.True(opened.Success);
+            Assert.Equal("City", pro.State.ProjectName);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Save_saves_pending_feature_edits_before_the_project()
+    {
+        using var pro = new FakePro();
+        pro.State.HasEdits = true;
+
+        var result = await pro.RunAsync("project.save");
+
+        Assert.True(result.Success);
+        Assert.Equal(["project.save-edits", "project.save"], pro.State.Calls);
+        Assert.False(pro.State.HasEdits);
+        Assert.True(result.Data!.Value.GetProperty("saved").GetBoolean());
+        Assert.True(result.Data!.Value.GetProperty("editsSaved").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Save_without_pending_edits_saves_only_the_project_and_reports_it()
+    {
+        using var pro = new FakePro();
+
+        var result = await pro.RunAsync("project.save");
+
+        Assert.True(result.Success);
+        Assert.Equal(["project.save"], pro.State.Calls);
+        Assert.False(result.Data!.Value.GetProperty("editsSaved").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Save_stops_before_the_project_when_ArcGIS_cannot_save_the_edits()
+    {
+        using var pro = new FakePro();
+        pro.State.HasEdits = true;
+        pro.State.FailEditSave = true;
+
+        var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("project.save"));
+
+        Assert.Equal("edits_not_saved", exception.Code);
+        Assert.Equal(["project.save-edits"], pro.State.Calls);
+        Assert.True(pro.State.HasEdits);
+        Assert.Equal("rev-0", pro.Workspace.Revision);
+    }
+
+    [Fact]
     public async Task Save_waits_for_the_clean_snapshot_before_publishing_its_revision()
     {
         using var pro = new FakePro();
@@ -134,6 +270,14 @@ public sealed class ProjectOperationTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => pro.RunAsync("project.save"));
 
         Assert.Equal("No ArcGIS Pro project is open.", exception.Message);
+    }
+
+    private static string TempProject(out DirectoryInfo directory)
+    {
+        directory = Directory.CreateTempSubdirectory("ArcGISProMCP-Open-");
+        var path = Path.Combine(directory.FullName, "City.aprx");
+        File.WriteAllText(path, string.Empty);
+        return path;
     }
 
     private static string Json(object value) => System.Text.Json.JsonSerializer.Serialize(value);

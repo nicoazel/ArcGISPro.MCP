@@ -12,6 +12,15 @@ internal sealed class FakeProState
     public bool IsDirty { get; set; }
 
     /// <summary>
+    /// Unsaved feature edits in the edit session (ArcGIS Pro's Project.HasEdits). Every feature edit
+    /// sets it, as in ArcGIS Pro; saving edits clears it. Independent of <see cref="IsDirty"/>.
+    /// </summary>
+    public bool HasEdits { get; set; }
+
+    /// <summary>When set, saving edits reports failure (Project.SaveEditsAsync returning false).</summary>
+    public bool FailEditSave { get; set; }
+
+    /// <summary>
     /// When set, feature edits mark the project dirty and a save cleans it, as ArcGIS Pro does.
     /// Off by default so operation tests control <see cref="IsDirty"/> explicitly.
     /// </summary>

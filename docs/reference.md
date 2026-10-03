@@ -58,8 +58,8 @@ The add-in registers these 41 operations: 39 always, plus the two `arcpy.*` oper
 | Id | Risk | Does |
 | --- | --- | --- |
 | `project.get` | ReadOnly | Project identity, path, dirty state, and revision. |
-| `project.open` | SafeWrite + **approval** | Opens an existing `.aprx`, replacing the current project. |
-| `project.save` | SafeWrite + **approval** | Saves the current project to disk. |
+| `project.open` | SafeWrite + **approval** | Opens an existing `.aprx`, replacing the current project. Refuses with `pending_edits` while the current project has unsaved feature edits, and with `unsaved_project_changes` while it has unsaved project changes, instead of letting ArcGIS Pro block on its modal save prompt; save first with `project.save`. |
+| `project.save` | SafeWrite + **approval** | Saves pending feature edits (`editsSaved: true` when there were any), then the project, to disk. Fails with `edits_not_saved`, leaving the `.aprx` unsaved, when ArcGIS Pro cannot save the edits. |
 | `map.list` | ReadOnly | Every map and scene, with handles, view state, type, and layer counts. |
 | `map.ensure` | SafeWrite | Returns a named map, or creates it as 2D/3D with the requested basemap. |
 | `map.activate` | SafeWrite | Opens or activates a map view. |

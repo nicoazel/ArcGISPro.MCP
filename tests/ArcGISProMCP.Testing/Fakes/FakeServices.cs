@@ -6,14 +6,45 @@ namespace ArcGISProMCP.Testing;
 
 internal sealed class FakeProjectService(FakeProState state) : IProjectService
 {
+    public bool HasEdits
+    {
+        get
+        {
+            FakeDispatcher.Require(FakeThread.Ui, nameof(HasEdits));
+            return state.IsOpen && state.HasEdits;
+        }
+    }
+
+    public bool IsDirty
+    {
+        get
+        {
+            FakeDispatcher.Require(FakeThread.Ui, nameof(IsDirty));
+            return state.IsOpen && state.IsDirty;
+        }
+    }
+
     public Task OpenAsync(string path)
     {
         FakeDispatcher.Require(FakeThread.Ui, nameof(OpenAsync));
+        // ArcGIS Pro would block on a modal "save?" prompt here; the operation must refuse first.
+        if (state.HasEdits || state.IsDirty)
+            throw new InvalidOperationException("ArcGIS Pro would prompt to save unsaved work before opening another project.");
         state.Calls.Add($"project.open {path}");
         state.ProjectUri = path;
         state.ProjectName = Path.GetFileNameWithoutExtension(path);
         state.IsDirty = false;
         return Task.CompletedTask;
+    }
+
+    public Task<bool> SaveEditsAsync()
+    {
+        FakeDispatcher.Require(FakeThread.Ui, nameof(SaveEditsAsync));
+        if (!state.IsOpen) throw new InvalidOperationException("No ArcGIS Pro project is open.");
+        state.Calls.Add("project.save-edits");
+        if (state.FailEditSave) return Task.FromResult(false);
+        state.HasEdits = false;
+        return Task.FromResult(true);
     }
 
     public Task SaveAsync()

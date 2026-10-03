@@ -20,11 +20,20 @@ internal sealed record ArcGisServices(
     IFeatureService Features,
     IGeoprocessingService Geoprocessing);
 
-/// <summary>Project lifecycle. Both members run on the ArcGIS UI thread.</summary>
+/// <summary>Project lifecycle. Every member runs on the ArcGIS UI thread.</summary>
 internal interface IProjectService
 {
+    /// <summary>True when the open project has unsaved feature (data) edits; false with no project.</summary>
+    bool HasEdits { get; }
+
+    /// <summary>True when the open project has unsaved project (.aprx) changes; false with no project.</summary>
+    bool IsDirty { get; }
+
     /// <summary>Opens an existing .aprx, replacing the current project.</summary>
     Task OpenAsync(string path);
+
+    /// <summary>Saves every pending feature edit; returns false when ArcGIS reports the save failed.</summary>
+    Task<bool> SaveEditsAsync();
 
     /// <summary>Saves the current project; throws when no project is open.</summary>
     Task SaveAsync();

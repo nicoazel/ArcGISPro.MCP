@@ -231,6 +231,7 @@ internal sealed class FakeFeatureService(FakeProState state) : IFeatureService
 
     private void Edited(string action, FakeLayer layer)
     {
+        state.HasEdits = true;
         if (state.TrackDirty) state.IsDirty = true;
         Observer?.Invoke(action, layer.Name);
     }
