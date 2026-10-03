@@ -164,7 +164,7 @@ function Assert-WorkflowResult($Result, [int]$Iteration) {
 
     if ($Iteration -gt 1) {
         $created = @($Result.results | Where-Object {
-            $_.data -and $_.data.PSObject.Properties['Created'] -and $_.data.Created
+            $_.data -and $_.data.PSObject.Properties['created'] -and $_.data.created
         })
         if ($created.Count -ne 0) {
             throw "Warm iteration $Iteration recreated $($created.Count) ensure/add targets."
