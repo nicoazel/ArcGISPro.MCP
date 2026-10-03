@@ -217,6 +217,8 @@ internal sealed class LayoutAddMapFrameOperation() : ProOperationBase(OperationD
         {
             var layout = ProHandles.ResolveLayout(layoutReference);
             var map = ProHandles.ResolveMap(mapReference);
+            var page = layout.GetPage();
+            LayoutGeometry.EnsureOnPage($"Map frame '{name}'", new PageBox(x, y, width, height), page.Width, page.Height, page.Units.Name);
             var envelope = EnvelopeBuilderEx.CreateEnvelope(x, y, x + width, y + height);
             var existing = layout.GetElementsAsFlattenedList().OfType<MapFrame>()
                 .FirstOrDefault(frame => string.Equals(frame.Name, name, StringComparison.OrdinalIgnoreCase));

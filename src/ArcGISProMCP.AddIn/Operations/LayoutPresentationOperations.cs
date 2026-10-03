@@ -42,6 +42,8 @@ internal sealed class LayoutSetTextOperation() : ProOperationBase(OperationDescr
         var data = await context.Dispatcher.OnMainCimThreadAsync(() =>
         {
             var layout = ProHandles.ResolveLayout(layoutReference);
+            var page = layout.GetPage();
+            LayoutGeometry.EnsurePointOnPage($"Text '{name}'", x, y, page.Width, page.Height, page.Units.Name);
             var symbol = SymbolFactory.Instance.ConstructTextSymbol(
                 ColorFactory.Instance.CreateRGBColor(
                     color.Red,
