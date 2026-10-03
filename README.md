@@ -1,10 +1,14 @@
 # ArcGIS Pro MCP Studio
 
+[![Build and test](https://github.com/nicoazel/ArcGISPro.MCP/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/nicoazel/ArcGISPro.MCP/actions/workflows/build.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Status: development preview](https://img.shields.io/badge/status-development%20preview-orange.svg)](#arcgis-pro-mcp-studio)
+
 <!-- mcp-name: io.github.nicoazel/arcgis-pro-mcp -->
 
 An ArcGIS Pro 3.7 add-in and a small stdio MCP gateway that let an MCP client (Claude Desktop, Claude Code or any other) work inside the ArcGIS Pro session you already have open. The model sees 16 gateway tools, searches a registry of 41 typed, schema-validated operations and the 2,200+ installed geoprocessing tools, and invokes them by stable id. Every write is checked against the current workspace revision, every risky write waits for a person to approve those exact arguments in an ArcGIS Pro dockpane, and every invocation is audited.
 
-**Status: development preview (0.2.0, unsigned).** Supported: an interactive, same-user Windows workstation with dockpane approvals. Autonomous mode is an opt-in expert setting and is not recommended. Live acceptance evidence for the current build is pending (see [Verification](#verification-and-acceptance-evidence)).
+**Status: development preview (0.3.0, unsigned).** Supported: an interactive, same-user Windows workstation with dockpane approvals. Autonomous mode is an opt-in expert setting and is not recommended. The latest live acceptance evidence, [`docs/acceptance/2026-09-29-96f6a5b`](docs/acceptance/2026-09-29-96f6a5b/summary.md), covers default mode on ArcGIS Pro 3.7.1; see [Verification](#verification-and-acceptance-evidence) for what it does and does not cover.
 
 ## Why this design
 
@@ -45,7 +49,7 @@ The gateway holds no GIS logic; the add-in owns the registry, the executor and t
 
 Requirements: Windows x64, a licensed ArcGIS Pro 3.7.1, and the .NET 10 x64 runtime.
 
-1. Get the bundle `ArcGISProMCP-<version>-win-x64-development-preview.zip` from GitHub Releases, or build it with `./tools/package-release.ps1` (see [deployment](docs/deployment.md#build-the-bundle)). Check `checksums.sha256`, then extract it, for example to `C:\ArcGISProMCP\0.2.0`.
+1. Get the bundle `ArcGISProMCP-<version>-win-x64-development-preview.zip` from GitHub Releases, or build it with `./tools/package-release.ps1` (see [deployment](docs/deployment.md#build-the-bundle)). Check `checksums.sha256`, then extract it, for example to `C:\ArcGISProMCP\0.3.0`.
 2. Close ArcGIS Pro and install `ArcGISProMCP.AddIn.esriAddinX` (double-click it). The add-in is unsigned; your organization's add-in policy may block it.
 3. Start ArcGIS Pro, open a **disposable copy** of a project, and open **Add-In > ArcGIS MCP > MCP Studio**.
 4. Point your MCP client at the gateway. Claude Desktop (`claude_desktop_config.json`):
@@ -54,7 +58,7 @@ Requirements: Windows x64, a licensed ArcGIS Pro 3.7.1, and the .NET 10 x64 runt
    {
      "mcpServers": {
        "arcgis-pro": {
-         "command": "C:\\ArcGISProMCP\\0.2.0\\server\\arcgis-pro-mcp.exe"
+         "command": "C:\\ArcGISProMCP\\0.3.0\\server\\arcgis-pro-mcp.exe"
        }
      }
    }
@@ -63,7 +67,7 @@ Requirements: Windows x64, a licensed ArcGIS Pro 3.7.1, and the .NET 10 x64 runt
    Claude Code:
 
    ```powershell
-   claude mcp add arcgis-pro -- C:\ArcGISProMCP\0.2.0\server\arcgis-pro-mcp.exe
+   claude mcp add arcgis-pro -- C:\ArcGISProMCP\0.3.0\server\arcgis-pro-mcp.exe
    ```
 
 5. Try a first prompt: *"Read the ArcGIS Pro project state and list the layers in the active map."* Then ask for an edit, such as updating one attribute, and approve the card that appears in the dockpane.
@@ -90,12 +94,12 @@ Build: .NET 10 with `TreatWarningsAsErrors`; 0 warnings. Tests (xUnit v3), all p
 
 | Project | Tests | What it covers |
 | --- | ---: | --- |
-| `ArcGISProMCP.Core.Tests` | 432 | Executor policy, approvals, schemas, search, toolbox catalog and risk tiers, workflows, audit, acceptance manifests |
-| `ArcGISProMCP.Operations.Tests` | 130 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
+| `ArcGISProMCP.Core.Tests` | 453 | Executor policy, approvals, schemas, search, toolbox catalog and risk tiers, workflows, audit, acceptance manifests |
+| `ArcGISProMCP.Operations.Tests` | 192 | Operation behaviour over fake ArcGIS services, and a guard that every portable descriptor matches the add-in's |
 | `ArcGISProMCP.Server.Tests` | 123 | MCP contract snapshots, envelopes against output schemas, end-to-end runs through the real bridge handler, E3 trajectories |
 | `ArcGISProMCP.Bridge.Tests` | 67 | Pipe framing, discovery, host scheduling and the request handler |
 | `ArcGISProMCP.Evals.Tests` | 19 | Retrieval suites gated on a measured baseline, scorecard writing, descriptor dump checks |
-| **Total** | **771** | |
+| **Total** | **854** | |
 
 Eval scorecard ([evals/README.md](evals/README.md); gp suites measured against ArcGIS Pro 3.7.1, 2,210 system tools):
 
@@ -140,4 +144,4 @@ The build uses the `Esri.ArcGISPro.Extensions30` NuGet package, so it and the po
 
 ## Contributing, security and license
 
-Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md). Licensed under [Apache-2.0](LICENSE). ArcGIS Pro and other Esri products require their own licenses.
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md). Licensed under [Apache-2.0](LICENSE). ArcGIS Pro and other Esri products require their own licenses.

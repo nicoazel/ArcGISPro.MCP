@@ -8,6 +8,13 @@ updates:
       # The ArcGIS Pro SDK version must match the supported ArcGIS Pro release;
       # it is bumped deliberately alongside compatibility testing.
       - dependency-name: Esri.ArcGISPro.Extensions30
+      # xunit.v3 4.x moves the test projects to Microsoft.Testing.Platform, and the
+      # .NET 10 SDK rejects `dotnet test` over VSTest for those projects. Major
+      # updates wait for a deliberate migration; minor and patch updates still flow.
+      - dependency-name: xunit.v3
+        update-types: ['version-update:semver-major']
+      - dependency-name: xunit.runner.visualstudio
+        update-types: ['version-update:semver-major']
     groups:
       nuget:
         patterns:
