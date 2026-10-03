@@ -79,6 +79,8 @@ public sealed class AcceptanceManifestTests
             // layout; older folders (2026-09-28-5f34f16) list working-evidence paths and omit it.
             ("evidencePathsRelative", JsonSchemas.Boolean()),
             ("visualNotesSource", JsonSchemas.String(minLength: 1, maxLength: 1024)),
+            // Disclosures about how the run was carried out, from -RunNotes, when given.
+            ("runNotes", JsonSchemas.Array(JsonSchemas.String(minLength: 1, maxLength: 2048), maxItems: 64)),
         ],
         ["schemaVersion", "date", "sha", "dirty", "version", "dotnet", "operator", "pro", "package", "dlls", "sections", "autonomousMode", "allPassed"]);
 
@@ -100,6 +102,20 @@ public sealed class AcceptanceManifestTests
     {
         var sample = SampleNode();
         sample[property] = JsonNode.Parse(json);
+        Assert.NotEmpty(OperationArgumentValidator.Validate(ToElement(sample), ManifestSchema()));
+    }
+
+    [Fact]
+    public void Run_notes_are_optional_non_empty_strings()
+    {
+        var sample = SampleNode();
+        Assert.Null(sample["runNotes"]);
+        sample["runNotes"] = new JsonArray("Cards decided by Claude through computer use at the maintainer's direction.");
+        Assert.Empty(OperationArgumentValidator.Validate(ToElement(sample), ManifestSchema()));
+
+        sample["runNotes"] = new JsonArray("");
+        Assert.NotEmpty(OperationArgumentValidator.Validate(ToElement(sample), ManifestSchema()));
+        sample["runNotes"] = JsonNode.Parse("\"not an array\"");
         Assert.NotEmpty(OperationArgumentValidator.Validate(ToElement(sample), ManifestSchema()));
     }
 
@@ -167,6 +183,13 @@ public sealed class AcceptanceManifestTests
             Assert.Contains(ChecksumProblems(folder.FullName), p => p.Contains("extra.txt", StringComparison.Ordinal));
             File.Delete(Path.Combine(folder.FullName, "extra.txt"));
 
+            // The post-run annex is allowed unlisted at the root only, never in a subfolder.
+            File.WriteAllText(Path.Combine(folder.FullName, PostRunAnnex), PostRunAnnexHeading + "\n");
+            Assert.Empty(ChecksumProblems(folder.FullName));
+            File.WriteAllText(Path.Combine(folder.FullName, "smoke", PostRunAnnex), PostRunAnnexHeading + "\n");
+            Assert.Contains(ChecksumProblems(folder.FullName), p => p.Contains("smoke/" + PostRunAnnex, StringComparison.Ordinal));
+            File.Delete(Path.Combine(folder.FullName, "smoke", PostRunAnnex));
+
             File.AppendAllText(Path.Combine(folder.FullName, "smoke", "result.json"), " ");
             Assert.Contains(ChecksumProblems(folder.FullName), p => p.Contains("smoke/result.json", StringComparison.Ordinal));
 
@@ -201,7 +224,43 @@ public sealed class AcceptanceManifestTests
             Assert.True(sums.Count == 0, $"{name}: " + string.Join("; ", sums));
             var operations = OperationsEvidenceProblems(manifest, folder);
             Assert.True(operations.Count == 0, $"{name}: " + string.Join("; ", operations));
+            var annex = AnnexProblems(folder);
+            Assert.True(annex.Count == 0, $"{name}: " + string.Join("; ", annex));
         }
+    }
+
+    /// <summary>
+    /// The only file allowed in a committed folder after the run: a hand-written annex at the folder
+    /// root, outside SHA256SUMS, that says so in its first line. Run files are never edited afterwards.
+    /// </summary>
+    internal const string PostRunAnnex = "ANNEX.md";
+
+    internal const string PostRunAnnexHeading = "# Annex added after the run, not produced by run-acceptance";
+
+    private static List<string> AnnexProblems(string folder)
+    {
+        var problems = new List<string>();
+        var path = Path.Combine(folder, PostRunAnnex);
+        if (!File.Exists(path)) return problems;
+        var firstLine = File.ReadLines(path).FirstOrDefault();
+        if (!string.Equals(firstLine, PostRunAnnexHeading, StringComparison.Ordinal))
+            problems.Add($"{PostRunAnnex} must start with '{PostRunAnnexHeading}'");
+        return problems;
+    }
+
+    [Fact]
+    public void A_post_run_annex_must_say_it_was_added_after_the_run()
+    {
+        var folder = Directory.CreateTempSubdirectory("acceptance-annex-");
+        try
+        {
+            Assert.Empty(AnnexProblems(folder.FullName));
+            File.WriteAllText(Path.Combine(folder.FullName, PostRunAnnex), "# Notes\n");
+            Assert.NotEmpty(AnnexProblems(folder.FullName));
+            File.WriteAllText(Path.Combine(folder.FullName, PostRunAnnex), PostRunAnnexHeading + "\n\n- note\n");
+            Assert.Empty(AnnexProblems(folder.FullName));
+        }
+        finally { folder.Delete(recursive: true); }
     }
 
     /// <summary>
@@ -382,7 +441,10 @@ public sealed class AcceptanceManifestTests
         return problems;
     }
 
-    /// <summary>Every file except SHA256SUMS is listed once, stays inside the folder and hashes correctly.</summary>
+    /// <summary>
+    /// Every file except SHA256SUMS and the post-run <see cref="PostRunAnnex"/> at the folder root is
+    /// listed once, stays inside the folder and hashes correctly. The annex must not be listed.
+    /// </summary>
     private static List<string> ChecksumProblems(string folder)
     {
         var problems = new List<string>();
@@ -404,6 +466,7 @@ public sealed class AcceptanceManifestTests
                 problems.Add($"path escapes the evidence folder: {relative}");
                 continue;
             }
+            if (relative == PostRunAnnex) problems.Add($"{PostRunAnnex} is added after the run and must not be listed");
             if (!listed.Add(relative)) problems.Add($"listed twice: {relative}");
             if (!File.Exists(full)) problems.Add($"listed but missing: {relative}");
             else if (!string.Equals(HashFile(full), hash, StringComparison.Ordinal)) problems.Add($"hash mismatch: {relative}");
@@ -411,7 +474,7 @@ public sealed class AcceptanceManifestTests
         foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
         {
             var relative = Path.GetRelativePath(folder, file).Replace(Path.DirectorySeparatorChar, '/');
-            if (relative != "SHA256SUMS" && !listed.Contains(relative)) problems.Add($"not listed in SHA256SUMS: {relative}");
+            if (relative != "SHA256SUMS" && relative != PostRunAnnex && !listed.Contains(relative)) problems.Add($"not listed in SHA256SUMS: {relative}");
         }
         return problems;
     }

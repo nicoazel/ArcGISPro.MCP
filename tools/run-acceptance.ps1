@@ -36,6 +36,10 @@
         example stress/tod/final-layout.png -> images/layout-tod.png), and it records
         "evidencePathsRelative": true. A note whose path was not committed is prefixed with
         'not committed: '.
+      * -RunNotes records how the run was carried out (who decided the approval cards, prompts
+        answered on the host, anything else a reviewer needs) as runNotes[] in manifest.json and
+        a "Run notes" section of summary.md, so these disclosures are part of the checksummed
+        record instead of being added afterwards.
 
     Only the maintainer, on a workstation with ArcGIS Pro and the exact installed package,
     should produce committed evidence. See docs/acceptance/README.md.
@@ -72,6 +76,10 @@ param(
     # Where the -VisuallyInspected notes come from (for example 'operator review of the working
     # evidence, 2026-09-28'); recorded in manifest.json and summary.md.
     [string]$VisualNotesSource,
+    # Disclosures about how the run was carried out (for example who decided the approval cards,
+    # or a host prompt someone answered during the run); recorded as runNotes[] in manifest.json
+    # and under "Run notes" in summary.md.
+    [string[]]$RunNotes = @(),
     [string]$Operator,
     [string]$OutputDirectory,
     [switch]$SkipVerify,
@@ -743,6 +751,8 @@ $manifest = [ordered]@{
 }
 if (@($VisuallyInspected).Count -gt 0) { $manifest['visuallyInspected'] = @($VisuallyInspected) }
 if ($VisualNotesSource) { $manifest['visualNotesSource'] = $VisualNotesSource }
+$runNoteList = @($RunNotes | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ })
+if ($runNoteList.Count -gt 0) { $manifest['runNotes'] = $runNoteList }
 if ($tag) { $manifest['tag'] = $tag }
 # Facts that exist only when the corresponding step produced them are omitted, never faked.
 if ($packageInfo) { $manifest['package'] = $packageInfo }
@@ -795,6 +805,12 @@ function ConvertTo-SummaryMarkdown {
     foreach ($item in $inspected) { $null = $lines.Add("- $item") }
     if ($manifest.Contains('visualNotesSource')) { $null = $lines.Add('') ; $null = $lines.Add("Source of these notes: $($manifest['visualNotesSource'])") }
     $null = $lines.Add('')
+    if ($manifest.Contains('runNotes')) {
+        $null = $lines.Add('## Run notes')
+        $null = $lines.Add('')
+        foreach ($item in @($manifest['runNotes'])) { $null = $lines.Add("- $item") }
+        $null = $lines.Add('')
+    }
     $null = $lines.Add('## Blocked or not run')
     $null = $lines.Add('')
     $blocked = @($script:steps | Where-Object { $_.status -ne 'passed' })
