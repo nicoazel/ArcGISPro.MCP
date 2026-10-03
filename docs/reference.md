@@ -210,7 +210,7 @@ Codes a client should handle. The message carries the details.
 | `layer_data_source_unavailable` | invoke, workflow step | The target layer's data source is broken or cannot be opened (for example relative paths after a project was copied). The message names the layer; repair its data source in ArcGIS Pro, or re-add it with `layer.add` using the same name and a valid source. |
 | `map_not_found`, `layer_not_found`, `layout_not_found`, `frame_not_found` | invoke, workflow step | The named map, layer (in the resolved map), layout or map frame (on the resolved layout) does not exist. The message names it. Nothing ran. |
 | `element_outside_page` | `layout.add-map-frame`, `layout.ensure-surround`, `layout.set-text` | The requested frame or surround box, or the text anchor, is not on the layout page (0.01 in tolerance). The message names the element and the page size. Nothing was created. |
-| `invalid_arguments` (from an operation) | invoke, workflow step | Besides schema failures, an operation reports an argument value the project does not accept: an unknown basemap, a layer of the wrong kind or geometry type, an unknown field. Raised before anything changes. An unexpected `ArgumentException` inside an operation stays `operation_failed`. |
+| `invalid_arguments` (from an operation) | invoke, workflow step | Besides schema failures, an operation reports an argument value the project does not accept: an unknown basemap, a layer of the wrong kind or geometry type, an unknown or read-only field, a `feature.*` attribute value or geometry the layer does not accept. Raised before anything changes. An unexpected `ArgumentException` inside an operation stays `operation_failed`. |
 
 ## Scripts
 

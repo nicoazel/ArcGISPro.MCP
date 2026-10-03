@@ -113,9 +113,9 @@
       "title": "Feature create and rejection",
       "cases": [
         { "key": "feature-create-site", "operation": "feature.create", "kind": "happy", "description": "Polygon 'Ops Matrix Site' in Design Sites, read back by GlobalID." },
-        { "key": "feature-create-point-geometry", "operation": "feature.create", "kind": "negative", "expectMessageContains": ["point"], "description": "Point geometry into a polygon layer." },
-        { "key": "feature-create-two-vertices", "operation": "feature.create", "kind": "negative", "expectMessageContains": ["coordinates"], "description": "Polygon with two vertices." },
-        { "key": "feature-create-unknown-field", "operation": "feature.create", "kind": "negative", "expectMessageContains": ["NoSuchField"], "description": "Unknown attribute field is named in the error." }
+        { "key": "feature-create-point-geometry", "operation": "feature.create", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["point"], "description": "Point geometry into a polygon layer." },
+        { "key": "feature-create-two-vertices", "operation": "feature.create", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["coordinates"], "description": "Polygon with two vertices." },
+        { "key": "feature-create-unknown-field", "operation": "feature.create", "kind": "negative", "expectErrorCode": "invalid_arguments", "expectMessageContains": ["NoSuchField"], "description": "Unknown attribute field is named in the error." }
       ]
     },
     {

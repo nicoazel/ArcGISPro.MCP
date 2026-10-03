@@ -65,9 +65,11 @@ public sealed class OperationException : Exception
     /// An argument value that passed the input schema but that the project or ArcGIS Pro does not
     /// accept (an unknown basemap name, a layer of the wrong geometry type). Raise it only before
     /// anything was changed: clients treat <c>invalid_arguments</c> as "nothing ran, fix the call".
-    /// The message must name the argument value and never carry a local path or exception type.
+    /// The message must name the argument value and never carry a local path or exception type; a
+    /// parse failure behind it can be kept as <paramref name="innerException"/> for the audit trail.
     /// </summary>
-    public static OperationException InvalidArgument(string message) => new(message, null, argumentFailure: true);
+    public static OperationException InvalidArgument(string message, Exception? innerException = null) =>
+        new(message, innerException, argumentFailure: true);
 }
 
 /// <summary>Stable error codes raised through <see cref="OperationException"/>.</summary>
