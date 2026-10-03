@@ -136,7 +136,7 @@
         { "key": "arcpy-run-without-token", "operation": "arcpy.run-script", "kind": "negative", "requires": ["arcpy"], "expectErrorCode": "confirmation_required" },
         { "key": "feature-delete-without-token", "operation": "feature.delete", "kind": "negative", "expectErrorCode": "confirmation_required" },
         { "key": "project-save-without-token", "operation": "project.save", "kind": "negative", "expectErrorCode": "confirmation_required" },
-        { "key": "project-open-without-token", "operation": "project.open", "kind": "negative", "expectErrorCode": "confirmation_required" }
+        { "key": "project-open-pending-edits", "operation": "project.open", "kind": "negative", "expectErrorCode": "pending_edits", "description": "With the matrix's unsaved feature edits, project.open is refused with pending_edits before any token is checked." }
       ]
     },
     {
@@ -150,6 +150,7 @@
         { "key": "feature-delete-approved", "operation": "feature.delete", "kind": "happy", "card": "approve", "target": "layer 'Design Sites', feature 'Ops Matrix Site'", "description": "Approved delete, Design Sites back to 'Baseline Site' only." },
         { "key": "feature-delete-denied", "operation": "feature.delete", "kind": "negative", "card": "deny", "expectErrorCode": "confirmation_required", "target": "layer 'Design Sites', feature 'Baseline Site'", "description": "Operator denies; status denied, invoke without token refused, baseline row still present." },
         { "key": "project-save-approved", "operation": "project.save", "kind": "happy", "card": "approve", "via": "gateway", "target": "the open disposable project", "description": "approval_request -> approval_status waitSeconds 120 -> registry_invoke with the token, through arcgis-pro-mcp." },
+        { "key": "project-open-without-token", "operation": "project.open", "kind": "negative", "expectErrorCode": "confirmation_required", "description": "After the approved save the project is clean, so project.open without a token reaches the token check." },
         { "key": "project-open-approved", "operation": "project.open", "kind": "happy", "card": "approve", "target": "a copy of the saved project (<name>-reopen-<stamp>.aprx)", "description": "Approved open of the copy; project.get then reports the copy. Always the final call." }
       ]
     }

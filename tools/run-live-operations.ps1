@@ -538,6 +538,8 @@ Register-Case 'feature-delete-without-token' {
     Invoke-Op 'feature.delete' @{ map = $map; layer = 'Design Sites'; target = @{ globalId = (Assert-Context 'createdGlobalId') } }
 }
 Register-Case 'project-save-without-token' { Invoke-Op 'project.save' @{} }
+Register-Case 'project-open-pending-edits' { Invoke-Op 'project.open' @{ path = (Assert-Context 'reopenPath') } }
+# Runs after project-save-approved: only a clean project reaches the token check (ArcGIS Pro marks a project changed on open).
 Register-Case 'project-open-without-token' { Invoke-Op 'project.open' @{ path = (Assert-Context 'reopenPath') } }
 
 # --- approval cards
