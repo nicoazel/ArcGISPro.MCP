@@ -764,13 +764,13 @@ function Read-LineWithin($Reader, [int]$Seconds) {
     if (-not $task.Wait([TimeSpan]::FromSeconds($Seconds))) {
         # The pending read cannot be cancelled and a late reply would be read by the next call, so the
         # gateway is unusable: kill it. The next gateway call starts a fresh one.
-        Stop-Gateway
+        Close-Gateway
         throw "Timed out after $Seconds s waiting for the gateway; the gateway process was stopped."
     }
     return $task.Result
 }
 
-function Stop-Gateway {
+function Close-Gateway {
     $gateway = $script:gateway
     $script:gateway = $null
     if ($null -eq $gateway) { return }
