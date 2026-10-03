@@ -851,10 +851,12 @@ function Invoke-GatewayTool {
 
 # ---------------------------------------------------------------- live run: approval cards
 
-# Per case: requested (a card case that asked for a card) and exactly one of approved, denied or
-# skipped (its final decision). Per request: queued (every approval request sent, including
-# re-queues after expiry or a refused token) and expired.
-$script:approvalCounts = [ordered]@{ requested = 0; queued = 0; approved = 0; denied = 0; expired = 0; skipped = 0 }
+# Per case: requested (a card case that asked for a card) and exactly one of approved, denied,
+# approvedDenyCard (the operator approved the DENY card; its token was cancelled and the case
+# failed), requestFailed (the approval request itself was refused, so no card was shown) or
+# skipped (no decision). Per request: queued (every approval request sent, including re-queues
+# after expiry or a refused token) and expired.
+$script:approvalCounts = [ordered]@{ requested = 0; queued = 0; approved = 0; denied = 0; approvedDenyCard = 0; requestFailed = 0; expired = 0; skipped = 0 }
 $script:cardNumber = 0
 $script:cardTotal = 0
 
@@ -950,6 +952,7 @@ function Invoke-CardCase($Case, $Implementation, $Record) {
     $spec = & $Implementation.Invoke
     $script:approvalCounts.requested++
     $decision = $null
+    $approvedDenyCard = $false
     try {
         for ($round = 1; $round -le 2; $round++) {
             $decision = Wait-OperatorDecision $Case $spec
@@ -959,6 +962,7 @@ function Invoke-CardCase($Case, $Implementation, $Record) {
                 if ($decision.Status -eq 'approved') {
                     if ($fakeHostRun) { return @{ Skipped = 'the FakeHost auto-approves, so the DENY card cannot be exercised' } }
                     # Withdraw the issued token so nothing can use it, then fail the case.
+                    $approvedDenyCard = $true
                     $cancelNote = 'it was cancelled (approval.cancel)'
                     try { Undo-Approval $decision.RequestId $Case.Via }
                     catch { $cancelNote = "cancelling it failed ($($_.Exception.Message)); it expires on its own" }
@@ -983,7 +987,10 @@ function Invoke-CardCase($Case, $Implementation, $Record) {
     finally {
         # One decision per case: a re-queued card (expiry, refused token) is not counted twice.
         $final = if ($null -ne $decision) { [string]$decision.Status } else { $null }
+        if ($approvedDenyCard) { $final = 'approved-deny-card' }
         switch ($final) {
+            'approved-deny-card' { $script:approvalCounts.approvedDenyCard++ }
+            'request-failed' { $script:approvalCounts.requestFailed++ }
             'approved' { $script:approvalCounts.approved++ }
             'denied' { $script:approvalCounts.denied++ }
             default { $script:approvalCounts.skipped++ }
@@ -1236,6 +1243,8 @@ $summary = [ordered]@{
         queued = $script:approvalCounts.queued
         approved = $script:approvalCounts.approved
         denied = $script:approvalCounts.denied
+        approvedDenyCard = $script:approvalCounts.approvedDenyCard
+        requestFailed = $script:approvalCounts.requestFailed
         expired = $script:approvalCounts.expired
         skipped = $script:approvalCounts.skipped
     }

@@ -543,6 +543,9 @@ public sealed class AcceptanceManifestTests
                     ("queued", JsonSchemas.Integer(minimum: 0)),
                     ("approved", JsonSchemas.Integer(minimum: 0)),
                     ("denied", JsonSchemas.Integer(minimum: 0)),
+                    // Written since these outcomes got their own counts; older summaries omit them (0).
+                    ("approvedDenyCard", JsonSchemas.Integer(minimum: 0)),
+                    ("requestFailed", JsonSchemas.Integer(minimum: 0)),
                     ("expired", JsonSchemas.Integer(minimum: 0)),
                     ("skipped", JsonSchemas.Integer(minimum: 0)),
                 ],
@@ -591,10 +594,18 @@ public sealed class AcceptanceManifestTests
         // Each card case is counted once, by its final decision, however often its card was queued.
         var approvals = summary.GetProperty("approvals");
         var requested = approvals.GetProperty("requested").GetInt32();
+        static int Optional(JsonElement counts, string name) =>
+            counts.TryGetProperty(name, out var value) ? value.GetInt32() : 0;
         var decided = approvals.GetProperty("approved").GetInt32() + approvals.GetProperty("denied").GetInt32() +
+            Optional(approvals, "approvedDenyCard") + Optional(approvals, "requestFailed") +
             approvals.GetProperty("skipped").GetInt32();
         if (decided != requested)
-            problems.Add($"approvals: approved + denied + skipped is {decided}, but {requested} card cases requested a card");
+            problems.Add($"approvals: approved + denied + approvedDenyCard + requestFailed + skipped is {decided}, but {requested} card cases requested a card");
+        // An approved DENY card or a refused approval request fails its case, so committed evidence has none.
+        if (Optional(approvals, "approvedDenyCard") > 0)
+            problems.Add("approvals: the operator approved the DENY card");
+        if (Optional(approvals, "requestFailed") > 0)
+            problems.Add("approvals: an approval request was refused, so its card was never shown");
         if (approvals.GetProperty("queued").GetInt32() < requested)
             problems.Add("approvals: fewer cards queued than card cases requested");
 
@@ -719,7 +730,28 @@ public sealed class AcceptanceManifestTests
         // A card queued again after a refused token must not count as a second approval.
         var doubleCounted = CompleteOperationsSummary();
         doubleCounted["approvals"]!["approved"] = 8;
-        Assert.Contains(OperationsSummaryProblems(ToElement(doubleCounted)), p => p.Contains("approved + denied + skipped", StringComparison.Ordinal));
+        Assert.Contains(OperationsSummaryProblems(ToElement(doubleCounted)), p => p.Contains("approved + denied", StringComparison.Ordinal));
+
+        // An approved-then-cancelled DENY card and a refused request are their own outcomes, not approved or skipped.
+        var withNewCounts = CompleteOperationsSummary();
+        withNewCounts["approvals"]!["approvedDenyCard"] = 0;
+        withNewCounts["approvals"]!["requestFailed"] = 0;
+        Assert.Empty(OperationArgumentValidator.Validate(ToElement(withNewCounts), OperationsSummarySchema()));
+        Assert.Empty(OperationsSummaryProblems(ToElement(withNewCounts)));
+
+        var approvedDeny = CompleteOperationsSummary();
+        approvedDeny["approvals"]!["denied"] = 0;
+        approvedDeny["approvals"]!["approvedDenyCard"] = 1;
+        var approvedDenyProblems = OperationsSummaryProblems(ToElement(approvedDeny));
+        Assert.DoesNotContain(approvedDenyProblems, p => p.Contains("approved + denied", StringComparison.Ordinal));
+        Assert.Contains(approvedDenyProblems, p => p.Contains("approved the DENY card", StringComparison.Ordinal));
+
+        var requestFailed = CompleteOperationsSummary();
+        requestFailed["approvals"]!["approved"] = 6;
+        requestFailed["approvals"]!["requestFailed"] = 1;
+        var requestFailedProblems = OperationsSummaryProblems(ToElement(requestFailed));
+        Assert.DoesNotContain(requestFailedProblems, p => p.Contains("approved + denied", StringComparison.Ordinal));
+        Assert.Contains(requestFailedProblems, p => p.Contains("request was refused", StringComparison.Ordinal));
     }
 
     [Fact]
