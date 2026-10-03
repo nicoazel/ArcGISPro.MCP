@@ -5,10 +5,10 @@
         xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
   <AddInInfo id="{D48E59D8-23D2-44C1-B3E2-39196360DA7A}" version="0.3.0" desktopVersion="3.7.1901">
     <Name>ArcGIS Pro MCP Studio</Name>
-    <Description>Production-oriented MCP control plane for live ArcGIS Pro maps, layers, cartography, layouts, analysis, visual observations, and reusable workflows.</Description>
+    <Description>Development-preview MCP host for ArcGIS Pro: typed operations, local review approvals and an audit log.</Description>
     <Author>Nicolas Azel</Author>
     <Company>Thornton Tomasetti</Company>
-    <Date>9/8/2026</Date>
+    <Date>10/2/2026</Date>
     <Subject>Framework, Map Authoring, Map Exploration, Layouts, Geoprocessing</Subject>
   </AddInInfo>
   <modules>
