@@ -1,0 +1,116 @@
+ArcGIS Pro MCP Studio {{VERSION}} - install steps
+=================================================
+
+Claude (or another MCP client) can read and edit the project you have open
+in ArcGIS Pro. Anything risky shows up as a card in ArcGIS Pro that you
+approve or deny. This is an unsigned development preview: use it on a
+disposable copy of a project.
+
+Full guide, with troubleshooting, upgrade and uninstall steps:
+  https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/deployment.md
+
+You need
+--------
+- Windows x64 and a licensed ArcGIS Pro 3.7 (tested on 3.7.1).
+- ".NET Runtime 10.x (x64)" - the Runtime, not the SDK:
+    https://dotnet.microsoft.com/download/dotnet/10.0
+  Check in PowerShell:  dotnet --list-runtimes
+  You need a line that starts with "Microsoft.NETCore.App 10."
+
+1. Check and unblock the download (before extracting)
+-----------------------------------------------------
+Download the zip and SHA256SUMS from
+  https://github.com/nicoazel/ArcGISPro.MCP/releases/latest
+In PowerShell, in the folder that holds both files:
+
+  $zip = 'ArcGISProMCP-{{VERSION}}-win-x64-development-preview.zip'
+  $expected = (Select-String -Path .\SHA256SUMS -SimpleMatch $zip).Line.Split(' ')[0]
+  if ((Get-FileHash $zip -Algorithm SHA256).Hash -eq $expected) { 'OK' } else { 'MISMATCH - do not install' }
+  Unblock-File $zip
+
+(Or right-click the zip > Properties > tick Unblock > OK.)
+
+2. Extract into C:\ArcGISProMCP\
+--------------------------------
+In the same PowerShell window:
+
+  Expand-Archive $zip -DestinationPath C:\ArcGISProMCP
+
+(In Explorer: Extract All, and set the destination to C:\ArcGISProMCP.)
+The gateway is then at:
+  C:\ArcGISProMCP\ArcGISProMCP-{{VERSION}}-win-x64-development-preview\server\arcgis-pro-mcp.exe
+
+3. Install the add-in
+---------------------
+- Close ArcGIS Pro.
+- Double-click ArcGISProMCP.AddIn.esriAddinX (next to this file) and click
+  Install Add-In.
+- The add-in is unsigned. In ArcGIS Pro: Project > Add-In Manager > Options,
+  choose "Load all Add-Ins without restrictions" and restart ArcGIS Pro.
+  If the option is greyed out, your IT department manages it: ask them.
+
+4. Open the pane
+----------------
+Start ArcGIS Pro and open a disposable copy of a project. On the Add-In tab,
+click MCP Studio. The ArcGIS MCP pane opens; its status should read Ready.
+Keep the pane open: approval cards appear there.
+
+5. Connect your MCP client
+--------------------------
+Use the full path from step 2 as the command.
+
+Claude Desktop: Settings > Developer > Edit Config (the file is
+%APPDATA%\Claude\claude_desktop_config.json). Add the "arcgis-pro" entry
+inside "mcpServers" (keep any servers already there):
+
+  {
+    "mcpServers": {
+      "arcgis-pro": {
+        "command": "C:\\ArcGISProMCP\\ArcGISProMCP-{{VERSION}}-win-x64-development-preview\\server\\arcgis-pro-mcp.exe"
+      }
+    }
+  }
+
+Save, quit Claude Desktop completely (right-click its tray icon > Quit),
+and start it again.
+
+Claude Code:
+
+  claude mcp add --scope user arcgis-pro -- "C:\ArcGISProMCP\ArcGISProMCP-{{VERSION}}-win-x64-development-preview\server\arcgis-pro-mcp.exe"
+  claude mcp list
+
+VS Code: create .vscode\mcp.json in your workspace (or run "MCP: Open User
+Configuration" from the Command Palette) with:
+
+  {
+    "servers": {
+      "arcgis-pro": {
+        "type": "stdio",
+        "command": "C:\\ArcGISProMCP\\ArcGISProMCP-{{VERSION}}-win-x64-development-preview\\server\\arcgis-pro-mcp.exe"
+      }
+    }
+  }
+
+Any other MCP client: run the same command as a stdio server.
+
+Do not set ARCGIS_PRO_MCP_AUTONOMOUS_MODE: it skips the approval cards.
+
+6. Check that it works
+----------------------
+- The client lists the arcgis-pro server with 16 tools.
+- Ask: "What project is open in ArcGIS Pro?"
+- Ask for a small edit and approve the card in the ArcGIS MCP pane.
+
+If something fails
+------------------
+- arcgis_unavailable: ArcGIS Pro is not running, or the add-in did not load.
+  Start Pro, open a project and check the pane says Ready.
+- arcgis_host_ambiguous: several ArcGIS Pro windows are open. Close the extra
+  ones, or add  "env": { "ARCGIS_PRO_MCP_HOST_PID": "<pid>" }  to the client
+  entry; the pane header shows the PID.
+- The client says the server failed: check the path in the config, and that
+  "dotnet --list-runtimes" shows Microsoft.NETCore.App 10.x.
+More: https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/deployment.md#troubleshooting
+
+Security model: https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/security.md
+License: Apache-2.0 (LICENSE, next to this file).

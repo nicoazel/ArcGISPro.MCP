@@ -80,6 +80,12 @@ try {
         $addIn = Join-Path $repoRoot 'artifacts\ArcGISProMCP.AddIn.esriAddinX'
         if (-not (Test-Path -LiteralPath $addIn -PathType Leaf)) { throw 'Verified add-in package is missing.' }
         Copy-Item -LiteralPath $addIn -Destination (Join-Path $bundleRoot 'ArcGISProMCP.AddIn.esriAddinX')
+        # Plain-text install steps with absolute links, so they work offline after extraction. The
+        # {{VERSION}} token becomes the product version; the file is written with CRLF for Notepad.
+        $installText = [IO.File]::ReadAllText((Join-Path $repoRoot 'tools\bundle\INSTALL.txt')).Replace('{{VERSION}}', $version)
+        if ($installText.Contains('{{')) { throw 'tools/bundle/INSTALL.txt has an unknown {{token}}.' }
+        $installText = ($installText -replace "`r?`n", "`r`n")
+        [IO.File]::WriteAllText((Join-Path $bundleRoot 'INSTALL.txt'), $installText, [Text.UTF8Encoding]::new($false))
         Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination $bundleRoot
         Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination $bundleRoot
 
@@ -147,6 +153,7 @@ try {
             $entries = @($archive.Entries.FullName | ForEach-Object { $_.Replace('\', '/') })
             foreach ($required in @(
                 "$name/ArcGISProMCP.AddIn.esriAddinX",
+                "$name/INSTALL.txt",
                 "$name/server/arcgis-pro-mcp.exe",
                 "$name/server/skills/$($sourceSkills[0].Name)",
                 "$name/docs/deployment.md",
