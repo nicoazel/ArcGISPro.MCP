@@ -46,9 +46,9 @@ ArcPy cases run only when the host reports the `arcpy` capability. To enable it 
 
 ```powershell
 $env:ARCGIS_PRO_MCP_ENABLE_ARCPY = 'true'
-$env:ARCGIS_PRO_MCP_ARCPY_SCRIPT_ROOT = 'D:\_11_Git\ArcGISPro.MCP\tools\arcpy-scripts'   # <repo>\tools\arcpy-scripts
-$env:ARCGIS_PRO_MCP_ARCPY_WORKING_ROOT = 'D:\scratch\mcp-acceptance\arcpy-runs'         # <DisposableRoot>\arcpy-runs
-& 'C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe' 'D:\scratch\mcp-acceptance\Acceptance.aprx'
+$env:ARCGIS_PRO_MCP_ARCPY_SCRIPT_ROOT = '<repo>\tools\arcpy-scripts'        # your checkout, for example C:\src\ArcGISPro.MCP
+$env:ARCGIS_PRO_MCP_ARCPY_WORKING_ROOT = 'C:\MCP-scratch\mcp-acceptance\arcpy-runs'  # <DisposableRoot>\arcpy-runs
+& 'C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe' 'C:\MCP-scratch\mcp-acceptance\Acceptance.aprx'
 ```
 
 The script root is the repository checkout, so the hashes the run pins are those of the committed scripts. The working root must be a separate folder; it collects one run directory per execution. Without these variables the ArcPy cases are recorded as skipped, `arcpy.inspect-script` and `arcpy.run-script` stay uncovered, and the `operations` section cannot pass.

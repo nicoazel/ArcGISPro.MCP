@@ -14,7 +14,7 @@ The scripts do not cover the remaining steps that need a person: letting reviews
 
 Use the installed gateway from the release bundle, not a build output, against the disposable project in default mode.
 
-1. Register the gateway exactly as the README shows. Claude Code: `claude mcp add arcgis-pro -- C:\ArcGISProMCP\<version>\server\arcgis-pro-mcp.exe`, then `claude mcp list` shows `arcgis-pro` connected. Claude Desktop: add the `mcpServers.arcgis-pro.command` entry to `claude_desktop_config.json`, restart Claude Desktop, and confirm the 16 ArcGIS tools appear.
+1. Register the gateway exactly as [Install (users)](deployment.md#5-connect-your-mcp-client) shows. Claude Code: `claude mcp add --scope user arcgis-pro -- "C:\ArcGISProMCP\ArcGISProMCP-<version>-win-x64-development-preview\server\arcgis-pro-mcp.exe"`, then `claude mcp list` shows `arcgis-pro` connected. Claude Desktop: add the `mcpServers.arcgis-pro.command` entry to `claude_desktop_config.json`, quit Claude Desktop from the tray and start it again, and confirm the 16 ArcGIS tools appear.
 2. Ask: *"Read the ArcGIS Pro project state."* The client calls `system_get_state`; the answer names the open disposable project and its maps.
 3. Ask: *"List the layers in the active map."* The answer matches the Contents pane.
 4. Ask: *"Set Units to 140 on the 'Baseline Site' feature in Design Sites."* The client should describe or validate `feature.update`, call `approval_request`, and wait with `approval_status`. One card appears in the dockpane. Approve once. The attribute changes in Pro (open the attribute table) and the client reports success with a new workspace revision.
@@ -23,7 +23,7 @@ Use the installed gateway from the release bundle, not a build output, against t
 
 ## Dockpane review cards
 
-For each confirmation-gated operation the `operations` section raises one card (two for `feature.delete`). While each card is pending, check in the MCP Studio dockpane before clicking:
+For each confirmation-gated operation the `operations` section raises one card (two for `feature.delete`). While each card is pending, check in the ArcGIS MCP pane before clicking:
 
 | Operation | Card must show | Then |
 | --- | --- | --- |

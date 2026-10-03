@@ -49,9 +49,9 @@
 .EXAMPLE
     ./tools/run-live-operations.ps1 -PlanOnly
 .EXAMPLE
-    ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot D:\scratch\mcp-acceptance
+    ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot C:\MCP-scratch\mcp-acceptance
 .EXAMPLE
-    ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot D:\scratch\mcp-acceptance -SkipCards
+    ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot C:\MCP-scratch\mcp-acceptance -SkipCards
 #>
 # An operator console script: the coloured prompts are for the person at the dockpane, and every
 # result that matters is written to summary.json, errors.md and console.log, so Write-Host is intended.
