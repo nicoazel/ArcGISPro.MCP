@@ -320,6 +320,9 @@ Register-Case 'feature-query-baseline' {
     param($Result)
     $rows = @(Get-Property $Result.Data 'rows')
     Assert-True ($rows.Count -eq 1 -and (Get-Property $rows[0] 'Name') -eq 'Baseline Site') "Design Sites should hold exactly 'Baseline Site' (got $($rows.Count) rows)."
+    # A restricted field list must still return the row identity (regression: objectId -1, globalId null).
+    Assert-True ([long](Get-Property $rows[0] 'objectId') -gt 0) "feature.query returned objectId $(Get-Property $rows[0] 'objectId') for 'Baseline Site'."
+    Assert-True (-not [string]::IsNullOrEmpty([string](Get-Property $rows[0] 'globalId'))) "feature.query returned no globalId for 'Baseline Site'."
     $script:ctx.baselineGlobalId = [string](Get-Property $rows[0] 'globalId')
 }
 Register-Case 'feature-layer-describe-design-sites' { Invoke-Op 'feature.layer.describe' @{ map = $map; layer = 'Design Sites' } } {
@@ -586,9 +589,10 @@ Register-Case 'project-save-approved' { @{ OperationId = 'project.save'; Argumen
     Assert-True (Test-Path -LiteralPath $reopenPath -PathType Leaf) "Could not copy the saved project to $reopenPath."
 }
 Register-Case 'project-open-approved' { @{ OperationId = 'project.open'; Arguments = @{ path = (Assert-Context 'reopenPath') } } } {
+    # ArcGIS reports the project name with its .aprx extension; compare file names without it.
     $expected = [IO.Path]::GetFileNameWithoutExtension((Assert-Context 'reopenPath'))
     $after = Invoke-Op 'project.get' @{} -Label 'project.get-after-project-open'
-    $name = [string](Get-Property (Get-Property $after.Data 'project') 'name')
+    $name = [IO.Path]::GetFileNameWithoutExtension([string](Get-Property (Get-Property $after.Data 'project') 'name'))
     Assert-True ($after.Success -and $name -eq $expected) "project.get reports '$name' after project.open, expected '$expected'."
 }
 

@@ -203,7 +203,10 @@ internal sealed class ProWorkspaceStateProvider(IOperationDispatcher dispatcher)
             Interlocked.Read(ref _mutationSequence),
             project.URI,
             project.Name,
-            project.IsDirty,
+            // The dirty flag is not project content: ArcGIS clears it asynchronously after a save
+            // (live acceptance saw it flip ~2.5 s after project.save returned, invalidating an
+            // approval for the next call). Edits made in Pro advance the revision through the
+            // subscribed host events instead.
             // Which view has focus is UI state, not project content: it can change without any edit
             // (live acceptance saw spurious workspace_revision_mismatch). Activations made through
             // map.activate/layout.activate still advance the revision via the mutation sequence.

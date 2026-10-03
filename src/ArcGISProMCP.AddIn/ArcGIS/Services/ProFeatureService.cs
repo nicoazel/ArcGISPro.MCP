@@ -173,11 +173,19 @@ internal sealed class ProFeatureService : IFeatureService
 
     private static QueryFilter CreateFilter(BasicFeatureLayer layer, FeatureQueryFilter filter)
     {
-        var subFields = string.Join(",", filter.SubFields);
-        if (filter.Envelope is not { } envelope)
-            return new QueryFilter { WhereClause = filter.Where, SubFields = subFields };
         // Called inside the callers' LayerData.Read.
         using var table = LayerData.OpenTable(layer);
+        using var tableDefinition = table.GetDefinition();
+        // Always fetch the ObjectID and GlobalID columns: with a restricted SubFields list ArcGIS
+        // does not read them, so GetObjectID() returned -1 and GetGlobalID() Guid.Empty (found by
+        // live acceptance: feature.query reported objectId -1 and feature.select matched nothing).
+        var identity = new List<string> { tableDefinition.GetObjectIDField() };
+        if (LayerData.HasGlobalId(tableDefinition)) identity.Add(tableDefinition.GetGlobalIDField());
+        var subFields = string.Join(",", identity
+            .Concat(filter.SubFields)
+            .Distinct(StringComparer.OrdinalIgnoreCase));
+        if (filter.Envelope is not { } envelope)
+            return new QueryFilter { WhereClause = filter.Where, SubFields = subFields };
         using var definition = FeatureClass(table);
         return new SpatialQueryFilter
         {
