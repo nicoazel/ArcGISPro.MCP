@@ -26,6 +26,13 @@
         acceptance"); basemap.set Topographic only when a portal is reachable (-Offline skips it).
       * -PlanOnly (alias -DryRun) prints the ordered matrix and card list, checks the plan against
         the operation descriptors and this script, and contacts nothing.
+      * -SkipCards is a pre-run without an operator: every case that needs an approval card is
+        recorded as skipped (no card is queued), so a -SkipCards run can never pass and is never
+        acceptance evidence. Use it to shake out the other cases before the operator session.
+
+    Launch ArcGIS Pro on a fresh copy of the disposable .aprx for each session. After a forced
+    close, reopening the same project brings up ArcGIS Pro's Project Recovery prompt, which blocks
+    the start until someone answers it.
 
     Evidence (under -EvidenceDirectory): results/NNN-<operation>-<case>.request.json and
     .result.json for every bridge and gateway call, summary.json (per-operation cases, coverage,
@@ -40,6 +47,8 @@
     ./tools/run-live-operations.ps1 -PlanOnly
 .EXAMPLE
     ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot D:\scratch\mcp-acceptance
+.EXAMPLE
+    ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.12345 -DisposableRoot D:\scratch\mcp-acceptance -SkipCards
 #>
 # An operator console script: the coloured prompts are for the person at the dockpane, and every
 # result that matters is written to summary.json, errors.md and console.log, so Write-Host is intended.

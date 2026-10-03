@@ -37,7 +37,7 @@ Prerequisites: Windows PowerShell 5.1 or PowerShell 7 to run the script, PowerSh
    ./tools/run-acceptance.ps1 -PlanOnly
    ```
 
-2. Build and package: `./tools/verify-release.ps1` (the script runs it again, but the package has to exist before you install it). Close ArcGIS Pro, install `artifacts/ArcGISProMCP.AddIn.esriAddinX`, and open a **disposable copy** of a project stored under a scratch folder such as `D:\scratch\mcp-acceptance`.
+2. Build and package: `./tools/verify-release.ps1` (the script runs it again, but the package has to exist before you install it). Close ArcGIS Pro, install `artifacts/ArcGISProMCP.AddIn.esriAddinX`, and open a **disposable copy** of a project stored under a scratch folder such as `D:\scratch\mcp-acceptance`. Make a fresh copy of the disposable `.aprx` for each session and launch ArcGIS Pro on it: after a forced close, reopening the same project brings up ArcGIS Pro's Project Recovery prompt, which blocks the start until someone answers it.
 
 3. Run the read-only smoke pass. It builds, tests and packages the commit again, confirms that the DLLs Pro loaded match the package, snapshots the state and runs `test-mcp.ps1 -ApprovalProbe`. The approval probe shows one pending review card in the dockpane and cancels it. Nothing is approved or changed:
 
@@ -64,7 +64,13 @@ Prerequisites: Windows PowerShell 5.1 or PowerShell 7 to run the script, PowerSh
    ./tools/run-live-operations.ps1 -PlanOnly
    ```
 
-   Then run it, last, after the other default-mode sections:
+   To shake out the matrix before the operator session, run the script directly with `-SkipCards`. No review card is queued and every card case is recorded as skipped, so such a run never passes and is not evidence; its output goes to `artifacts/live-operations/<timestamp>/` unless you pass `-EvidenceDirectory`:
+
+   ```powershell
+   ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.<pid> -DisposableRoot D:\scratch\mcp-acceptance -SkipCards
+   ```
+
+   Then run it for the record, last, after the other default-mode sections:
 
    ```powershell
    ./tools/run-acceptance.ps1 -Sections smoke,stress,operations `
