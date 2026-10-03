@@ -394,7 +394,7 @@
       <li>Workflows are not transactional or resumable after a crash, and nothing is rolled back automatically.</li>
       <li>ArcPy and <code>gp.run</code> can execute arbitrary user code. Neither is a sandbox.</li>
       <li>Revision checks are an optimistic guard, not a lock. Some direct edits in Pro, such as reordering layers, do not invalidate an approval.</li>
-      <li>The post-write settle is capped at 3 seconds; heavy layout and 3D steps sometimes reach the cap.</li>
+      <li>After each write the host waits up to 3 seconds for ArcGIS Pro's event echoes to settle; heavy layout and 3D steps sometimes reach that cap. Reading the final state still waits for Pro's main thread, so while Pro is busy (for example loading a newly added layer) a write can take much longer to return.</li>
       <li>Feature editing excludes batch edits and multipart construction. Advanced renderers, workspace connections and PDF export are outside the registry.</li>
       <li>Idempotency, workflow history and resources do not survive an ArcGIS Pro restart.</li>
     </ul>

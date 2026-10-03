@@ -92,7 +92,17 @@ ArcPy is absent from the operation registry unless explicitly enabled before Arc
 
 - every new workspace revision with the state it was computed from: the MCP write sequence, the project URI (its full local path), project name and dirty flag, and each map's and layout's name, handle, layer count and map frame count;
 - `advance` and `ignored` lines naming the ArcGIS event (or `operation`) behind each revision advance, or the event deliberately ignored;
-- `settle-unsettled` and `settle-timeout` lines when a write published its revision without the revision going quiet, or after the 3 s settle budget ran out.
+- one line per post-write settle, `settle-ok`, `settle-unsettled` (the samples never repeated the revision) or `settle-timeout` (the 3 s budget ran out and a plain snapshot was published), with `drainMs` (host drain plus the 300 ms host-event quiet wait), `sampleMs` (revision sampling after the drain), `samples` and the published `revision`.
+
+`tools/analyze-revision-log.py` (Python 3.11, standard library only) reads a revision log and attributes each settle to the innermost audited operation whose `startedAt`..`completedAt` interval contains it. Per operation id it prints the settle count, budget-cap (timeout) rate, unsettled count and p50/p95 of drain, sample and total milliseconds, then the same over all settles:
+
+```powershell
+python tools/analyze-revision-log.py revisions-1234.log --audit "$env:LOCALAPPDATA\ArcGISProMCP\audit\operations.jsonl"
+python tools/analyze-revision-log.py revisions-1234.log --audit operations.jsonl --json      # machine-readable report
+python tools/analyze-revision-log.py revisions-1234.log --audit operations.jsonl --slack-ms 500
+```
+
+`--slack-ms` widens each operation interval when matching (default 250 ms); without `--audit` every settle is reported as unmatched. Settle lines from an older add-in without timing are skipped and counted on stderr.
 
 The log contains project paths and map and layout names, so treat it like the project itself when sharing it. Writing stops once the file reaches 50 MB (a final `capped` line says so); delete the file to start again. Nothing rotates or deletes it automatically.
 
@@ -122,7 +132,7 @@ The evidence from that pass (result JSON, hashes and images under `artifacts/`) 
 
 ## Known limits
 
-- The post-write settle is capped at 3 s. In the 2026-09-29 evidence run, the operator's revision log (`ARCGIS_PRO_MCP_REVISION_LOG`, not committed) recorded 26 of 324 writes (8%, heavy layout and 3D steps) reached the cap because ArcGIS Pro did not go idle within 3 s; the host then published a plain sample. No revision drift followed in that run, but a late ArcGIS event echo after a capped settle can still surface as `workspace_changed` on the next workflow step. Rerun the workflow after refreshing state.
+- The post-write settle budget is 3 s. It bounds the host's own waiting: the drain of the main CIM thread and UI dispatcher, the 300 ms host-event quiet wait and the quiet revision samples. It does not bound how long a write takes to return: every snapshot, including the plain one published when the budget runs out, is read on ArcGIS Pro's main CIM thread, so while Pro is busy (for example loading a newly added layer) the write waits for it. One write after `layer.add` took about 30 s in a live run. In the 2026-09-29 evidence run, before the host-event quiet wait existed, the operator's revision log (`ARCGIS_PRO_MCP_REVISION_LOG`, not committed) recorded 26 of 324 writes (8%, heavy layout and 3D steps) reaching the cap because ArcGIS Pro did not go idle within 3 s. No revision drift followed in that run, but a late ArcGIS event echo after a capped settle can still surface as `workspace_changed` on the next workflow step. Rerun the workflow after refreshing state. Measure settles on your own workstation with the revision log and `tools/analyze-revision-log.py` (see [diagnostics](#diagnostics)).
 - **Workflows cannot execute confirmation-gated steps in default mode.** `workflow_run` invokes each step without an approval token, and there is no per-step approval yet. A step such as `gp.run`, `metadata.update`, `feature.update`, `feature.delete`, `project.save` or `arcpy.run-script` fails with `confirmation_required` unless the host runs in autonomous mode. Run such operations individually through `approval_request` and `registry_invoke`.
 - Workflows are not transactional or resumable after a crash. There is no automatic rollback. A run that detects a mid-run workspace change stops with `workspace_changed` and leaves its completed steps in place.
 - Feature editing excludes batch edits, multipoint construction, multipart construction and complete subtype/domain/range validation.
