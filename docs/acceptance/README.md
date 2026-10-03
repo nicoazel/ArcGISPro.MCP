@@ -38,7 +38,7 @@ Prerequisites: Windows PowerShell 5.1 or PowerShell 7 to run the script, PowerSh
    ./tools/run-acceptance.ps1 -PlanOnly
    ```
 
-2. Build and package: `./tools/verify-release.ps1` (the script runs it again, but the package has to exist before you install it). Close ArcGIS Pro, install `artifacts/ArcGISProMCP.AddIn.esriAddinX`, and open a **disposable copy** of a project stored under a scratch folder such as `D:\scratch\mcp-acceptance`. Make a fresh copy of the disposable `.aprx` for each session and launch ArcGIS Pro on it: after a forced close, reopening the same project brings up ArcGIS Pro's Project Recovery prompt, which blocks the start until someone answers it.
+2. Build and package: `./tools/verify-release.ps1` (the script runs it again, but the package has to exist before you install it). Close ArcGIS Pro, install `artifacts/ArcGISProMCP.AddIn.esriAddinX`, and open a **disposable copy** of a project stored under a scratch folder such as `C:\MCP-scratch\mcp-acceptance`. Make a fresh copy of the disposable `.aprx` for each session and launch ArcGIS Pro on it: after a forced close, reopening the same project brings up ArcGIS Pro's Project Recovery prompt, which blocks the start until someone answers it.
 
 3. Run the read-only smoke pass. It builds, tests and packages the commit again, confirms that the DLLs Pro loaded match the package, snapshots the state and runs `test-mcp.ps1 -ApprovalProbe`. The approval probe shows one pending review card in the dockpane and cancels it. Nothing is approved or changed:
 
@@ -52,14 +52,14 @@ Prerequisites: Windows PowerShell 5.1 or PowerShell 7 to run the script, PowerSh
 
    ```powershell
    ./tools/run-acceptance.ps1 -Sections smoke,feature-gp-arcpy,stress `
-       -AllowProjectMutation -AllowAutonomous -DisposableRoot D:\scratch\mcp-acceptance `
+       -AllowProjectMutation -AllowAutonomous -DisposableRoot C:\MCP-scratch\mcp-acceptance `
        -RunsPerCase 3 -VisuallyInspected 'Three urban layouts: no blank frames, surrounds present' `
        -Commit
    ```
 
    The mutating sections refuse to run unless the open project is under `-DisposableRoot`. `feature-gp-arcpy` also refuses unless the host reports the `autonomous-control` capability. Turn autonomous mode off again afterwards.
 
-5. For the operation matrix, restart Pro in **default mode** (no `ARCGIS_PRO_MCP_AUTONOMOUS_MODE`) with ArcPy enabled for the session as described in [arcpy.md](../arcpy.md#live-acceptance), reopen the disposable project and open the MCP Studio dockpane (Add-In tab > MCP Studio). Check the ordered matrix and the cards you will decide first:
+5. For the operation matrix, restart Pro in **default mode** (no `ARCGIS_PRO_MCP_AUTONOMOUS_MODE`) with ArcPy enabled for the session as described in [arcpy.md](../arcpy.md#live-acceptance), reopen the disposable project and open the ArcGIS MCP pane (**Add-In** tab > **MCP Studio**). Check the ordered matrix and the cards you will decide first:
 
    ```powershell
    ./tools/run-live-operations.ps1 -PlanOnly
@@ -68,14 +68,14 @@ Prerequisites: Windows PowerShell 5.1 or PowerShell 7 to run the script, PowerSh
    To shake out the matrix before the operator session, run the script directly with `-SkipCards`. No review card is queued and every card case is recorded as skipped, so such a run never passes and is not evidence; its output goes to `artifacts/live-operations/<timestamp>/` unless you pass `-EvidenceDirectory`:
 
    ```powershell
-   ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.<pid> -DisposableRoot D:\scratch\mcp-acceptance -SkipCards
+   ./tools/run-live-operations.ps1 -PipeName ArcGISProMCP.v1.<pid> -DisposableRoot C:\MCP-scratch\mcp-acceptance -SkipCards
    ```
 
    Then run it for the record, last, after the other default-mode sections:
 
    ```powershell
    ./tools/run-acceptance.ps1 -Sections smoke,stress,operations `
-       -AllowProjectMutation -DisposableRoot D:\scratch\mcp-acceptance -RunsPerCase 3 `
+       -AllowProjectMutation -DisposableRoot C:\MCP-scratch\mcp-acceptance -RunsPerCase 3 `
        -RunNotes 'Cards decided by <who>, <how>' -Commit
    ```
 
@@ -97,7 +97,18 @@ An entry covers one commit, one ArcGIS Pro version, one machine and the sections
 
 ## Run notes
 
-- `2026-10-03-e7deee2` predates `-RunNotes`, so its disclosures are in [`2026-10-03-e7deee2/ANNEX.md`](2026-10-03-e7deee2/ANNEX.md), added after the run: the eight approval cards were decided in the MCP Studio dockpane by Claude (Anthropic's assistant) through computer use, at the maintainer's direction, not by the maintainer's own clicks; the first `project.open` card expired undecided and was re-queued; and ArcGIS Pro's modal "Save all edits?" prompt during the final `project.open` was answered "Yes" by the same means, which is what saved the matrix's feature edits (`project.save` at that commit did not save them) and why that call took about 277 s.
+- `2026-10-03-e7deee2` predates `-RunNotes`, so its disclosures are in [`2026-10-03-e7deee2/ANNEX.md`](2026-10-03-e7deee2/ANNEX.md), added after the run: the eight approval cards were decided in the ArcGIS MCP pane by Claude (Anthropic's assistant) through computer use, at the maintainer's direction, not by the maintainer's own clicks; the first `project.open` card expired undecided and was re-queued; and ArcGIS Pro's modal "Save all edits?" prompt during the final `project.open` was answered "Yes" by the same means, which is what saved the matrix's feature edits (`project.save` at that commit did not save them) and why that call took about 277 s.
+
+## Earlier live passes (not evidence)
+
+A live acceptance pass of the ArcGIS-only build was run on the maintainer's workstation on 2026-09-09. It covered MCP protocol and reconnect, multi-instance discovery, feature editing, layer metadata, SDK geoprocessing, the optional ArcPy runner (in autonomous mode), the urban layout workflows and the Pittsburgh showcase, and idle/shutdown behavior.
+
+Two findings are retained:
+
+- Explicit remote cancellation of an accepted SDK geoprocessing call is not implemented. A client disconnect after acceptance is reported as `outcome_unknown`.
+- ArcGIS Pro shutdown was not perfectly repeatable across disposable instances; one instance needed a PID-scoped forced close after 75 seconds.
+
+The evidence from that pass (result JSON, hashes and images under `artifacts/`) is **local only**: `artifacts/` is git-ignored and nothing in this repository lets a reader verify those results. Treat them as the maintainer's notes, not as release evidence.
 
 ## Public history
 
@@ -111,8 +122,8 @@ Because the trees changed, every commit SHA differs from the private repository.
 | `54e0b33` | `6f969b5` | Commit that added the `2026-10-03-e7deee2` folder | docs(acceptance): live evidence for v0.3.0 (e7deee2) |
 | `28e53ab` | `4de9551` | Live spot-check of `project.open` and `project.save` recorded in [ROADMAP.md](../ROADMAP.md) | fix(project): restore unsaved_project_changes as a pre-token refusal |
 | `64aa31b` | `cfc51a0` | Commit that recorded the `28e53ab` spot-check | docs(roadmap): record the 28e53ab live spot-check |
-| `83cb4ac` | `d027f90` | Pull request #6 merge | Live acceptance evidence and four defects it found (#6) |
-| `6fea916` | `3b8ac8b` | Pull request #7 merge, the private `main` this history was rewritten from | Phase 6: go public with v0.3.0 (#7) |
+| `83cb4ac` | `d027f90` | Merge of private pull request 6 | Live acceptance evidence and four defects it found (private PR 6) |
+| `6fea916` | `3b8ac8b` | Merge of private pull request 7, the private `main` this history was rewritten from | Phase 6: go public with v0.3.0 (private PR 7) |
 | `5f34f16` | `1f5cdf7` | Commit of the first (removed) evidence folder | fix(workspace): settle writes on ArcGIS idle |
 | `96f6a5b` | `9b5cfcb` | Commit of the second (removed) evidence folder | fix(tools): committed acceptance manifests list only files the folder contains |
 | `5d1c587` | `c26c57b` | [`evals/results/2026-09-28-5d1c587`](../../evals/results/2026-09-28-5d1c587/scorecard.md), evals/README.md | fix(search): drop synonym entries fitted to single eval tasks |
