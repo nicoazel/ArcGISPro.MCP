@@ -161,7 +161,7 @@ Build and verify the package locally:
 ./tools/pack-gateway.ps1
 ```
 
-This runs `dotnet pack` into `artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg` and fails unless the package declares the `McpServer` package type, contains `.mcp/server.json` identical to source, exposes the `arcgis-pro-mcp` command, and bundles every `skills/*.skill.json` byte-for-byte under the tool's `skills` directory. It also fails if either version in `server.json` differs from `Directory.Build.props`, so bump all three together. The package is framework-dependent and RID-agnostic (`tools/net10.0/any`) and needs the .NET 10 runtime; `PublishSingleFile` only affects `dotnet publish`, so `package-release.ps1` still produces the single-file executable.
+This runs `dotnet pack` into `artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg` and fails unless the package declares the `McpServer` package type, contains `.mcp/server.json` identical to source, exposes the `arcgis-pro-mcp` command, and bundles every `skills/*.skill.json` byte-for-byte under the tool's `skills` directory. It also fails if either version in `server.json` differs from `Directory.Build.props`, so bump them together (see [release process](#release-process)). The package is framework-dependent and RID-agnostic (`tools/net10.0/any`) and needs the .NET 10 runtime; `PublishSingleFile` only affects `dotnet publish`, so `package-release.ps1` still produces the single-file executable.
 
 Try the package without publishing it:
 
@@ -186,16 +186,28 @@ Registry clients set environment variables on the gateway process only. `server.
 
 Not automated and not done by any script in this repository. It requires the maintainer's nuget.org account and GitHub identity:
 
-1. Bump `Version` in `Directory.Build.props` and both `version` fields in `.mcp/server.json`, then run `./tools/pack-gateway.ps1`.
+1. Start from a released version (see [release process](#release-process)), then run `./tools/pack-gateway.ps1`.
 2. Push the package: `dotnet nuget push artifacts/packages/ArcGISProMCP.Gateway.<version>.nupkg --api-key <key> --source https://api.nuget.org/v3/index.json`, and wait for nuget.org validation and indexing.
 3. Install the registry publisher (`mcp-publisher`, from the modelcontextprotocol/registry releases), run `mcp-publisher login github` as `nicoazel`, then run `mcp-publisher validate` and `mcp-publisher publish` from `src/ArcGISProMCP.Server/.mcp` (both read `server.json` from the current directory).
 4. Confirm the entry at `https://registry.modelcontextprotocol.io/v0/servers?search=io.github.nicoazel/arcgis-pro-mcp`.
 
 The registry verifies NuGet ownership by finding `mcp-name: io.github.nicoazel/arcgis-pro-mcp` in the package README. The packed README is the repository `README.md`, which carries `<!-- mcp-name: io.github.nicoazel/arcgis-pro-mcp -->` on its own line (an HTML comment, so it does not render). Keep that line when editing the README.
 
+## Release process
+
+The maintainer pushes a tag `vX.Y.Z`; `.github/workflows/release.yml` builds, tests and packages that commit and creates a **draft** GitHub release; the maintainer reviews the draft and publishes it. Nothing is published, signed or pushed to nuget.org or the MCP registry automatically.
+
+1. On `main`, set the same plain `X.Y.Z` in `Version` in `Directory.Build.props`, both `version` fields in `src/ArcGISProMCP.Server/.mcp/server.json`, and the `AddInInfo` `version` in `src/ArcGISProMCP.AddIn/Config.daml`. In `CHANGELOG.md`, the release section is `## [X.Y.Z] - unreleased` until release day; then set the date (`## [X.Y.Z] - yyyy-MM-dd`), keep an empty `## [Unreleased]` above it, and update the compare links at the bottom.
+2. Record live acceptance for the release commit with `tools/run-acceptance.ps1 -Commit` (see [acceptance evidence](#acceptance-evidence)) and merge it. The release notes link the latest committed evidence folder, which covers only the commit it names.
+3. Push an annotated tag on that `main` commit: `git tag -a vX.Y.Z -m "vX.Y.Z"` and `git push origin vX.Y.Z`. For a release candidate, tag `vX.Y.Z-rc.N` with the same product version; the changelog heading may still say `unreleased`.
+4. The workflow fails unless the tag is on `main`, the tag version equals all four version fields, and, for a final release, the changelog heading is dated. It then runs `tools/package-release.ps1` (release build, every test project, add-in inspection, offline MCP smoke test), writes `SHA256SUMS` for the bundle zip, extracts the notes with `tools/extract-release-notes.ps1`, and creates the draft release "ArcGIS Pro MCP Studio vX.Y.Z" with the zip and `SHA256SUMS` attached (marked as a prerelease for `-rc.N`).
+5. Review the draft: the notes, the evidence link, and the assets. Download the zip, check it against `SHA256SUMS` and its inner `checksums.sha256` (see [verify before installation](#verify-before-installation)), then publish the draft by hand. If anything is wrong, delete the draft and the tag, fix `main`, and tag again.
+
+Preview the notes locally with `./tools/extract-release-notes.ps1 -Version X.Y.Z -Ref vX.Y.Z -OutputPath artifacts/release-notes.md`.
+
 ## Release boundaries
 
-- The packaging script does not install, sign, or upload anything.
+- The packaging script does not install, sign, or upload anything. The release workflow only creates a draft release; publishing it is the maintainer's decision.
 - Live ArcGIS-host acceptance of the exact installed build, including the dockpane approval flow, is required before relying on a build.
 - Anyone who enables autonomous mode anyway must also verify the visible autonomous warning and the autonomous-mode audit notices.
 
