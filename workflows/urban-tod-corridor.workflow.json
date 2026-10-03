@@ -1,6 +1,6 @@
 {
   "id": "workflow.urban-tod-corridor",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "title": "Urban test 1 - transit-oriented corridor",
   "summary": "Builds a transit-oriented development test with program, mobility, and existing-fabric maps and exports a landscape review sheet.",
   "tags": ["urban-design", "tod", "mobility", "layout", "stress-test"],
@@ -44,8 +44,8 @@
     { "id": "fit-mobility", "operation": "layout.set-frame-extent", "arguments": { "layout": "Urban Test 1 - TOD Corridor", "frame": "Mobility Structure", "layer": "TOD Sites", "padding": 2.5 }, "dependsOn": ["fit-program"] },
     { "id": "fit-fabric", "operation": "layout.set-frame-extent", "arguments": { "layout": "Urban Test 1 - TOD Corridor", "frame": "Existing Fabric", "layer": "Development Program", "padding": 2.2 }, "dependsOn": ["fit-mobility"] },
     { "id": "north", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 1 - TOD Corridor", "frame": "Program Plan", "name": "TOD North", "kind": "north-arrow", "x": 9.2, "y": 8.55, "width": 0.42, "height": 0.68 }, "dependsOn": ["fit-fabric"] },
-    { "id": "scale", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 1 - TOD Corridor", "frame": "Program Plan", "name": "TOD Scale", "kind": "scale-bar", "x": 0.85, "y": 1.5, "width": 2.0, "height": 0.3 }, "dependsOn": ["north"] },
-    { "id": "legend", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 1 - TOD Corridor", "frame": "Program Plan", "name": "TOD Legend", "kind": "legend", "x": 7.6, "y": 1.55, "width": 2.0, "height": 2.4 }, "dependsOn": ["scale"] },
+    { "id": "scale", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 1 - TOD Corridor", "frame": "Program Plan", "name": "TOD Scale", "kind": "scale-bar", "x": 0.85, "y": 1.75, "width": 2.6, "height": 0.3 }, "dependsOn": ["north"] },
+    { "id": "legend", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 1 - TOD Corridor", "frame": "Program Plan", "name": "TOD Legend", "kind": "legend", "x": 7.5, "y": 2.0, "width": 2.3, "height": 2.6 }, "dependsOn": ["scale"] },
     { "id": "dynamic-status", "operation": "layout.set-text", "arguments": { "layout": "Urban Test 1 - TOD Corridor", "name": "dynamic-status", "text": "PROJECT  <dyn type=\"project\" property=\"name\"/>  /  GENERATED  <dyn type=\"date\" format=\"short\"/>  /  SCALE  <dyn type=\"mapFrame\" name=\"Program Plan\" property=\"camera.scale\" preStr=\"1:\" decimalPlaces=\"0\"/>", "x": 10.25, "y": 0.38, "fontFamily": "Aptos", "fontStyle": "Regular", "size": 6.5, "color": "#766F77" }, "dependsOn": ["legend"] },
     { "id": "stats-area", "operation": "table.statistics", "arguments": { "map": "UD1 TOD Program", "layer": "Land Use Program", "field": "area_gross" }, "dependsOn": ["dynamic-status"] },
     { "id": "stats-population", "operation": "table.statistics", "arguments": { "map": "UD1 TOD Program", "layer": "Land Use Program", "field": "pop" }, "dependsOn": ["stats-area"] },

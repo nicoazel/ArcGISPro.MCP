@@ -1,6 +1,6 @@
 {
   "id": "workflow.urban-mixed-use-massing",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "title": "Urban test 3 - mixed-use massing and public realm",
   "summary": "Builds a mixed-use program test with a 3D massing scene, development-program map, existing-fabric map, and exported review sheet.",
   "tags": ["urban-design", "mixed-use", "massing", "scene", "layout", "stress-test"],
@@ -48,8 +48,8 @@
     { "id": "fit-program", "operation": "layout.set-frame-extent", "arguments": { "layout": "Urban Test 3 - Mixed Use Massing", "frame": "Program Mix", "layer": "Development Program", "padding": 2.2 }, "dependsOn": ["fit-scene"] },
     { "id": "fit-fabric", "operation": "layout.set-frame-extent", "arguments": { "layout": "Urban Test 3 - Mixed Use Massing", "frame": "Public Realm Fabric", "layer": "Public Realm Network", "padding": 2.0 }, "dependsOn": ["fit-program"] },
     { "id": "north", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 3 - Mixed Use Massing", "frame": "Program Mix", "name": "Mixed Use North", "kind": "north-arrow", "x": 15.85, "y": 8.5, "width": 0.4, "height": 0.68 }, "dependsOn": ["fit-fabric"] },
-    { "id": "scale", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 3 - Mixed Use Massing", "frame": "Program Mix", "name": "Mixed Use Scale", "kind": "scale-bar", "x": 10.55, "y": 5.92, "width": 1.7, "height": 0.28 }, "dependsOn": ["north"] },
-    { "id": "legend", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 3 - Mixed Use Massing", "frame": "Program Mix", "name": "Mixed Use Legend", "kind": "legend", "x": 14.35, "y": 5.95, "width": 1.8, "height": 2.0 }, "dependsOn": ["scale"] },
+    { "id": "scale", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 3 - Mixed Use Massing", "frame": "Program Mix", "name": "Mixed Use Scale", "kind": "scale-bar", "x": 10.55, "y": 6.15, "width": 2.2, "height": 0.28 }, "dependsOn": ["north"] },
+    { "id": "legend", "operation": "layout.ensure-surround", "arguments": { "layout": "Urban Test 3 - Mixed Use Massing", "frame": "Program Mix", "name": "Mixed Use Legend", "kind": "legend", "x": 7.5, "y": 2.0, "width": 2.3, "height": 2.6 }, "dependsOn": ["scale"] },
     { "id": "dynamic-status", "operation": "layout.set-text", "arguments": { "layout": "Urban Test 3 - Mixed Use Massing", "name": "dynamic-status", "text": "PROJECT  <dyn type=\"project\" property=\"name\"/>  /  GENERATED  <dyn type=\"date\" format=\"short\"/>  /  SCALE  <dyn type=\"mapFrame\" name=\"Program Mix\" property=\"camera.scale\" preStr=\"1:\" decimalPlaces=\"0\"/>", "x": 10.25, "y": 0.38, "fontFamily": "Aptos", "fontStyle": "Regular", "size": 6.5, "color": "#746D70" }, "dependsOn": ["legend"] },
     { "id": "stats-area", "operation": "table.statistics", "arguments": { "map": "UD3 Mixed Use Program", "layer": "Mixed Use Program", "field": "area_gross" }, "dependsOn": ["dynamic-status"] },
     { "id": "stats-population", "operation": "table.statistics", "arguments": { "map": "UD3 Mixed Use Program", "layer": "Mixed Use Program", "field": "pop" }, "dependsOn": ["stats-area"] },

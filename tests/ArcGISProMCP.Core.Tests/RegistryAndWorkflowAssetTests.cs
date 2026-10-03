@@ -64,7 +64,7 @@ public sealed class RegistryAndWorkflowAssetTests
         var ids = steps.Select(s => s.GetProperty("id").GetString()!).ToHashSet(StringComparer.Ordinal);
 
         Assert.Equal("workflow.master-cartography", root.GetProperty("id").GetString());
-        Assert.Equal("1.1.0", root.GetProperty("version").GetString());
+        Assert.Equal("1.2.0", root.GetProperty("version").GetString());
         Assert.Contains(steps, s => s.GetProperty("arguments").ToString().Contains("Zoning", StringComparison.Ordinal));
         Assert.Contains(steps, s => s.GetProperty("arguments").ToString().Contains("Transit", StringComparison.Ordinal));
         Assert.Contains(steps, s => s.GetProperty("arguments").ToString().Contains("Buildings-SiteDesign", StringComparison.Ordinal));
