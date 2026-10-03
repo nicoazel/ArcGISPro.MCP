@@ -57,5 +57,11 @@ internal abstract class ProOperationBase(OperationDescriptor descriptor) : IOper
     protected static double OptionalDouble(JsonElement arguments, string name, double defaultValue) =>
         arguments.TryGetProperty(name, out var value) && value.TryGetDouble(out var number) ? number : defaultValue;
 
-    protected static JsonElement Json(object value) => JsonSerializer.SerializeToElement(value);
+    /// <summary>
+    /// Serializes operation result data. Uses the same settings as <see cref="GeoprocessingJson"/>
+    /// (camelCase member names, enums as names), so anonymous-object shorthand such as
+    /// <c>new { layer.Name }</c> is written as <c>name</c>. Dictionary keys are written unchanged:
+    /// they carry user data (attribute field names, GP parameter and environment names).
+    /// </summary>
+    protected static JsonElement Json(object value) => GeoprocessingJson.Serialize(value);
 }

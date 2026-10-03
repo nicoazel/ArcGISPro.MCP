@@ -119,7 +119,7 @@ public sealed class EndToEndTests
         Assert.Empty(server.Runtime.Approvals.GetPending());
 
         var result = await InvokeWithApprovalAsync(server, "gp.run", run, revision, waitForDecision: false);
-        Assert.Equal("memory\\RoadBuffer", result.GetProperty("data").GetProperty("ReturnValue").GetString());
+        Assert.Equal("memory\\RoadBuffer", result.GetProperty("data").GetProperty("returnValue").GetString());
         var call = Assert.Single(server.Runtime.Pro.Geoprocessing.Calls);
         Assert.Equal("fixture.BufferZones", call.Tool);
         Assert.Equal(["Roads", "memory\\RoadBuffer", "50 Feet"], call.Parameters);

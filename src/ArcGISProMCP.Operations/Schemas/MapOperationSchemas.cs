@@ -15,14 +15,14 @@ internal static class MapOperationSchemas
 
     public static JsonElement ActivateInput { get; } = S.Object([("map", S.String(minLength: 1))], ["map"]);
 
-    // Describes OperationResult.data for map.list (default JsonSerializer names).
+    // Describes OperationResult.data for map.list (camelCase names).
     public static JsonElement ListOutput { get; } = S.Array(S.Object(
         [
             ("id", S.String()),
-            ("Name", S.String()),
+            ("name", S.String()),
             ("type", S.String()),
             ("layerCount", S.Integer(minimum: 0)),
             ("isActive", S.Boolean()),
         ],
-        ["id", "Name", "type", "layerCount", "isActive"]));
+        ["id", "name", "type", "layerCount", "isActive"]));
 }

@@ -39,10 +39,10 @@ public sealed class ProjectOperationTests
 
         Assert.True(result.Success);
         var data = result.Data!.Value;
-        Assert.Equal("Fixture", data.GetProperty("Project").GetProperty("Name").GetString());
-        Assert.True(data.GetProperty("Project").GetProperty("IsOpen").GetBoolean());
-        Assert.Equal("rev-0", data.GetProperty("Revision").GetString());
-        Assert.True(data.TryGetProperty("CapturedAt", out _));
+        Assert.Equal("Fixture", data.GetProperty("project").GetProperty("name").GetString());
+        Assert.True(data.GetProperty("project").GetProperty("isOpen").GetBoolean());
+        Assert.Equal("rev-0", data.GetProperty("revision").GetString());
+        Assert.True(data.TryGetProperty("capturedAt", out _));
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public sealed class ProjectOperationTests
             var data = result.Data!.Value;
             Assert.True(data.GetProperty("opened").GetBoolean());
             Assert.Equal(path, data.GetProperty("path").GetString());
-            Assert.Equal("City", data.GetProperty("Name").GetString());
+            Assert.Equal("City", data.GetProperty("name").GetString());
             Assert.Equal("rev-1", result.WorkspaceRevision);
         }
         finally
@@ -295,7 +295,7 @@ public sealed class ProjectOperationTests
         Assert.Equal(["project.save"], pro.State.Calls);
         Assert.False(pro.State.IsDirty);
         Assert.True(result.Data!.Value.GetProperty("saved").GetBoolean());
-        Assert.Equal("Fixture", result.Data!.Value.GetProperty("Name").GetString());
+        Assert.Equal("Fixture", result.Data!.Value.GetProperty("name").GetString());
         Assert.Equal(4 + 1, pro.Workspace.SnapshotCount); // four samples until clean, one settled snapshot
     }
 

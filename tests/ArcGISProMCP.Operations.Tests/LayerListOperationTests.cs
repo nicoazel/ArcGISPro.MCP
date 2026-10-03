@@ -27,17 +27,17 @@ public sealed class LayerListOperationTests
         var layers = data.GetProperty("layers").EnumerateArray().ToArray();
         Assert.Equal(2, layers.Length);
         Assert.Equal(
-            ["id", "Name", "type", "IsVisible", "Transparency", "drawingOrder", "isFeatureLayer", "elevation"],
+            ["id", "name", "type", "isVisible", "transparency", "drawingOrder", "isFeatureLayer", "elevation"],
             layers[0].EnumerateObject().Select(property => property.Name));
         Assert.Equal(FakeProState.LayerHandle(parcels), layers[0].GetProperty("id").GetString());
         Assert.Equal(0, layers[0].GetProperty("drawingOrder").GetInt32());
-        Assert.Equal(40, layers[0].GetProperty("Transparency").GetDouble());
+        Assert.Equal(40, layers[0].GetProperty("transparency").GetDouble());
         var elevation = layers[0].GetProperty("elevation");
         Assert.Equal("relative-to-ground", elevation.GetProperty("mode").GetString());
         Assert.Equal(12.5, elevation.GetProperty("offset").GetDouble());
         Assert.Equal(2, elevation.GetProperty("verticalExaggeration").GetDouble());
         Assert.Equal("RasterLayer", layers[1].GetProperty("type").GetString());
-        Assert.False(layers[1].GetProperty("IsVisible").GetBoolean());
+        Assert.False(layers[1].GetProperty("isVisible").GetBoolean());
         Assert.False(layers[1].GetProperty("isFeatureLayer").GetBoolean());
         Assert.Equal(JsonValueKind.Null, layers[1].GetProperty("elevation").ValueKind);
     }

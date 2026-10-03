@@ -28,27 +28,27 @@ internal static class LayoutOperationSchemas
 
     public static JsonElement ActivateInput { get; } = S.Object([("layout", Layout)], ["layout"]);
 
-    // Output schemas describe OperationResult.data (default JsonSerializer names; nulls written).
+    // Output schemas describe OperationResult.data (camelCase names; nulls written).
     public static JsonElement ListOutput { get; } = S.Array(S.Object(
         [
             ("id", S.String()),
-            ("Name", S.String()),
+            ("name", S.String()),
             ("mapFrames", S.Array(S.Object(
-                [("Name", S.String()), ("map", S.Any("Map handle; null when the frame has no map."))],
-                ["Name", "map"]))),
+                [("name", S.String()), ("map", S.Any("Map handle; null when the frame has no map."))],
+                ["name", "map"]))),
         ],
-        ["id", "Name", "mapFrames"]));
+        ["id", "name", "mapFrames"]));
 
     public static JsonElement InspectOutput { get; } = S.Object(
         [
             ("id", S.String()),
-            ("Name", S.String()),
+            ("name", S.String()),
             ("page", S.Object(
                 [("width", S.Number()), ("height", S.Number()), ("units", S.String())],
                 ["width", "height", "units"])),
             ("elements", S.Array(S.Object(
                 [
-                    ("Name", S.String()),
+                    ("name", S.String()),
                     ("type", S.String()),
                     ("drawingOrder", S.Integer(minimum: 0)),
                     ("bounds", S.Object(
@@ -63,7 +63,7 @@ internal static class LayoutOperationSchemas
                         ["x", "y", "width", "height", "xMax", "yMax"])),
                     ("mapFrame", S.Any("{ map, mapName, camera } for map frames; null otherwise.")),
                 ],
-                ["Name", "type", "drawingOrder", "bounds", "mapFrame"]))),
+                ["name", "type", "drawingOrder", "bounds", "mapFrame"]))),
         ],
-        ["id", "Name", "page", "elements"]);
+        ["id", "name", "page", "elements"]);
 }

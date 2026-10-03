@@ -15,7 +15,7 @@ internal static class ViewOperationSchemas
             ("height", Pixels),
         ]);
 
-    // Describes OperationResult.data for view.capture (default JsonSerializer names).
+    // Describes OperationResult.data for view.capture (camelCase names).
     public static JsonElement CaptureOutput { get; } = S.Object(
         [
             ("resource", S.String(minLength: 1, description: "Resource URI of the stored PNG.")),

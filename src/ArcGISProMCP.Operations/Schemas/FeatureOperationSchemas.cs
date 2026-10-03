@@ -83,8 +83,8 @@ internal static class FeatureOperationSchemas
         ["layer", "target"]);
 
     // Output schemas describe OperationResult.data. Member names follow the anonymous
-    // objects in FeatureOperations.cs as serialized with default JsonSerializer options
-    // (declared names, nulls written); nullable values are Any().
+    // objects in FeatureOperations.cs as serialized by ProOperationBase.Json
+    // (camelCase names, nulls written); nullable values are Any().
     private static readonly JsonElement Handle = S.String();
 
     private static readonly JsonElement FeatureRows = S.Array(
@@ -94,7 +94,7 @@ internal static class FeatureOperationSchemas
         [
             ("map", Handle),
             ("layer", Handle),
-            ("Name", S.String()),
+            ("name", S.String()),
             ("editable", S.Boolean()),
             ("objectIdField", S.String()),
             ("globalIdField", S.Any("GlobalID field name; null when the layer has none.")),
@@ -103,19 +103,19 @@ internal static class FeatureOperationSchemas
             ("spatialReference", S.Any("{ wkid, name }; null for non-feature-class definitions.")),
             ("fields", S.Array(S.Object(
                 [
-                    ("Name", S.String()),
-                    ("AliasName", S.Any()),
+                    ("name", S.String()),
+                    ("aliasName", S.Any()),
                     ("type", S.String()),
-                    ("IsNullable", S.Boolean()),
-                    ("IsEditable", S.Boolean()),
-                    ("Length", S.Integer()),
+                    ("isNullable", S.Boolean()),
+                    ("isEditable", S.Boolean()),
+                    ("length", S.Integer()),
                     ("isObjectId", S.Boolean()),
                     ("isGlobalId", S.Boolean()),
                     ("isGeometry", S.Boolean()),
                 ],
-                ["Name", "AliasName", "type", "IsNullable", "IsEditable", "Length", "isObjectId", "isGlobalId", "isGeometry"]))),
+                ["name", "aliasName", "type", "isNullable", "isEditable", "length", "isObjectId", "isGlobalId", "isGeometry"]))),
         ],
-        ["map", "layer", "Name", "editable", "objectIdField", "globalIdField", "shapeField", "geometryType", "spatialReference", "fields"]);
+        ["map", "layer", "name", "editable", "objectIdField", "globalIdField", "shapeField", "geometryType", "spatialReference", "fields"]);
 
     public static JsonElement QueryOutput { get; } = S.Object(
         [
