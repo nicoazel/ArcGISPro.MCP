@@ -7,7 +7,7 @@
     <Name>ArcGIS Pro MCP Studio</Name>
     <Description>Development-preview MCP host for ArcGIS Pro: typed operations, local review approvals and an audit log.</Description>
     <Author>Nicolas Azel</Author>
-    <Company>Thornton Tomasetti</Company>
+    <Company>Nicolas Azel</Company>
     <Date>10/2/2026</Date>
     <Subject>Framework, Map Authoring, Map Exploration, Layouts, Geoprocessing</Subject>
   </AddInInfo>
