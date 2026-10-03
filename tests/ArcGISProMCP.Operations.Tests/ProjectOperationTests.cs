@@ -120,38 +120,20 @@ public sealed class ProjectOperationTests
     }
 
     [Fact]
-    public async Task Open_refuses_while_the_project_has_unsaved_changes()
+    public async Task Open_does_not_refuse_for_the_project_dirty_flag_alone()
     {
+        // ArcGIS Pro reports IsDirty even on an untouched, freshly opened project, and live runs
+        // only ever observed the "Save all edits?" prompt for pending feature edits.
         using var pro = new FakePro();
         pro.State.IsDirty = true;
         var path = TempProject(out var directory);
         try
         {
-            var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("project.open", Json(new { path })));
+            var result = await pro.RunAsync("project.open", Json(new { path }));
 
-            Assert.Equal("unsaved_project_changes", exception.Code);
-            Assert.Contains("project.save", exception.Message, StringComparison.Ordinal);
-            Assert.Empty(pro.State.Calls);
-            Assert.Equal("Fixture", pro.State.ProjectName);
-        }
-        finally
-        {
-            directory.Delete(recursive: true);
-        }
-    }
-
-    [Fact]
-    public async Task Pending_edits_take_precedence_over_unsaved_project_changes()
-    {
-        using var pro = new FakePro();
-        pro.State.HasEdits = true;
-        pro.State.IsDirty = true;
-        var path = TempProject(out var directory);
-        try
-        {
-            var exception = await Assert.ThrowsAsync<OperationException>(() => pro.RunAsync("project.open", Json(new { path })));
-
-            Assert.Equal("pending_edits", exception.Code);
+            Assert.True(result.Success);
+            Assert.Equal([$"project.open {path}"], pro.State.Calls);
+            Assert.Equal("City", pro.State.ProjectName);
         }
         finally
         {

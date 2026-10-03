@@ -21,7 +21,7 @@ internal sealed class ProjectGetOperation() : ProOperationBase(OperationDescript
 
 internal sealed class ProjectOpenOperation(IProjectService project) : ProOperationBase(OperationDescriptor.Create(
     "project.open", "Open project",
-    "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Refuses while the current project has unsaved feature edits or project changes; save them first with project.save.",
+    "Opens an existing ArcGIS Pro .aprx project, replacing the current project. Requires local approval because it discards the current session context. Refuses while the current project has unsaved feature edits; save them first with project.save.",
     ProjectOperationSchemas.OpenInput,
     risk: OperationRisk.SafeWrite, requiresConfirmation: true, executionTarget: ExecutionTarget.ArcGISUiThread,
     tags: ["project", "workspace", "open"], aliases: ["open aprx", "switch project"],
@@ -36,11 +36,12 @@ internal sealed class ProjectOpenOperation(IProjectService project) : ProOperati
 
         await context.Dispatcher.OnUiThreadAsync(async () =>
         {
-            // With unsaved work ArcGIS Pro asks "save edits?" / "save changes?" in a modal dialog
-            // before closing the current project, and the call blocks until a person answers.
-            // Refuse instead, checked on the same UI turn that opens the project.
+            // With pending feature edits ArcGIS Pro asks "Save all edits?" in a modal dialog before
+            // closing the current project, and the call blocks until a person answers. Refuse
+            // instead, checked on the same UI turn that opens the project. The project dirty flag is
+            // not checked: it is set even on an untouched, freshly opened project, and live runs
+            // never observed a prompt for project changes alone.
             if (project.HasEdits) throw PendingEdits();
-            if (project.IsDirty) throw UnsavedProjectChanges();
             await project.OpenAsync(path).ConfigureAwait(true);
             return true;
         }, cancellationToken).ConfigureAwait(false);
@@ -53,12 +54,6 @@ internal sealed class ProjectOpenOperation(IProjectService project) : ProOperati
             "The current project has unsaved feature edits, so ArcGIS Pro would stop to ask whether to save them. " +
             "Nothing was opened. Save the edits with an approved project.save (it saves pending edits and the project), " +
             "or save or discard them in ArcGIS Pro, then request a new approval for project.open.");
-
-    internal static OperationException UnsavedProjectChanges() =>
-        new(OperationErrorCodes.UnsavedProjectChanges,
-            "The current project has unsaved changes, so ArcGIS Pro would stop to ask whether to save them. " +
-            "Nothing was opened. Save the project with an approved project.save, or save it in ArcGIS Pro, " +
-            "then request a new approval for project.open.");
 }
 
 internal sealed class ProjectSaveOperation(IProjectService project) : ProOperationBase(OperationDescriptor.Create(
