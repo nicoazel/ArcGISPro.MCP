@@ -25,8 +25,18 @@ internal sealed class ProjectOpenOperation(IProjectService project) : ProOperati
     ProjectOperationSchemas.OpenInput,
     risk: OperationRisk.SafeWrite, requiresConfirmation: true, executionTarget: ExecutionTarget.ArcGISUiThread,
     tags: ["project", "workspace", "open"], aliases: ["open aprx", "switch project"],
-    related: ["project.get", "map.list"]))
+    related: ["project.get", "map.list"])), IExecutionPrecondition
 {
+    /// <summary>
+    /// Refuses pending edits before the executor validates the approval token, so the refusal does
+    /// not spend it. <see cref="ExecuteCoreAsync"/> re-checks on the UI turn that opens the project.
+    /// </summary>
+    public async ValueTask<OperationRefusal?> CheckPreconditionAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
+    {
+        var hasEdits = await context.Dispatcher.OnUiThreadAsync(() => Task.FromResult(project.HasEdits), cancellationToken).ConfigureAwait(false);
+        return hasEdits ? new OperationRefusal(OperationErrorCodes.PendingEdits, PendingEditsMessage) : null;
+    }
+
     protected override async Task<OperationResult> ExecuteCoreAsync(JsonElement arguments, OperationContext context, CancellationToken cancellationToken)
     {
         var path = Path.GetFullPath(RequiredString(arguments, "path"));
@@ -49,11 +59,13 @@ internal sealed class ProjectOpenOperation(IProjectService project) : ProOperati
         return OperationResult.Ok(Json(new { opened = true, path, snapshot.Project.Name }), snapshot.Revision);
     }
 
-    internal static OperationException PendingEdits() =>
-        new(OperationErrorCodes.PendingEdits,
-            "The current project has unsaved feature edits, so ArcGIS Pro would stop to ask whether to save them. " +
-            "Nothing was opened. Save the edits with an approved project.save (it saves pending edits and the project), " +
-            "or save or discard them in ArcGIS Pro, then request a new approval for project.open.");
+    internal const string PendingEditsMessage =
+        "The current project has unsaved feature edits, so ArcGIS Pro would stop to ask whether to save them. " +
+        "Nothing was opened. Save the edits with an approved project.save (it saves pending edits and the project), " +
+        "or save or discard them in ArcGIS Pro, then retry project.open. A refusal before execution does not spend " +
+        "its approval token, but the token is bound to the workspace revision: if the revision changed, request a new approval.";
+
+    internal static OperationException PendingEdits() => new(OperationErrorCodes.PendingEdits, PendingEditsMessage);
 }
 
 internal sealed class ProjectSaveOperation(IProjectService project) : ProOperationBase(OperationDescriptor.Create(

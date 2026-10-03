@@ -120,6 +120,30 @@ public sealed class ProjectOperationTests
     }
 
     [Fact]
+    public async Task Open_refuses_pending_edits_through_the_executor_precondition_before_the_token_is_checked()
+    {
+        using var pro = new FakePro();
+        pro.State.HasEdits = true;
+        var path = TempProject(out var directory);
+        try
+        {
+            Assert.IsAssignableFrom<IExecutionPrecondition>(pro.Operation("project.open"));
+
+            var result = await pro.InvokeAsync("project.open", Json(new { path }));
+
+            Assert.False(result.Success);
+            Assert.Equal("pending_edits", result.ErrorCode);
+            Assert.Contains("does not spend", result.Message, StringComparison.Ordinal);
+            Assert.Empty(pro.State.Calls);
+            Assert.Equal("Fixture", pro.State.ProjectName);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Open_does_not_refuse_for_the_project_dirty_flag_alone()
     {
         // ArcGIS Pro reports IsDirty even on an untouched, freshly opened project, and live runs

@@ -61,6 +61,12 @@ public sealed class OperationExecutor(IOperationRegistry registry, OperationCont
                     $"Workspace changed: expected '{request.ExpectedWorkspaceRevision}', current '{startSnapshot.Revision}'. Refresh state before writing.",
                     startSnapshot.Revision);
             }
+            else if (!request.DryRun && operation is IExecutionPrecondition precondition &&
+                await precondition.CheckPreconditionAsync(request.Arguments, context, cancellationToken).ConfigureAwait(false) is { } unmet)
+            {
+                // Refused before the approval token is validated, so the token is not consumed.
+                result = OperationResult.Fail(unmet.Code, unmet.Message, startSnapshot.Revision);
+            }
             else if (!request.DryRun && (descriptor.RequiresConfirmation ||
                 descriptor.Risk is OperationRisk.Destructive or OperationRisk.ExternalSideEffect))
             {
