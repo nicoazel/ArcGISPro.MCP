@@ -44,6 +44,7 @@ Second development preview: typed MCP results with output schemas, resources and
 - E3 golden trajectories (`evals/trajectories`, 8 tasks, 4 of which exercise approval) replayed against the end-to-end server and graded on `schemaValidArgs`, `approvalDiscipline` (null for a trajectory with no gated invoke; one approval covers one invoke; gated invokes must carry `expectedRevision`) and `taskSuccess`; [evals/README.md](evals/README.md) explains how to run live evals against FakeHost.
 - `tests/data/README.md` documents the provenance, coordinate system and use of the test data; a Core test checks that each shapefile set is complete.
 - `-SkipTests` for `tools/verify-release.ps1` and `tools/package-release.ps1` (CI packages without re-running tests). `pack-addin.ps1`, `verify-release.ps1` and `package-release.ps1` declare `#Requires -Version 7.0`.
+- Tag-triggered release workflow (`.github/workflows/release.yml`): a pushed `vX.Y.Z` or `vX.Y.Z-rc.N` tag on `main` whose version matches `Directory.Build.props`, `server.json` and `Config.daml` runs `tools/package-release.ps1` with the full test suite and creates a draft GitHub release (a prerelease for `-rc.N`) with the bundle, `SHA256SUMS` and notes from this changelog (`tools/extract-release-notes.ps1`). A final release needs a dated changelog heading. The maintainer reviews and publishes the draft.
 
 ### Changed
 
