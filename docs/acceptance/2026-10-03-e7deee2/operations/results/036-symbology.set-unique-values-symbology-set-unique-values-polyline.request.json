@@ -1,0 +1,17 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "symbology.set-unique-values",
+    "arguments": {
+      "field": "NAME",
+      "classes": [
+        {
+          "color": "#FF0000",
+          "value": "Main Street"
+        }
+      ],
+      "map": "Ops Map",
+      "layer": "Streets"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "metadata.get",
+    "arguments": {
+      "includeXml": true,
+      "map": "Ops Map",
+      "layer": "Design Sites"
+    }
+  }
+}

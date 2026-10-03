@@ -1,0 +1,123 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FDesignSites.json",
+    "Name": "Design Sites",
+    "editable": true,
+    "objectIdField": "OBJECTID",
+    "globalIdField": "GlobalID",
+    "shapeField": "Shape",
+    "geometryType": "Polygon",
+    "spatialReference": {
+      "wkid": 2272,
+      "name": "NAD_1983_StatePlane_Pennsylvania_South_FIPS_3702_Feet"
+    },
+    "fields": [
+      {
+        "Name": "OBJECTID",
+        "AliasName": "OBJECTID",
+        "type": "OID",
+        "IsNullable": false,
+        "IsEditable": false,
+        "Length": 4,
+        "isObjectId": true,
+        "isGlobalId": false,
+        "isGeometry": false
+      },
+      {
+        "Name": "Shape",
+        "AliasName": "Shape",
+        "type": "Geometry",
+        "IsNullable": true,
+        "IsEditable": true,
+        "Length": 0,
+        "isObjectId": false,
+        "isGlobalId": false,
+        "isGeometry": true
+      },
+      {
+        "Name": "Shape_Length",
+        "AliasName": "Shape_Length",
+        "type": "Double",
+        "IsNullable": true,
+        "IsEditable": false,
+        "Length": 8,
+        "isObjectId": false,
+        "isGlobalId": false,
+        "isGeometry": false
+      },
+      {
+        "Name": "Shape_Area",
+        "AliasName": "Shape_Area",
+        "type": "Double",
+        "IsNullable": true,
+        "IsEditable": false,
+        "Length": 8,
+        "isObjectId": false,
+        "isGlobalId": false,
+        "isGeometry": false
+      },
+      {
+        "Name": "Name",
+        "AliasName": "Name",
+        "type": "String",
+        "IsNullable": true,
+        "IsEditable": true,
+        "Length": 64,
+        "isObjectId": false,
+        "isGlobalId": false,
+        "isGeometry": false
+      },
+      {
+        "Name": "Units",
+        "AliasName": "Units",
+        "type": "Integer",
+        "IsNullable": true,
+        "IsEditable": true,
+        "Length": 4,
+        "isObjectId": false,
+        "isGlobalId": false,
+        "isGeometry": false
+      },
+      {
+        "Name": "FAR",
+        "AliasName": "FAR",
+        "type": "Double",
+        "IsNullable": true,
+        "IsEditable": true,
+        "Length": 8,
+        "isObjectId": false,
+        "isGlobalId": false,
+        "isGeometry": false
+      },
+      {
+        "Name": "ReviewDate",
+        "AliasName": "ReviewDate",
+        "type": "Date",
+        "IsNullable": true,
+        "IsEditable": true,
+        "Length": 8,
+        "isObjectId": false,
+        "isGlobalId": false,
+        "isGeometry": false
+      },
+      {
+        "Name": "GlobalID",
+        "AliasName": "GlobalID",
+        "type": "GlobalID",
+        "IsNullable": false,
+        "IsEditable": false,
+        "Length": 38,
+        "isObjectId": false,
+        "isGlobalId": true,
+        "isGeometry": false
+      }
+    ]
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "5599ba2b58ca29f2",
+  "notices": [],
+  "resources": []
+}

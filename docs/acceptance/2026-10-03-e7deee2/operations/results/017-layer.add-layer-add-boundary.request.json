@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layer.add",
+    "arguments": {
+      "name": "Boundary",
+      "map": "Ops Map",
+      "source": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Boundary_Multipart_Polygon.shp"
+    }
+  }
+}

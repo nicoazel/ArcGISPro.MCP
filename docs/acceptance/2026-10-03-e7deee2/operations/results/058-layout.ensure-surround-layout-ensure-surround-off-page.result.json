@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "element_outside_page",
+  "message": "Map surround \u0027Off Page Bar\u0027 at x 16, y 1 with size 2.5 x 0.5 does not fit on the 17 x 11 Inch page. Keep x and y at least 0 and x \u002B width, y \u002B height within the page.",
+  "workspaceRevision": "fd4f1c82d7feff3c",
+  "notices": [],
+  "resources": []
+}

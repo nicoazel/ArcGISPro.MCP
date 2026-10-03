@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "layer_not_found",
+  "message": "Layer \u0027No Such Layer\u0027 was not found in map \u0027Ops Map\u0027.",
+  "workspaceRevision": "5599ba2b58ca29f2",
+  "notices": [],
+  "resources": []
+}

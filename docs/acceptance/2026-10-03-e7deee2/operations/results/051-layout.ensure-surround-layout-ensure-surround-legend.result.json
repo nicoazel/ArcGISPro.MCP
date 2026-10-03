@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "data": {
+    "name": "Legend",
+    "kind": "legend",
+    "frame": "Main Frame",
+    "created": true,
+    "updated": false,
+    "bounds": {
+      "x": 12.9,
+      "y": 2.9999999999999996,
+      "width": 1.62373318142361,
+      "height": 2.9437310112847226
+    }
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "01198c052d5368f9",
+  "notices": [
+    {
+      "code": "surround_resized",
+      "message": "ArcGIS Pro sized legend \u0027Legend\u0027 to 1.624 x 2.944 from its style (requested 3.6 x 5.6), anchored at x 12.9, y 3. The result\u0027s bounds are the actual size; check for overlaps with layout.inspect.",
+      "severity": "info"
+    }
+  ],
+  "resources": []
+}

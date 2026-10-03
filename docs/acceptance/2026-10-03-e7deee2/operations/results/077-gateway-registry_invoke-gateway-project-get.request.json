@@ -1,0 +1,7 @@
+{
+  "tool": "registry_invoke",
+  "arguments": {
+    "operationId": "project.get",
+    "arguments": {}
+  }
+}

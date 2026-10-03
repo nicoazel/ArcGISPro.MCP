@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "table.query",
+    "arguments": {
+      "limit": 1,
+      "map": "Ops Map",
+      "layer": "Broken"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.ensure-surround",
+    "arguments": {
+      "layout": "Ops Layout",
+      "frame": "Main Frame",
+      "x": 12.9,
+      "height": 0.5,
+      "width": 2.5,
+      "kind": "scale-bar",
+      "name": "Scale Bar",
+      "y": 0.9
+    }
+  }
+}

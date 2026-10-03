@@ -1,0 +1,1013 @@
+{
+  "schemaVersion": 1,
+  "startedAtUtc": "2026-10-03T05:33:38.6842583Z",
+  "finishedAtUtc": "2026-10-03T05:47:43.0037065Z",
+  "host": {
+    "kind": "arcgis-pro",
+    "processId": 49484,
+    "operationCount": 41
+  },
+  "capabilities": {
+    "arcpy": true,
+    "online": true
+  },
+  "operations": [
+    {
+      "id": "arcpy.inspect-script",
+      "cases": [
+        {
+          "name": "arcpy-inspect-hello",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 422,
+          "approval": null
+        },
+        {
+          "name": "arcpy-inspect-escape",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "arcpy_script_rejected",
+          "durationMs": 420,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "arcpy.run-script",
+      "cases": [
+        {
+          "name": "arcpy-run-without-token",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "confirmation_required",
+          "durationMs": 435,
+          "approval": null
+        },
+        {
+          "name": "arcpy-run-hello-approved",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 51626,
+          "approval": "approved"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "basemap.set",
+      "cases": [
+        {
+          "name": "basemap-set-topographic",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1956,
+          "approval": null
+        },
+        {
+          "name": "basemap-set-unknown",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "invalid_arguments",
+          "durationMs": 333,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "feature.create",
+      "cases": [
+        {
+          "name": "feature-create-site",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 2555,
+          "approval": null
+        },
+        {
+          "name": "feature-create-point-geometry",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "invalid_arguments",
+          "durationMs": 382,
+          "approval": null
+        },
+        {
+          "name": "feature-create-two-vertices",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "invalid_arguments",
+          "durationMs": 376,
+          "approval": null
+        },
+        {
+          "name": "feature-create-unknown-field",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "invalid_arguments",
+          "durationMs": 377,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "feature.delete",
+      "cases": [
+        {
+          "name": "feature-delete-without-token",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "confirmation_required",
+          "durationMs": 349,
+          "approval": null
+        },
+        {
+          "name": "feature-delete-approved",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 13521,
+          "approval": "approved"
+        },
+        {
+          "name": "feature-delete-denied",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "confirmation_required",
+          "durationMs": 50640,
+          "approval": "denied"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "feature.layer.describe",
+      "cases": [
+        {
+          "name": "feature-layer-describe-design-sites",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 473,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "feature.query",
+      "cases": [
+        {
+          "name": "feature-query-baseline",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 445,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "feature.select",
+      "cases": [
+        {
+          "name": "feature-select-multifamily",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 914,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "feature.update",
+      "cases": [
+        {
+          "name": "feature-update-without-token",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "confirmation_required",
+          "durationMs": 348,
+          "approval": null
+        },
+        {
+          "name": "feature-update-approved",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 70771,
+          "approval": "approved"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "gp.describe",
+      "cases": [
+        {
+          "name": "gp-describe-buffer",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 437,
+          "approval": null
+        },
+        {
+          "name": "gp-describe-unknown-tool",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "tool_not_found",
+          "durationMs": 426,
+          "approval": null
+        },
+        {
+          "name": "gp-describe-bare-name",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "tool_not_found",
+          "durationMs": 415,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "gp.query",
+      "cases": [
+        {
+          "name": "gp-query-parcel-count",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1354,
+          "approval": null
+        },
+        {
+          "name": "gp-query-not-allowed",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "tool_not_query_allowed",
+          "durationMs": 414,
+          "approval": null
+        },
+        {
+          "name": "gp-query-invalid-name",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "invalid_arguments",
+          "durationMs": 342,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "gp.run",
+      "cases": [
+        {
+          "name": "gp-run-dry-run-valid",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 449,
+          "approval": null
+        },
+        {
+          "name": "gp-run-dry-run-invalid-line-side",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 431,
+          "approval": null
+        },
+        {
+          "name": "gp-run-dry-run-idempotency-conflict",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "dry_run_idempotency_conflict",
+          "durationMs": 283,
+          "approval": null
+        },
+        {
+          "name": "gateway-gp-run-dry-run",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 155,
+          "approval": null,
+          "via": "gateway"
+        },
+        {
+          "name": "gp-run-without-token",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "confirmation_required",
+          "durationMs": 351,
+          "approval": null
+        },
+        {
+          "name": "gp-run-buffer-approved",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 18365,
+          "approval": "approved"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "gp.search",
+      "cases": [
+        {
+          "name": "gp-search-buffer",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 446,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "label.configure",
+      "cases": [
+        {
+          "name": "label-configure-streets",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1091,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layer.add",
+      "cases": [
+        {
+          "name": "layer-add-parcels",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1287,
+          "approval": null
+        },
+        {
+          "name": "layer-add-streets",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1133,
+          "approval": null
+        },
+        {
+          "name": "layer-add-boundary",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1109,
+          "approval": null
+        },
+        {
+          "name": "layer-add-design-sites",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1249,
+          "approval": null
+        },
+        {
+          "name": "layer-add-broken-source",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1196,
+          "approval": null
+        },
+        {
+          "name": "layer-add-repair-broken",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1724,
+          "approval": null
+        },
+        {
+          "name": "layer-add-massing",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1161,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layer.list",
+      "cases": [
+        {
+          "name": "layer-list",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 427,
+          "approval": null
+        },
+        {
+          "name": "layer-list-missing-map",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "map_not_found",
+          "durationMs": 343,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layer.set-appearance",
+      "cases": [
+        {
+          "name": "layer-set-appearance-boundary",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1070,
+          "approval": null
+        },
+        {
+          "name": "layer-set-appearance-missing-layer",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "layer_not_found",
+          "durationMs": 344,
+          "approval": null
+        },
+        {
+          "name": "layer-set-appearance-stale-revision",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "workspace_revision_mismatch",
+          "durationMs": 276,
+          "approval": null
+        },
+        {
+          "name": "layer-set-appearance-no-revision",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "workspace_revision_required",
+          "durationMs": 264,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layer.set-elevation",
+      "cases": [
+        {
+          "name": "layer-set-elevation-relative",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1109,
+          "approval": null
+        },
+        {
+          "name": "layer-set-elevation-invalid-mode",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "invalid_arguments",
+          "durationMs": 350,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layout.activate",
+      "cases": [
+        {
+          "name": "layout-activate",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 2262,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layout.add-map-frame",
+      "cases": [
+        {
+          "name": "layout-add-map-frame",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1274,
+          "approval": null
+        },
+        {
+          "name": "layout-add-map-frame-off-page",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "element_outside_page",
+          "durationMs": 349,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layout.ensure",
+      "cases": [
+        {
+          "name": "layout-ensure-ops-layout",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 892,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layout.ensure-surround",
+      "cases": [
+        {
+          "name": "layout-ensure-surround-legend",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1195,
+          "approval": null
+        },
+        {
+          "name": "layout-ensure-surround-north-arrow",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1111,
+          "approval": null
+        },
+        {
+          "name": "layout-ensure-surround-scale-bar",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1105,
+          "approval": null
+        },
+        {
+          "name": "layout-ensure-surround-off-page",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "element_outside_page",
+          "durationMs": 345,
+          "approval": null
+        },
+        {
+          "name": "layout-ensure-surround-missing-frame",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "frame_not_found",
+          "durationMs": 352,
+          "approval": null
+        },
+        {
+          "name": "layout-ensure-surround-unknown-kind",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "invalid_arguments",
+          "durationMs": 348,
+          "approval": null
+        },
+        {
+          "name": "layout-ensure-surround-zero-width",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "invalid_arguments",
+          "durationMs": 348,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layout.inspect",
+      "cases": [
+        {
+          "name": "layout-inspect-overlaps",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 461,
+          "approval": null
+        },
+        {
+          "name": "layout-inspect-missing-layout",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "layout_not_found",
+          "durationMs": 347,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layout.list",
+      "cases": [
+        {
+          "name": "layout-list",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 410,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layout.set-frame-extent",
+      "cases": [
+        {
+          "name": "layout-set-frame-extent-parcels",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1109,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "layout.set-text",
+      "cases": [
+        {
+          "name": "layout-set-text-title",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1164,
+          "approval": null
+        },
+        {
+          "name": "layout-set-text-dynamic",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1110,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "map.activate",
+      "cases": [
+        {
+          "name": "map-activate-ops-map",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1896,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "map.clear-selection",
+      "cases": [
+        {
+          "name": "map-clear-selection",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 866,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "map.ensure",
+      "cases": [
+        {
+          "name": "map-ensure-ops-map",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 6067,
+          "approval": null
+        },
+        {
+          "name": "map-ensure-ops-scene",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 7894,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "map.list",
+      "cases": [
+        {
+          "name": "map-list",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 412,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "metadata.get",
+      "cases": [
+        {
+          "name": "metadata-get-design-sites",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 454,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "metadata.update",
+      "cases": [
+        {
+          "name": "metadata-update-without-token",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "confirmation_required",
+          "durationMs": 347,
+          "approval": null
+        },
+        {
+          "name": "metadata-update-approved",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 101872,
+          "approval": "approved"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "project.get",
+      "cases": [
+        {
+          "name": "project-get",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 428,
+          "approval": null
+        },
+        {
+          "name": "gateway-project-get",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 962,
+          "approval": null,
+          "via": "gateway"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "project.open",
+      "cases": [
+        {
+          "name": "project-open-without-token",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "confirmation_required",
+          "durationMs": 352,
+          "approval": null
+        },
+        {
+          "name": "project-open-approved",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 409288,
+          "approval": "approved"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "project.save",
+      "cases": [
+        {
+          "name": "project-save-without-token",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "confirmation_required",
+          "durationMs": 346,
+          "approval": null
+        },
+        {
+          "name": "project-save-approved",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 54969,
+          "approval": "approved",
+          "via": "gateway"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "style.search",
+      "cases": [
+        {
+          "name": "style-search-circle",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 454,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "symbology.set-simple",
+      "cases": [
+        {
+          "name": "symbology-set-simple-streets",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1090,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "symbology.set-unique-values",
+      "cases": [
+        {
+          "name": "symbology-set-unique-values-parcels",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 1096,
+          "approval": null
+        },
+        {
+          "name": "symbology-set-unique-values-polyline",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "invalid_arguments",
+          "durationMs": 350,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "table.query",
+      "cases": [
+        {
+          "name": "table-query-parcels",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 436,
+          "approval": null
+        },
+        {
+          "name": "table-query-broken-layer",
+          "kind": "negative",
+          "status": "passed",
+          "errorCode": "layer_data_source_unavailable",
+          "durationMs": 357,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "table.statistics",
+      "cases": [
+        {
+          "name": "table-statistics-pop",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 447,
+          "approval": null
+        },
+        {
+          "name": "table-statistics-area-gross",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 438,
+          "approval": null
+        },
+        {
+          "name": "table-statistics-du",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 447,
+          "approval": null
+        },
+        {
+          "name": "table-statistics-emp",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 432,
+          "approval": null
+        }
+      ],
+      "covered": true
+    },
+    {
+      "id": "view.capture",
+      "cases": [
+        {
+          "name": "view-capture-active-map",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 772,
+          "approval": null
+        },
+        {
+          "name": "view-capture-layout",
+          "kind": "happy",
+          "status": "passed",
+          "errorCode": null,
+          "durationMs": 2121,
+          "approval": null
+        }
+      ],
+      "covered": true
+    }
+  ],
+  "coverage": {
+    "total": 41,
+    "covered": 41,
+    "uncovered": []
+  },
+  "cases": {
+    "total": 90,
+    "happy": 58,
+    "negative": 32,
+    "passed": 90,
+    "failed": 0,
+    "skipped": 0
+  },
+  "approvals": {
+    "cards": 8,
+    "requested": 8,
+    "queued": 9,
+    "approved": 7,
+    "denied": 1,
+    "expired": 1,
+    "skipped": 0
+  },
+  "messageAudit": {
+    "checked": 31,
+    "flagged": []
+  },
+  "skipCards": false,
+  "allPassed": true
+}

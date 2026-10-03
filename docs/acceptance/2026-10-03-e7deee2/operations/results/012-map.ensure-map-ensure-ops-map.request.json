@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "map.ensure",
+    "arguments": {
+      "type": "map",
+      "name": "Ops Map",
+      "basemap": "None"
+    }
+  }
+}

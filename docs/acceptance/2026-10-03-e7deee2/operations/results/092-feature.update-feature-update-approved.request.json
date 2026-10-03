@@ -1,0 +1,17 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "feature.update",
+    "arguments": {
+      "target": {
+        "globalId": "c7fabdd8-8078-4638-a054-d932001a6dfb"
+      },
+      "attributes": {
+        "Units": 140
+      },
+      "map": "Ops Map",
+      "layer": "Design Sites"
+    },
+    "confirmationToken": "XB7tpqziN3z0GsJfkI-snkmtzRZHvnhT6chpXPU5M7k"
+  }
+}

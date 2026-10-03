@@ -1,0 +1,45 @@
+{
+  "success": true,
+  "data": [
+    {
+      "style": "ArcGIS 2D",
+      "Name": "Circle 1",
+      "Category": "Shapes",
+      "Tags": "black;circle;shape;round;point",
+      "type": "PointSymbol"
+    },
+    {
+      "style": "ArcGIS 2D",
+      "Name": "Circle 1 (40%)",
+      "Category": "Shapes",
+      "Tags": "black;circle;shape;round;point",
+      "type": "PointSymbol"
+    },
+    {
+      "style": "ArcGIS 2D",
+      "Name": "Circle 2",
+      "Category": "Shapes",
+      "Tags": "black;circle;shape;round;point",
+      "type": "PointSymbol"
+    },
+    {
+      "style": "ArcGIS 2D",
+      "Name": "Circle 3",
+      "Category": "Shapes",
+      "Tags": "black;red;circle;shape;round;point",
+      "type": "PointSymbol"
+    },
+    {
+      "style": "ArcGIS 2D",
+      "Name": "Circle 3 (40%)",
+      "Category": "Shapes",
+      "Tags": "black;red;circle;shape;round;point",
+      "type": "PointSymbol"
+    }
+  ],
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "c91ddcb509a3d4b0",
+  "notices": [],
+  "resources": []
+}

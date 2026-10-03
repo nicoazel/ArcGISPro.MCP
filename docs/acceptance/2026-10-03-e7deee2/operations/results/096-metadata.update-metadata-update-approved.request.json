@@ -1,0 +1,21 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "metadata.update",
+    "arguments": {
+      "map": "Ops Map",
+      "layer": "Design Sites",
+      "title": "Ops Matrix Design Sites",
+      "summary": "Disposable layer edited by the live operation matrix.",
+      "description": "Written by tools/run-live-operations.ps1 after local review in the MCP Studio dockpane.",
+      "tags": [
+        "mcp",
+        "acceptance",
+        "ops-matrix"
+      ],
+      "credits": "Synthetic acceptance fixture",
+      "useLimitations": "Testing only; not authoritative planning data."
+    },
+    "confirmationToken": "2GVrkyt7ozllGbpfgp-zbXyvU-ivzJarzPnDa_sxVTQ"
+  }
+}

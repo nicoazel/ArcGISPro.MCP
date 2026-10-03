@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "result": {
+    "success": true,
+    "data": {
+      "Project": {
+        "Name": "Acceptance-1003-0126.aprx",
+        "Uri": "D:\\scratch\\mcp-acceptance\\Acceptance-1003-0126.aprx",
+        "IsDirty": true,
+        "IsOpen": true
+      },
+      "Revision": "d080afa78f54dbce",
+      "CapturedAt": "2026-10-03T01:34:49.0749872-04:00"
+    },
+    "errorCode": null,
+    "message": null,
+    "workspaceRevision": "d080afa78f54dbce",
+    "notices": [],
+    "resources": []
+  },
+  "error": null
+}

@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "result": {
+    "requestId": "TclHYWcRYK3IV_pz2x0c-w",
+    "operationId": "project.save",
+    "operationVersion": "1.0.0",
+    "workspaceRevision": "d06a52c468b682de",
+    "status": "approved",
+    "requestedAt": "2026-10-03T01:39:58.835388-04:00",
+    "expiresAt": "2026-10-03T01:41:58.835388-04:00",
+    "confirmationToken": "mSoPhBqCsZOh3e37JBrpyjRkpK0HruT0-nk7Ki5irNQ",
+    "instructions": null,
+    "waitNotice": null
+  },
+  "error": null
+}

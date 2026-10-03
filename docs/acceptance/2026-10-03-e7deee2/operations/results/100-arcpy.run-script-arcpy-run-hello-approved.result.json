@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": {
+    "outcome": "succeeded",
+    "ExitCode": 0,
+    "stdout": "{\u0022script\u0022: \u0022hello.py\u0022, \u0022arcgisVersion\u0022: \u00223.7.1\u0022, \u0022product\u0022: \u0022ArcGISPro\u0022, \u0022licenseLevel\u0022: \u0022ArcInfo\u0022, \u0022python\u0022: \u00223.13.13\u0022, \u0022arguments\u0022: [\u0022ops-matrix\u0022]}\r\n",
+    "stderr": "",
+    "stdoutTruncated": false,
+    "stderrTruncated": false,
+    "durationMilliseconds": 5337,
+    "scriptSha256": "BBABC49EDA042FE528E7E6E4B9864E8B66FFC3A5BFC4869CEC56651B87516D0D",
+    "timeoutSeconds": 60
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "66ad52b36343e8ff",
+  "notices": [],
+  "resources": []
+}

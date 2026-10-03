@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "invalid_arguments",
+  "message": "$.tool: String does not match the required pattern.",
+  "workspaceRevision": "fd4f1c82d7feff3c",
+  "notices": [],
+  "resources": []
+}

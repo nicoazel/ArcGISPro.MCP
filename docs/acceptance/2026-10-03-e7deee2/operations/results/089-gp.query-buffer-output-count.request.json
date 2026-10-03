@@ -1,0 +1,12 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "gp.query",
+    "arguments": {
+      "tool": "management.GetCount",
+      "parameters": [
+        "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\DesignSites_Buffer_20261003_013338"
+      ]
+    }
+  }
+}

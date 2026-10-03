@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": {
+    "Id": "pro://layer/CIMPATH%3DOps_Map%2FPolyline_MultipartMix_Streets.json",
+    "Name": "Streets",
+    "Map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "Source": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Polyline_MultipartMix_Streets",
+    "RequestedSource": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Polyline_MultipartMix_Streets.shp",
+    "Created": true,
+    "Repaired": false,
+    "Replaced": false,
+    "DataSourceStatus": "ok"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "94af1f5425ceeaba",
+  "notices": [],
+  "resources": []
+}

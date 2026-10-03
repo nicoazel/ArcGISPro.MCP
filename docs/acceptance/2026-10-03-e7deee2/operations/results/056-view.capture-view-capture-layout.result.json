@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "data": {
+    "resource": "arcgis://resource/60ff9a1216004b6782422d4dacd1215d",
+    "width": 1700,
+    "height": 1100,
+    "sourceKind": "layout",
+    "sourceName": "Ops Layout",
+    "sourceUri": "CIMPATH=Layout/Layout6.json",
+    "capturedAt": "2026-10-03T05:34:37.936954\u002B00:00"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "fd4f1c82d7feff3c",
+  "notices": [],
+  "resources": [
+    {
+      "uri": "arcgis://resource/60ff9a1216004b6782422d4dacd1215d",
+      "mimeType": "image/png",
+      "name": "Ops Layout-20261003-053437.png"
+    }
+  ]
+}

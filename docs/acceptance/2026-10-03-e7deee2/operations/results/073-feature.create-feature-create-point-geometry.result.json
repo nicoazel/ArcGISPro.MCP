@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "invalid_arguments",
+  "message": "Geometry type \u0027Point\u0027 does not match layer shape type \u0027Polygon\u0027.",
+  "workspaceRevision": "d080afa78f54dbce",
+  "notices": [],
+  "resources": []
+}

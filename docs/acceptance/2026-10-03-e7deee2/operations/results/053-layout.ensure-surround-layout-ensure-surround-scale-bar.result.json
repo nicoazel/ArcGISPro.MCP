@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "data": {
+    "name": "Scale Bar",
+    "kind": "scale-bar",
+    "frame": "Main Frame",
+    "created": true,
+    "updated": false,
+    "bounds": {
+      "x": 12.9,
+      "y": 0.9,
+      "width": 2.4248051009090084,
+      "height": 0.29405381944444453
+    }
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "8455beb4f7f7fa6b",
+  "notices": [
+    {
+      "code": "surround_resized",
+      "message": "ArcGIS Pro sized scale-bar \u0027Scale Bar\u0027 to 2.425 x 0.294 from its style (requested 2.5 x 0.5), anchored at x 12.9, y 0.9. The result\u0027s bounds are the actual size; check for overlaps with layout.inspect.",
+      "severity": "info"
+    }
+  ],
+  "resources": []
+}

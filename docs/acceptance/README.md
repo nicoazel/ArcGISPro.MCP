@@ -90,3 +90,7 @@ Prerequisites: Windows PowerShell 5.1 or PowerShell 7 to run the script, PowerSh
 ## What an entry does not prove
 
 An entry covers one commit, one ArcGIS Pro version, one machine and the sections listed in its manifest. Sections run in autonomous mode say so; they do not show that the local review flow works. The `operations` section does exercise it, but only for the eight cards it asks for. Automated PNG checks are not visual inspection; only items passed with `-VisuallyInspected` count as inspected. The package is unsigned. The limits in [deployment.md](../deployment.md#known-limits) still apply.
+
+## Run notes
+
+- `2026-10-03-e7deee2`: the eight approval cards were decided in the MCP Studio dockpane by Claude (Anthropic's assistant) through computer use, at the maintainer's direction, not by the maintainer's own clicks; the card contents were checked against the console prompts before each click, and the DENY card was denied. During the final `project.open` card, ArcGIS Pro showed its modal "Save all edits?" prompt because the matrix's feature edits were still pending in the edit session; it was answered "Yes" by the same means so the run could finish. That prompt is a defect (an MCP client cannot answer it); see the CHANGELOG for the fix that makes `project.open` refuse with `pending_edits` instead.

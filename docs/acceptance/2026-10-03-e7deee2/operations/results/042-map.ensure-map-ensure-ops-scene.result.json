@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "Id": "pro://map/CIMPATH%3DOps_Scene%2FOps_Scene.json",
+    "Name": "Ops Scene",
+    "Created": true
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "e850187fe9f21c19",
+  "notices": [],
+  "resources": []
+}

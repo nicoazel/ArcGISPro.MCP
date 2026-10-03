@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "data": {
+    "Project": {
+      "Name": "Acceptance-1003-0126-reopen-20261003-013338.aprx",
+      "Uri": "D:\\scratch\\mcp-acceptance\\Acceptance-1003-0126-reopen-20261003-013338.aprx",
+      "IsDirty": true,
+      "IsOpen": true
+    },
+    "Revision": "1b86990b5d774551",
+    "CapturedAt": "2026-10-03T05:47:42.9016917\u002B00:00"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "1b86990b5d774551",
+  "notices": [],
+  "resources": []
+}

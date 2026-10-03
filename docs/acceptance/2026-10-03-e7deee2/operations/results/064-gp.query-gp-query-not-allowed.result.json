@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "tool_not_query_allowed",
+  "message": "\u0027analysis.Buffer\u0027 is not a read-only query tool. gp.query runs only: management.GetCellValue, management.GetCount, management.GetRasterProperties. Use gp.run (with review) for other tools.",
+  "workspaceRevision": "fd4f1c82d7feff3c",
+  "notices": [],
+  "resources": []
+}

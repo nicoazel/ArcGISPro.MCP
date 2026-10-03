@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "data": {
+    "layout": "pro://layout/CIMPATH%3DLayout%2FLayout6.json",
+    "Name": "Dynamic Date",
+    "created": true,
+    "text": "Printed \u003Cdyn type=\u0022date\u0022 format=\u0022yyyy-MM-dd\u0022/\u003E",
+    "x": 12.9,
+    "y": 9.4,
+    "fontFamily": "Arial",
+    "fontStyle": "Regular",
+    "size": 9,
+    "color": "#222222"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "44671241e5690260",
+  "notices": [],
+  "resources": []
+}

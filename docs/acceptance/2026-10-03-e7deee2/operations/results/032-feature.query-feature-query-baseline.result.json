@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FDesignSites.json",
+    "where": "1=1",
+    "spatialRelationship": null,
+    "fields": [
+      "Name",
+      "Units",
+      "FAR"
+    ],
+    "returned": 1,
+    "limit": 10,
+    "rows": [
+      {
+        "objectId": 1,
+        "globalId": "8ece7787-2abd-4393-8d89-0cd182d4dc76",
+        "Name": "Baseline Site",
+        "Units": 96,
+        "FAR": 2.5
+      }
+    ]
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "5599ba2b58ca29f2",
+  "notices": [],
+  "resources": []
+}

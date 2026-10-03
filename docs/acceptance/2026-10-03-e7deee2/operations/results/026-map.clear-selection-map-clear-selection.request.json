@@ -1,0 +1,9 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "map.clear-selection",
+    "arguments": {
+      "map": "Ops Map"
+    }
+  }
+}

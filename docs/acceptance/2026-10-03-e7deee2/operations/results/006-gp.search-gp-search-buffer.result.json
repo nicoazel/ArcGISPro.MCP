@@ -1,0 +1,395 @@
+{
+  "success": true,
+  "data": {
+    "query": "buffer",
+    "count": 20,
+    "catalogToolCount": 2210,
+    "tools": [
+      {
+        "tool": {
+          "executionName": "analysis.Buffer",
+          "name": "Buffer",
+          "displayName": "Buffer",
+          "summary": "Creates buffer polygons around input features to a specified distance.",
+          "toolbox": "Analysis Tools",
+          "toolboxAlias": "analysis",
+          "toolset": "Proximity",
+          "toolType": "FunctionTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 85.46915423459815,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "3d.Buffer3D",
+          "name": "Buffer3D",
+          "displayName": "Buffer 3D",
+          "summary": "Creates a 3D buffer around points or lines to produce spherical or cylindrical multipatch features.",
+          "toolbox": "3D Analyst Tools",
+          "toolboxAlias": "3d",
+          "toolset": "3D Proximity",
+          "toolType": "FunctionTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 11.034641794834776,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "analysis.GraphicBuffer",
+          "name": "GraphicBuffer",
+          "displayName": "Graphic Buffer",
+          "summary": "Creates buffer polygons around input features to a specified distance and provides control over the generation of the buffer features ends (caps) and corners (joins).",
+          "toolbox": "Analysis Tools",
+          "toolboxAlias": "analysis",
+          "toolset": "Proximity",
+          "toolType": "FunctionTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 10.031492540758887,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "analysis.PairwiseBuffer",
+          "name": "PairwiseBuffer",
+          "displayName": "Pairwise Buffer",
+          "summary": "Creates buffer polygons around input features to a specified distance using a parallel processing approach.",
+          "toolbox": "Analysis Tools",
+          "toolboxAlias": "analysis",
+          "toolset": "Pairwise Overlay",
+          "toolType": "FunctionTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 10.031492540758887,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "analysis.MultipleRingBuffer",
+          "name": "MultipleRingBuffer",
+          "displayName": "Multiple Ring Buffer",
+          "summary": "Creates multiple buffers at specified distances around the input features.",
+          "toolbox": "Analysis Tools",
+          "toolboxAlias": "analysis",
+          "toolset": "Proximity",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 10.031492540758887,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "gapro.CreateBuffers",
+          "name": "CreateBuffers",
+          "displayName": "Create Buffers",
+          "summary": "Creates buffers around input features to a specified distance.",
+          "toolbox": "GeoAnalytics Desktop Tools",
+          "toolboxAlias": "gapro",
+          "toolset": "Use Proximity",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 8.025194032607109,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "geoanalytics.CreateBuffers",
+          "name": "CreateBuffers",
+          "displayName": "Create Buffers",
+          "summary": "Creates buffers around input features to a specified distance.",
+          "toolbox": "GeoAnalytics Tools",
+          "toolboxAlias": "geoanalytics",
+          "toolset": "Use Proximity",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 8.025194032607109,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "sfa.CreateBuffers",
+          "name": "CreateBuffers",
+          "displayName": "Create Buffers",
+          "summary": "Creates polygons that cover a given distance from a point, line, or polygon feature.",
+          "toolbox": "Standard Feature Analysis Tools",
+          "toolboxAlias": "sfa",
+          "toolset": "Use Proximity",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 8.025194032607109,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "analysis.Erase",
+          "name": "Erase",
+          "displayName": "Erase",
+          "summary": "Creates a feature class by overlaying the input features with the erase features.",
+          "toolbox": "Analysis Tools",
+          "toolboxAlias": "analysis",
+          "toolset": "Overlay",
+          "toolType": "FunctionTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 5.851703982109351,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "analysis.SymDiff",
+          "name": "SymDiff",
+          "displayName": "Symmetrical Difference",
+          "summary": "Computes a geometric intersection of the input and update features, returning the input features and update features that do not overlap.",
+          "toolbox": "Analysis Tools",
+          "toolboxAlias": "analysis",
+          "toolset": "Overlay",
+          "toolType": "FunctionTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 5.851703982109351,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "analysis.PairwiseErase",
+          "name": "PairwiseErase",
+          "displayName": "Pairwise Erase",
+          "summary": "Computes a pairwise intersection of the input and erase features.",
+          "toolbox": "Analysis Tools",
+          "toolboxAlias": "analysis",
+          "toolset": "Pairwise Overlay",
+          "toolType": "FunctionTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 5.851703982109351,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "analysis.SummarizeNearby",
+          "name": "SummarizeNearby",
+          "displayName": "Summarize Nearby",
+          "summary": "Finds features that are within a specified distance of features in the input layer and calculates statistics for the nearby features. Distance can be measured as a straight-line distance, a drive-time distance (for example, within 10 minutes), or a drive distance (for example, within 5 kilometers).",
+          "toolbox": "Analysis Tools",
+          "toolboxAlias": "analysis",
+          "toolset": "Statistics",
+          "toolType": "ScriptTool",
+          "riskTier": "ConsumesCredits",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 5.851703982109351,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "management.SelectLayerByLocation",
+          "name": "SelectLayerByLocation",
+          "displayName": "Select Layer By Location",
+          "summary": "Selects features based on a spatial relationship to features in another dataset or the same dataset.",
+          "toolbox": "Data Management Tools",
+          "toolboxAlias": "management",
+          "toolset": "Layers and Table Views",
+          "toolType": "FunctionTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 5.851703982109351,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "geoanalytics.SnapTracks",
+          "name": "SnapTracks",
+          "displayName": "Snap Tracks",
+          "summary": "Snaps input track points to lines.",
+          "toolbox": "GeoAnalytics Tools",
+          "toolboxAlias": "geoanalytics",
+          "toolset": "Use Proximity",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 4.681363185687481,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "ba.EnrichLayer",
+          "name": "EnrichLayer",
+          "displayName": "Enrich Layer",
+          "summary": "Enriches data by adding demographic and landscape facts about the people and places that surround or are inside data locations.",
+          "toolbox": "Business Analyst Tools",
+          "toolboxAlias": "ba",
+          "toolset": "Analysis",
+          "toolType": "FunctionTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 4.681363185687481,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "sfa.SummarizeNearby",
+          "name": "SummarizeNearby",
+          "displayName": "Summarize Nearby",
+          "summary": "Finds features that are within a specified distance of features in the input layer.",
+          "toolbox": "Standard Feature Analysis Tools",
+          "toolboxAlias": "sfa",
+          "toolset": "Summarize Data",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 4.681363185687481,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "gapro.GroupByProximity",
+          "name": "GroupByProximity",
+          "displayName": "Group By Proximity",
+          "summary": "Groups features that are within spatial or spatiotemporal proximity to each other.",
+          "toolbox": "GeoAnalytics Desktop Tools",
+          "toolboxAlias": "gapro",
+          "toolset": "Use Proximity",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 4.681363185687481,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "geoanalytics.GroupByProximity",
+          "name": "GroupByProximity",
+          "displayName": "Group By Proximity",
+          "summary": "Groups features that are within spatial or spatiotemporal proximity to each other.",
+          "toolbox": "GeoAnalytics Tools",
+          "toolboxAlias": "geoanalytics",
+          "toolset": "Use Proximity",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 4.681363185687481,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "gapro.ReconstructTracks",
+          "name": "ReconstructTracks",
+          "displayName": "Reconstruct Tracks",
+          "summary": "Creates line or polygon tracks from time-enabled input data.",
+          "toolbox": "GeoAnalytics Desktop Tools",
+          "toolboxAlias": "gapro",
+          "toolset": "Analyze Tracks",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 4.681363185687481,
+        "matchedTerms": [
+          "buffer"
+        ]
+      },
+      {
+        "tool": {
+          "executionName": "geoanalytics.ReconstructTracks",
+          "name": "ReconstructTracks",
+          "displayName": "Reconstruct Tracks",
+          "summary": "Creates line or polygon tracks from time-enabled input data.",
+          "toolbox": "GeoAnalytics Tools",
+          "toolboxAlias": "geoanalytics",
+          "toolset": "Summarize Data",
+          "toolType": "ScriptTool",
+          "riskTier": "Standard",
+          "deprecated": false,
+          "isSystem": true
+        },
+        "score": 4.681363185687481,
+        "matchedTerms": [
+          "buffer"
+        ]
+      }
+    ]
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "c91ddcb509a3d4b0",
+  "notices": [],
+  "resources": []
+}

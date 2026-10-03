@@ -1,0 +1,12 @@
+{
+  "requestId": "9NGwAhnF4GOk293mgxm5dg",
+  "operationId": "metadata.update",
+  "operationVersion": "1.0.0",
+  "workspaceRevision": "b9ecaf944c0c051d",
+  "status": "pending",
+  "requestedAt": "2026-10-03T05:36:21.3136371\u002B00:00",
+  "expiresAt": "2026-10-03T05:38:21.3136371\u002B00:00",
+  "confirmationToken": null,
+  "instructions": "A person must approve or deny this exact request in the ArcGIS Pro MCP panel. Call approval_status again, optionally with waitSeconds (up to 120) to wait for the decision; there is no remote approval operation.",
+  "waitNotice": null
+}

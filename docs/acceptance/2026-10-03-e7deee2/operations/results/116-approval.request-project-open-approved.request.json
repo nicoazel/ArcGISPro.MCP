@@ -1,0 +1,9 @@
+{
+  "method": "approval.request",
+  "parameters": {
+    "operationId": "project.open",
+    "arguments": {
+      "path": "D:\\scratch\\mcp-acceptance\\Acceptance-1003-0126-reopen-20261003-013338.aprx"
+    }
+  }
+}

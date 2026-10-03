@@ -1,0 +1,9 @@
+{
+  "tool": "registry_invoke",
+  "arguments": {
+    "arguments": {},
+    "confirmationToken": "mSoPhBqCsZOh3e37JBrpyjRkpK0HruT0-nk7Ki5irNQ",
+    "expectedRevision": "d06a52c468b682de",
+    "operationId": "project.save"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "feature.query",
+    "arguments": {
+      "where": "Name = 'Ops Matrix Site'",
+      "limit": 10,
+      "fields": [
+        "Units"
+      ],
+      "map": "Ops Map",
+      "layer": "Design Sites"
+    }
+  }
+}

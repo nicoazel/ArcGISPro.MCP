@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layer.add",
+    "arguments": {
+      "name": "Design Sites",
+      "map": "Ops Map",
+      "source": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\DesignSites"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "invalid_arguments",
+  "message": "geometry.coordinates must contain at least 3 positions.",
+  "workspaceRevision": "d080afa78f54dbce",
+  "notices": [],
+  "resources": []
+}

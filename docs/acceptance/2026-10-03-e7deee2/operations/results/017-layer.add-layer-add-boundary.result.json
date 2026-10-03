@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": {
+    "Id": "pro://layer/CIMPATH%3DOps_Map%2FBoundary_Multipart_Polygon.json",
+    "Name": "Boundary",
+    "Map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "Source": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Boundary_Multipart_Polygon",
+    "RequestedSource": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Boundary_Multipart_Polygon.shp",
+    "Created": true,
+    "Repaired": false,
+    "Replaced": false,
+    "DataSourceStatus": "ok"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "e4e8182dce11e1ee",
+  "notices": [],
+  "resources": []
+}

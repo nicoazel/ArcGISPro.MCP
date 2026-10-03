@@ -1,0 +1,436 @@
+{
+  "success": true,
+  "data": {
+    "tool": {
+      "executionName": "analysis.Buffer",
+      "name": "Buffer",
+      "displayName": "Buffer",
+      "summary": "Creates buffer polygons around input features to a specified distance.",
+      "toolbox": "Analysis Tools",
+      "toolboxAlias": "analysis",
+      "toolset": "Proximity",
+      "toolType": "FunctionTool",
+      "riskTier": "Standard",
+      "deprecated": false,
+      "isSystem": true
+    },
+    "description": "Creates buffer polygons around input features to a specified distance.",
+    "signature": [
+      "in_features",
+      "out_feature_class",
+      "buffer_distance_or_field",
+      "line_side",
+      "line_end_type",
+      "dissolve_option",
+      "dissolve_field",
+      "method"
+    ],
+    "usage": "Pass gp.run/gp.query \u0027parameters\u0027 positionally in \u0027signature\u0027 order (parameter \u0027position\u0027), not dialog order. Derived outputs are never passed. Use null or \u0027#\u0027 to leave an optional value unset; a JSON array becomes a \u0027;\u0027-separated multivalue.",
+    "parameters": [
+      {
+        "name": "in_features",
+        "displayName": "Input Features",
+        "description": "The input point, line, or polygon features that will be buffered.",
+        "dataType": "GPFeatureLayer",
+        "dataTypes": [
+          "GPFeatureLayer"
+        ],
+        "multiValue": false,
+        "usage": "Required",
+        "direction": "Input",
+        "defaultValue": null,
+        "domain": {
+          "type": "GPFeatureClassDomain",
+          "codedValues": null,
+          "range": null,
+          "fileTypes": null,
+          "geometryTypes": [
+            "Polygon",
+            "Polyline",
+            "Point",
+            "Multipoint"
+          ],
+          "fieldTypes": null,
+          "units": null,
+          "items": null
+        },
+        "dependsOn": [],
+        "category": null,
+        "enabled": true,
+        "definitionIndex": 0,
+        "position": 0,
+        "displayOrder": 0,
+        "required": true
+      },
+      {
+        "name": "out_feature_class",
+        "displayName": "Output Feature Class",
+        "description": "The feature class containing the output buffers.",
+        "dataType": "DEFeatureClass",
+        "dataTypes": [
+          "DEFeatureClass"
+        ],
+        "multiValue": false,
+        "usage": "Required",
+        "direction": "Output",
+        "defaultValue": null,
+        "domain": null,
+        "dependsOn": [],
+        "category": null,
+        "enabled": true,
+        "definitionIndex": 1,
+        "position": 1,
+        "displayOrder": 1,
+        "required": true
+      },
+      {
+        "name": "buffer_distance_or_field",
+        "displayName": "Distance [value or field]",
+        "description": "The distance around the input features that will be buffered. Distances can be provided as either a value representing a linear distance or a field from the input features that contains the distance to buffer each feature. If linear units are not specified or are entered as Unknown, the linear unit of the input features\u0027 spatial reference will be used.",
+        "dataType": "GPComposite\u003CGPLinearUnit|Field\u003E",
+        "dataTypes": [
+          "GPLinearUnit",
+          "Field"
+        ],
+        "multiValue": false,
+        "usage": "Required",
+        "direction": "Input",
+        "defaultValue": null,
+        "domain": {
+          "type": "GPCompositeDomain",
+          "codedValues": null,
+          "range": null,
+          "fileTypes": null,
+          "geometryTypes": null,
+          "fieldTypes": null,
+          "units": null,
+          "items": [
+            {
+              "type": "null",
+              "codedValues": null,
+              "range": null,
+              "fileTypes": null,
+              "geometryTypes": null,
+              "fieldTypes": null,
+              "units": null,
+              "items": null
+            },
+            {
+              "type": "GPFieldDomain",
+              "codedValues": null,
+              "range": null,
+              "fileTypes": null,
+              "geometryTypes": null,
+              "fieldTypes": [
+                "OID",
+                "Short",
+                "Long",
+                "Float",
+                "Double",
+                "Text"
+              ],
+              "units": null,
+              "items": null
+            }
+          ]
+        },
+        "dependsOn": [
+          "in_features"
+        ],
+        "category": null,
+        "enabled": true,
+        "definitionIndex": 2,
+        "position": 2,
+        "displayOrder": 2,
+        "required": true
+      },
+      {
+        "name": "line_side",
+        "displayName": "Side Type",
+        "description": "Specifies the sides of the input features that will be buffered. This parameter is only supported for polygon and line features. License: This optional parameter is not available with a Desktop Basic or Desktop Standard license. Full \u2014 For lines, buffers will be generated on both sides of the line. For polygons, buffers will be generated around the polygon and will contain and overlap the area of the input features. This is the default. Left \u2014 For lines, buffers will be generated on the topological left of the line. This option is not supported for polygon input features. Right \u2014 For lines, buffers will be generated on the topological right of the line. This option is not supported for polygon input features. Exclude the input polygon from buffer \u2014 For polygons, buffers will be generated outside the input polygon only (the area inside the input polygon will be erased from the output buffer). This option is not supported for line input features. Negative buffer distances are not supported.",
+        "dataType": "GPString",
+        "dataTypes": [
+          "GPString"
+        ],
+        "multiValue": false,
+        "usage": "Optional",
+        "direction": "Input",
+        "defaultValue": "FULL",
+        "domain": {
+          "type": "GPCodedValueDomain",
+          "codedValues": [
+            {
+              "value": "FULL",
+              "label": "Full",
+              "keyword": null
+            },
+            {
+              "value": "LEFT",
+              "label": "Left",
+              "keyword": null
+            },
+            {
+              "value": "RIGHT",
+              "label": "Right",
+              "keyword": null
+            },
+            {
+              "value": "OUTSIDE_ONLY",
+              "label": "Exclude the input polygon from buffer",
+              "keyword": null
+            }
+          ],
+          "range": null,
+          "fileTypes": null,
+          "geometryTypes": null,
+          "fieldTypes": null,
+          "units": null,
+          "items": null
+        },
+        "dependsOn": [],
+        "category": null,
+        "enabled": false,
+        "definitionIndex": 3,
+        "position": 3,
+        "displayOrder": 3,
+        "required": false
+      },
+      {
+        "name": "line_end_type",
+        "displayName": "End Type",
+        "description": "Specifies the shape of the buffer at the end of line input features. This parameter is not valid for polygon input features. License: This optional parameter is not available with a Desktop Basic or Desktop Standard license. Round \u2014 The ends of the buffer will be round, in the shape of a half circle. This is the default. Flat \u2014 The ends of the buffer will be flat or squared and will end at the endpoint of the input line feature.",
+        "dataType": "GPString",
+        "dataTypes": [
+          "GPString"
+        ],
+        "multiValue": false,
+        "usage": "Optional",
+        "direction": "Input",
+        "defaultValue": "ROUND",
+        "domain": {
+          "type": "GPCodedValueDomain",
+          "codedValues": [
+            {
+              "value": "ROUND",
+              "label": "Round",
+              "keyword": null
+            },
+            {
+              "value": "FLAT",
+              "label": "Flat",
+              "keyword": null
+            }
+          ],
+          "range": null,
+          "fileTypes": null,
+          "geometryTypes": null,
+          "fieldTypes": null,
+          "units": null,
+          "items": null
+        },
+        "dependsOn": [],
+        "category": null,
+        "enabled": false,
+        "definitionIndex": 4,
+        "position": 4,
+        "displayOrder": 4,
+        "required": false
+      },
+      {
+        "name": "method",
+        "displayName": "Method",
+        "description": "Specifies whether the planar or geodesic method will be used to create the buffers. Planar \u2014 If the input features are in a projected coordinate system, Euclidean buffers will be created. If the input features are in a geographic coordinate system and the buffer distance is in linear units (meters, feet, and so forth, as opposed to angular units such as degrees), geodesic buffers will be created. This is the default. You can use the Output Coordinate System environment setting to specify the coordinate system to use. For example, if the input features are in a projected coordinate system, you can set the environment to a geographic coordinate system to create geodesic buffers. Geodesic (shape preserving) \u2014 All buffers will be created using a shape-preserving geodesic buffer method, regardless of the input coordinate system.",
+        "dataType": "GPString",
+        "dataTypes": [
+          "GPString"
+        ],
+        "multiValue": false,
+        "usage": "Optional",
+        "direction": "Input",
+        "defaultValue": "PLANAR",
+        "domain": {
+          "type": "GPCodedValueDomain",
+          "codedValues": [
+            {
+              "value": "GEODESIC",
+              "label": "Geodesic (shape preserving)",
+              "keyword": null
+            },
+            {
+              "value": "PLANAR",
+              "label": "Planar",
+              "keyword": null
+            }
+          ],
+          "range": null,
+          "fileTypes": null,
+          "geometryTypes": null,
+          "fieldTypes": null,
+          "units": null,
+          "items": null
+        },
+        "dependsOn": [],
+        "category": null,
+        "enabled": true,
+        "definitionIndex": 7,
+        "position": 7,
+        "displayOrder": 5,
+        "required": false
+      },
+      {
+        "name": "dissolve_option",
+        "displayName": "Dissolve Type",
+        "description": "Specifies the type of dissolve that will be performed to remove buffer overlap. No Dissolve \u2014 An individual buffer for each feature will be maintained, regardless of overlap. This is the default. Dissolve all output features into a single feature \u2014 All buffers will be dissolved together into a single feature, removing any overlap. Dissolve features using the listed fields\u0027 unique values or combination of values \u2014 Any buffers sharing attribute values in the listed fields (carried over from the input features) will be dissolved.",
+        "dataType": "GPString",
+        "dataTypes": [
+          "GPString"
+        ],
+        "multiValue": false,
+        "usage": "Optional",
+        "direction": "Input",
+        "defaultValue": "NONE",
+        "domain": {
+          "type": "GPCodedValueDomain",
+          "codedValues": [
+            {
+              "value": "NONE",
+              "label": "No Dissolve",
+              "keyword": null
+            },
+            {
+              "value": "ALL",
+              "label": "Dissolve all output features into a single feature",
+              "keyword": null
+            },
+            {
+              "value": "LIST",
+              "label": "Dissolve features using the listed fields\u0027 unique values or combination of values",
+              "keyword": null
+            }
+          ],
+          "range": null,
+          "fileTypes": null,
+          "geometryTypes": null,
+          "fieldTypes": null,
+          "units": null,
+          "items": null
+        },
+        "dependsOn": [],
+        "category": null,
+        "enabled": true,
+        "definitionIndex": 5,
+        "position": 5,
+        "displayOrder": 6,
+        "required": false
+      },
+      {
+        "name": "dissolve_field",
+        "displayName": "Dissolve Field(s)",
+        "description": "The list of fields from the input features on which the output buffers will be dissolved. Any buffers sharing attribute values in the listed fields (carried over from the input features) will be dissolved.",
+        "dataType": "GPMultiValue\u003CField\u003E",
+        "dataTypes": [
+          "Field"
+        ],
+        "multiValue": true,
+        "usage": "Optional",
+        "direction": "Input",
+        "defaultValue": null,
+        "domain": {
+          "type": "GPFieldDomain",
+          "codedValues": null,
+          "range": null,
+          "fileTypes": null,
+          "geometryTypes": null,
+          "fieldTypes": [
+            "Short",
+            "Long",
+            "Float",
+            "Double",
+            "Text",
+            "Date",
+            "OID",
+            "GUID"
+          ],
+          "units": null,
+          "items": null
+        },
+        "dependsOn": [
+          "in_features"
+        ],
+        "category": null,
+        "enabled": true,
+        "definitionIndex": 6,
+        "position": 6,
+        "displayOrder": 7,
+        "required": false
+      }
+    ],
+    "environments": [
+      "MDomain",
+      "MResolution",
+      "MTolerance",
+      "XYDomain",
+      "XYResolution",
+      "XYTolerance",
+      "ZDomain",
+      "ZResolution",
+      "ZTolerance",
+      "extent",
+      "geographicTransformations",
+      "outputCoordinateSystem",
+      "outputMFlag",
+      "outputZFlag",
+      "outputZValue",
+      "parallelProcessingFactor",
+      "scratchWorkspace",
+      "transferGDBAttributeProperties",
+      "workspace"
+    ],
+    "attributes": [
+      "mCPU",
+      "overwrite_on"
+    ],
+    "keywords": [
+      "adjacent",
+      "area",
+      "around",
+      "bound",
+      "circle",
+      "close",
+      "cushion",
+      "distance",
+      "donut",
+      "doughnut",
+      "euclidean",
+      "expand",
+      "extend",
+      "fall inside",
+      "far",
+      "geodesic",
+      "near",
+      "nearby",
+      "neighbor",
+      "offset",
+      "outside",
+      "outward",
+      "region",
+      "ring",
+      "surround",
+      "within",
+      "zone"
+    ],
+    "risk": {
+      "tier": "Standard",
+      "mutatesInput": false,
+      "executesUserCode": false,
+      "acceptsPythonExpression": false,
+      "consumesCredits": false,
+      "reasons": []
+    }
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "c91ddcb509a3d4b0",
+  "notices": [],
+  "resources": []
+}

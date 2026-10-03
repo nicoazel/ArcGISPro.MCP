@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "data": {
+    "name": "North Arrow",
+    "kind": "north-arrow",
+    "frame": "Main Frame",
+    "created": true,
+    "updated": false,
+    "bounds": {
+      "x": 15.699999999999998,
+      "y": 0.9000000000000005,
+      "width": 0.5273084080708283,
+      "height": 1.1081335392342417
+    }
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "e1d698f789c7315b",
+  "notices": [
+    {
+      "code": "surround_resized",
+      "message": "ArcGIS Pro sized north-arrow \u0027North Arrow\u0027 to 0.527 x 1.108 from its style (requested 0.7 x 1.1), anchored at x 15.7, y 0.9. The result\u0027s bounds are the actual size; check for overlaps with layout.inspect.",
+      "severity": "info"
+    }
+  ],
+  "resources": []
+}

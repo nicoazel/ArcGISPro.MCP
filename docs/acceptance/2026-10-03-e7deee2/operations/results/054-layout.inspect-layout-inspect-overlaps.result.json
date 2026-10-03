@@ -1,0 +1,119 @@
+{
+  "success": true,
+  "data": {
+    "id": "pro://layout/CIMPATH%3DLayout%2FLayout6.json",
+    "Name": "Ops Layout",
+    "page": {
+      "width": 17,
+      "height": 11,
+      "units": "Inch"
+    },
+    "elements": [
+      {
+        "Name": "Main Frame",
+        "type": "map-frame",
+        "drawingOrder": 0,
+        "bounds": {
+          "x": 0.5,
+          "y": 0.5,
+          "width": 12,
+          "height": 10,
+          "xMax": 12.5,
+          "yMax": 10.5
+        },
+        "mapFrame": {
+          "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+          "mapName": "Ops Map",
+          "camera": {
+            "x": 1365600,
+            "y": 416800,
+            "z": null,
+            "scale": 9880.019760150462,
+            "heading": -0,
+            "pitch": -90,
+            "roll": 0,
+            "viewpoint": "LookFrom",
+            "viewportWidth": 0,
+            "viewportHeight": 0,
+            "spatialReferenceWkid": 2272
+          }
+        }
+      },
+      {
+        "Name": "Title",
+        "type": "text",
+        "drawingOrder": 1,
+        "bounds": {
+          "x": 12.9,
+          "y": 9.9,
+          "width": 1.9689984809027798,
+          "height": 0.3688151041666661,
+          "xMax": 14.86899848090278,
+          "yMax": 10.268815104166666
+        },
+        "mapFrame": null
+      },
+      {
+        "Name": "Dynamic Date",
+        "type": "text",
+        "drawingOrder": 2,
+        "bounds": {
+          "x": 12.9,
+          "y": 9.4,
+          "width": 1.0701904296875,
+          "height": 0.1396484375,
+          "xMax": 13.9701904296875,
+          "yMax": 9.5396484375
+        },
+        "mapFrame": null
+      },
+      {
+        "Name": "Legend",
+        "type": "legend",
+        "drawingOrder": 3,
+        "bounds": {
+          "x": 12.9,
+          "y": 2.9999999999999996,
+          "width": 1.62373318142361,
+          "height": 2.9437310112847226,
+          "xMax": 14.52373318142361,
+          "yMax": 5.943731011284722
+        },
+        "mapFrame": null
+      },
+      {
+        "Name": "North Arrow",
+        "type": "north-arrow",
+        "drawingOrder": 4,
+        "bounds": {
+          "x": 15.699999999999998,
+          "y": 0.9000000000000005,
+          "width": 0.5273084080708283,
+          "height": 1.1081335392342417,
+          "xMax": 16.227308408070826,
+          "yMax": 2.008133539234242
+        },
+        "mapFrame": null
+      },
+      {
+        "Name": "Scale Bar",
+        "type": "scale-bar",
+        "drawingOrder": 5,
+        "bounds": {
+          "x": 12.9,
+          "y": 0.9,
+          "width": 2.4248051009090084,
+          "height": 0.29405381944444453,
+          "xMax": 15.324805100909009,
+          "yMax": 1.1940538194444446
+        },
+        "mapFrame": null
+      }
+    ]
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "8455beb4f7f7fa6b",
+  "notices": [],
+  "resources": []
+}

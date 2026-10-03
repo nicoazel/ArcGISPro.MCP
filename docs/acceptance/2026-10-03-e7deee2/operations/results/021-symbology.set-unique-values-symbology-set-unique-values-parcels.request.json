@@ -1,0 +1,39 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "symbology.set-unique-values",
+    "arguments": {
+      "defaultColor": "#E6E6E6",
+      "field": "land_use_1",
+      "classes": [
+        {
+          "value": "multifamily",
+          "color": "#D98C3A",
+          "label": "Multifamily"
+        },
+        {
+          "value": "retail_commercial",
+          "color": "#C0392B",
+          "label": "Retail / commercial"
+        },
+        {
+          "value": "office",
+          "color": "#7D5BA6",
+          "label": "Office"
+        },
+        {
+          "value": "parks_recreation",
+          "color": "#4C9A2A",
+          "label": "Parks"
+        },
+        {
+          "value": "civic_facilities",
+          "color": "#2E86C1",
+          "label": "Civic"
+        }
+      ],
+      "map": "Ops Map",
+      "layer": "Parcels"
+    }
+  }
+}

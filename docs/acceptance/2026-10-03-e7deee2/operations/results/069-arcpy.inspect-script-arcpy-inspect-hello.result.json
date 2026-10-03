@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "data": {
+    "scriptPath": "hello.py",
+    "Sha256": "BBABC49EDA042FE528E7E6E4B9864E8B66FFC3A5BFC4869CEC56651B87516D0D",
+    "sizeBytes": 836
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "fd4f1c82d7feff3c",
+  "notices": [],
+  "resources": []
+}

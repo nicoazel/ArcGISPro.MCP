@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layout.ensure",
+    "arguments": {
+      "width": 17,
+      "name": "Ops Layout",
+      "height": 11
+    }
+  }
+}

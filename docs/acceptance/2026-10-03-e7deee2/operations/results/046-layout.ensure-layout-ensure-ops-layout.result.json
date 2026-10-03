@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "data": {
+    "Id": "pro://layout/CIMPATH%3DLayout%2FLayout6.json",
+    "Name": "Ops Layout",
+    "Created": true,
+    "Updated": false,
+    "Width": 17,
+    "Height": 11,
+    "Units": "Inch"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "fdd0ff30807c903f",
+  "notices": [],
+  "resources": []
+}

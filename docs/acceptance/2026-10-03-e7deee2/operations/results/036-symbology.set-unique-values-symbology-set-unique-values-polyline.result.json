@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "invalid_arguments",
+  "message": "Layer \u0027Streets\u0027 has geometry type \u0027Polyline\u0027; this category renderer supports polygon layers only.",
+  "workspaceRevision": "5599ba2b58ca29f2",
+  "notices": [],
+  "resources": []
+}

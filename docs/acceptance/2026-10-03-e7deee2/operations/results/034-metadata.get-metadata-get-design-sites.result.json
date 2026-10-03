@@ -1,0 +1,37 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FDesignSites.json",
+    "layerName": "Design Sites",
+    "layerType": "FeatureLayer",
+    "isFeatureLayer": true,
+    "datasetPath": "file:///D:/scratch/mcp-acceptance/operations-data-20261003-013338/MasterPlan.gdb/DesignSites",
+    "metadataScope": "dataset-source",
+    "dataset": {
+      "path": "file:///D:/scratch/mcp-acceptance/operations-data-20261003-013338/MasterPlan.gdb/DesignSites",
+      "directCatalogItemMetadata": false,
+      "note": "ArcGIS Pro\u0027s Layer metadata API is the supported path here; direct catalog-item metadata editing is intentionally not inferred from a dataset path."
+    },
+    "supportsMetadata": true,
+    "canEditMetadata": false,
+    "usesSourceMetadata": true,
+    "storage": "dataset-source",
+    "persistence": "read-only-through-layer-unless-the-source-item-is-edited-directly",
+    "metadata": {
+      "Title": null,
+      "Summary": null,
+      "Description": null,
+      "Tags": [],
+      "Credits": null,
+      "UseLimitations": null
+    },
+    "xmlLength": 188,
+    "xml": "\u003C?xml version=\u00221.0\u0022?\u003E\r\n\u003Cmetadata xml:lang=\u0022en\u0022\u003E\u003CEsri\u003E\u003CCreaDate\u003E20261003\u003C/CreaDate\u003E\u003CCreaTime\u003E01340900\u003C/CreaTime\u003E\u003CArcGISFormat\u003E1.0\u003C/ArcGISFormat\u003E\u003CSyncOnce\u003ETRUE\u003C/SyncOnce\u003E\u003C/Esri\u003E\u003C/metadata\u003E\r\n"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "5599ba2b58ca29f2",
+  "notices": [],
+  "resources": []
+}

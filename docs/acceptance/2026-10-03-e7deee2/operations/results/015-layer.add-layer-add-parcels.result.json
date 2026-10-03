@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": {
+    "Id": "pro://layer/CIMPATH%3DOps_Map%2FPolygon_MixedMultiPart_Parcels.json",
+    "Name": "Parcels",
+    "Map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "Source": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Polygon_MixedMultiPart_Parcels",
+    "RequestedSource": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Polygon_MixedMultiPart_Parcels.shp",
+    "Created": true,
+    "Repaired": false,
+    "Replaced": false,
+    "DataSourceStatus": "ok"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "e02964d9072fcdb8",
+  "notices": [],
+  "resources": []
+}

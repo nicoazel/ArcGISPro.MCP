@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": {
+    "Id": "pro://layer/CIMPATH%3DOps_Scene%2FProposedMassing.json",
+    "Name": "Proposed Massing",
+    "Map": "pro://map/CIMPATH%3DOps_Scene%2FOps_Scene.json",
+    "Source": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\ProposedMassing",
+    "RequestedSource": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\MasterPlan.gdb\\ProposedMassing",
+    "Created": true,
+    "Repaired": false,
+    "Replaced": false,
+    "DataSourceStatus": "ok"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "3d63e9a7cc99ce3a",
+  "notices": [],
+  "resources": []
+}

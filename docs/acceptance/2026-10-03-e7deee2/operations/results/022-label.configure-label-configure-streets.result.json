@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "data": {
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FPolyline_MultipartMix_Streets.json",
+    "Name": "Streets",
+    "enabled": true,
+    "expression": "$feature.NAME",
+    "fontFamily": "Tahoma",
+    "fontStyle": "Regular",
+    "size": 7
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "e0c54be46517982f",
+  "notices": [],
+  "resources": []
+}

@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layer.add",
+    "arguments": {
+      "name": "Streets",
+      "map": "Ops Map",
+      "source": "D:\\scratch\\mcp-acceptance\\operations-data-20261003-013338\\SHP\\Polyline_MultipartMix_Streets.shp"
+    }
+  }
+}

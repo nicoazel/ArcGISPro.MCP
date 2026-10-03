@@ -1,0 +1,11 @@
+{
+  "Server": "arcgis-pro-mcp",
+  "Protocol": "2025-11-25",
+  "Tools": 16,
+  "LiveState": true,
+  "SkillRead": true,
+  "RegistrySearch": true,
+  "RegistrySchema": true,
+  "ImageBlock": false,
+  "PendingCancelReview": true
+}

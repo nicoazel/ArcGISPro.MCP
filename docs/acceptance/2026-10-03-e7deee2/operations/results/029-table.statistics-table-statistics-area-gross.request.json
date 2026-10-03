@@ -1,0 +1,12 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "table.statistics",
+    "arguments": {
+      "sampleLimit": 1000000,
+      "field": "area_gross",
+      "map": "Ops Map",
+      "layer": "Parcels"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "method": "approval.request",
+  "parameters": {
+    "operationId": "arcpy.run-script",
+    "arguments": {
+      "arguments": [
+        "ops-matrix"
+      ],
+      "scriptSha256": "BBABC49EDA042FE528E7E6E4B9864E8B66FFC3A5BFC4869CEC56651B87516D0D",
+      "scriptPath": "hello.py",
+      "timeoutSeconds": 60
+    }
+  }
+}

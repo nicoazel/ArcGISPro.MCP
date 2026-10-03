@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "error": {
+    "code": "dry_run_idempotency_conflict",
+    "message": "dryRun cannot be combined with idempotencyKey; a dry run executes nothing and is never cached.",
+    "Retryable": false,
+    "outcome": "known"
+  }
+}

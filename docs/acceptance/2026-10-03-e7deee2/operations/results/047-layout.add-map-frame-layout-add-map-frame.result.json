@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "data": {
+    "Layout": "pro://layout/CIMPATH%3DLayout%2FLayout6.json",
+    "Map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "Name": "Main Frame",
+    "X": 0.5,
+    "Y": 0.5,
+    "Width": 12,
+    "Height": 10,
+    "Created": true,
+    "Updated": false
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "a1093d445e67a55f",
+  "notices": [],
+  "resources": []
+}

@@ -1,0 +1,9 @@
+{
+  "success": false,
+  "data": null,
+  "errorCode": "confirmation_required",
+  "message": "Operation \u0027feature.delete\u0027 requires confirmation bound to these arguments and workspace revision.",
+  "workspaceRevision": "d06a52c468b682de",
+  "notices": [],
+  "resources": []
+}

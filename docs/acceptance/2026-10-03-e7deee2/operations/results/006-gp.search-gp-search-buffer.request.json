@@ -1,0 +1,10 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "gp.search",
+    "arguments": {
+      "limit": 20,
+      "query": "buffer"
+    }
+  }
+}

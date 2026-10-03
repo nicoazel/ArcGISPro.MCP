@@ -1,0 +1,7 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "layer.list",
+    "arguments": {}
+  }
+}

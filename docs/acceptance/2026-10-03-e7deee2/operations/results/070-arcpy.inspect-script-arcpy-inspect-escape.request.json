@@ -1,0 +1,9 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "arcpy.inspect-script",
+    "arguments": {
+      "scriptPath": "..\\outside.py"
+    }
+  }
+}

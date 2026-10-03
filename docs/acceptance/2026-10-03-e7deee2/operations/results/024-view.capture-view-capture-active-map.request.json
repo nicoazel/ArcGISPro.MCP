@@ -1,0 +1,11 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "view.capture",
+    "arguments": {
+      "width": 1280,
+      "height": 800,
+      "view": "active-map"
+    }
+  }
+}

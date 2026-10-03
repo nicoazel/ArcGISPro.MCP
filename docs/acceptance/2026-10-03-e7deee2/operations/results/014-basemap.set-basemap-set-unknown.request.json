@@ -1,0 +1,10 @@
+{
+  "method": "registry.invoke",
+  "parameters": {
+    "operationId": "basemap.set",
+    "arguments": {
+      "map": "Ops Map",
+      "basemap": "NotABasemap"
+    }
+  }
+}

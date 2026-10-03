@@ -1,0 +1,54 @@
+{
+  "success": true,
+  "data": {
+    "valid": false,
+    "dryRun": true,
+    "operation": "gp.run",
+    "tool": "analysis.Buffer",
+    "validated": true,
+    "toolSummary": {
+      "executionName": "analysis.Buffer",
+      "name": "Buffer",
+      "displayName": "Buffer",
+      "summary": "Creates buffer polygons around input features to a specified distance.",
+      "toolbox": "Analysis Tools",
+      "toolboxAlias": "analysis",
+      "toolset": "Proximity",
+      "toolType": "FunctionTool",
+      "riskTier": "Standard",
+      "deprecated": false,
+      "isSystem": true
+    },
+    "riskTier": "Standard",
+    "mutatesInput": false,
+    "executesUserCode": false,
+    "consumesCredits": false,
+    "riskReasons": [],
+    "requiresConfirmation": true,
+    "autonomousMode": false,
+    "wouldBeRefused": false,
+    "unattendedRefusal": null,
+    "approvalWarning": null,
+    "issues": [
+      {
+        "code": "invalid_coded_value",
+        "severity": "Error",
+        "message": "\u0027SIDEWAYS\u0027 is not a valid value for \u0027line_side\u0027. Allowed: FULL, LEFT, RIGHT, OUTSIDE_ONLY.",
+        "parameter": "line_side",
+        "position": 3
+      }
+    ],
+    "flags": {
+      "addOutputsToMap": false,
+      "addToHistory": true,
+      "refreshProjectItems": false,
+      "overwriteOutput": false
+    },
+    "workspaceRevision": "fd4f1c82d7feff3c"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "fd4f1c82d7feff3c",
+  "notices": [],
+  "resources": []
+}

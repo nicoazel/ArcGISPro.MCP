@@ -1,0 +1,12 @@
+{
+  "requestId": "-V29v-sUxliMF2OASiQtwA",
+  "operationId": "arcpy.run-script",
+  "operationVersion": "1.0.0",
+  "workspaceRevision": "72f9f19ec6a42e92",
+  "status": "pending",
+  "requestedAt": "2026-10-03T05:38:03.189279\u002B00:00",
+  "expiresAt": "2026-10-03T05:40:03.189279\u002B00:00",
+  "confirmationToken": null,
+  "instructions": "A person must approve or deny this exact request in the ArcGIS Pro MCP panel. Call approval_status again, optionally with waitSeconds (up to 120) to wait for the decision; there is no remote approval operation.",
+  "waitNotice": null
+}

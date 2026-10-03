@@ -1,0 +1,26 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FDesignSites.json",
+    "where": "Name = \u0027Ops Matrix Site\u0027",
+    "spatialRelationship": null,
+    "fields": [
+      "Units"
+    ],
+    "returned": 1,
+    "limit": 10,
+    "rows": [
+      {
+        "objectId": 2,
+        "globalId": "c7fabdd8-8078-4638-a054-d932001a6dfb",
+        "Units": 140
+      }
+    ]
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "b9ecaf944c0c051d",
+  "notices": [],
+  "resources": []
+}

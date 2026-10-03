@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "data": {
+    "resource": "arcgis://resource/44fd6c29615c4b1d9c06142ce8f6ae45",
+    "width": 1280,
+    "height": 800,
+    "sourceKind": "map",
+    "sourceName": "Ops Map",
+    "sourceUri": "CIMPATH=Ops_Map/Ops_Map.json",
+    "capturedAt": "2026-10-03T05:34:03.6209821\u002B00:00"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "f3775334302b463a",
+  "notices": [],
+  "resources": [
+    {
+      "uri": "arcgis://resource/44fd6c29615c4b1d9c06142ce8f6ae45",
+      "mimeType": "image/png",
+      "name": "Ops Map-20261003-053403.png"
+    }
+  ]
+}

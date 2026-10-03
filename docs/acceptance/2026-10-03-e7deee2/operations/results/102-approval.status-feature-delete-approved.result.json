@@ -1,0 +1,12 @@
+{
+  "requestId": "j3EOIeJVA5tOpDengmVy9A",
+  "operationId": "feature.delete",
+  "operationVersion": "1.0.0",
+  "workspaceRevision": "66ad52b36343e8ff",
+  "status": "approved",
+  "requestedAt": "2026-10-03T05:38:54.8248506\u002B00:00",
+  "expiresAt": "2026-10-03T05:40:54.8248506\u002B00:00",
+  "confirmationToken": "gZHQORZTnBPTjC1RbErF-3DmmM1UWRNXkLOrEIGWZHE",
+  "instructions": null,
+  "waitNotice": null
+}

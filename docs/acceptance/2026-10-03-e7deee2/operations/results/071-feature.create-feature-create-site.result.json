@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "data": {
+    "map": "pro://map/CIMPATH%3DOps_Map%2FOps_Map.json",
+    "layer": "pro://layer/CIMPATH%3DOps_Map%2FDesignSites.json",
+    "objectId": 2,
+    "globalId": "c7fabdd8-8078-4638-a054-d932001a6dfb"
+  },
+  "errorCode": null,
+  "message": null,
+  "workspaceRevision": "d080afa78f54dbce",
+  "notices": [],
+  "resources": []
+}

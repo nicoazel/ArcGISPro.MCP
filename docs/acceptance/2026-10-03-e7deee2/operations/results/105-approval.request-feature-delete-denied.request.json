@@ -1,0 +1,13 @@
+{
+  "method": "approval.request",
+  "parameters": {
+    "operationId": "feature.delete",
+    "arguments": {
+      "target": {
+        "globalId": "8ece7787-2abd-4393-8d89-0cd182d4dc76"
+      },
+      "map": "Ops Map",
+      "layer": "Design Sites"
+    }
+  }
+}
