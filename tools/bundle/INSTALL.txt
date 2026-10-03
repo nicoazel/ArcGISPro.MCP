@@ -36,7 +36,8 @@ In the same PowerShell window:
 
   Expand-Archive $zip -DestinationPath C:\ArcGISProMCP
 
-(In Explorer: Extract All, and set the destination to C:\ArcGISProMCP.)
+(In Explorer: Extract All, set the destination to C:\ArcGISProMCP and remove
+the folder name Explorer suggests, so the folder is not nested twice.)
 The gateway is then at:
   C:\ArcGISProMCP\ArcGISProMCP-{{VERSION}}-win-x64-development-preview\server\arcgis-pro-mcp.exe
 
@@ -45,7 +46,8 @@ The gateway is then at:
 - Close ArcGIS Pro.
 - Double-click ArcGISProMCP.AddIn.esriAddinX (next to this file) and click
   Install Add-In.
-- The add-in is unsigned. In ArcGIS Pro: Project > Add-In Manager > Options,
+- The add-in is unsigned. If ArcGIS Pro reports it as blocked, or MCP Studio
+  does not appear: Project > Add-In Manager > Options,
   choose "Load all Add-Ins without restrictions" and restart ArcGIS Pro.
   If the option is greyed out, your IT department manages it: ask them.
 

@@ -362,11 +362,11 @@ if ((Get-FileHash $zip -Algorithm SHA256).Hash -eq $expected) { 'OK' } else { 'M
         <h3>Unblock and extract into <code>C:\ArcGISProMCP\</code></h3>
 <pre><code>Unblock-File $zip
 Expand-Archive $zip -DestinationPath C:\ArcGISProMCP</code></pre>
-        <p>Or right-click the zip &gt; Properties &gt; Unblock, then Extract All to <code>C:\ArcGISProMCP</code>. The zip has one root folder, so the gateway is at <code>C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview\server\arcgis-pro-mcp.exe</code>.</p>
+        <p>Or right-click the zip &gt; Properties &gt; Unblock, then Extract All to <code>C:\ArcGISProMCP</code>, removing the folder name Explorer suggests so the folder is not nested twice. The zip has one root folder, so the gateway is at <code>C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview\server\arcgis-pro-mcp.exe</code>.</p>
       </div></li>
       <li><div>
         <h3>Install the add-in</h3>
-        <p>Close ArcGIS Pro and double-click <code>ArcGISProMCP.AddIn.esriAddinX</code> in that folder. The add-in is unsigned: in ArcGIS Pro, <strong>Project</strong> &gt; <strong>Add-In Manager</strong> &gt; <strong>Options</strong>, choose <strong>Load all Add-Ins without restrictions</strong> and restart ArcGIS Pro. If the option is greyed out, ask your IT department.</p>
+        <p>Close ArcGIS Pro and double-click <code>ArcGISProMCP.AddIn.esriAddinX</code> in that folder. The add-in is unsigned: if ArcGIS Pro reports it as blocked or <strong>MCP Studio</strong> does not appear, go to <strong>Project</strong> &gt; <strong>Add-In Manager</strong> &gt; <strong>Options</strong>, choose <strong>Load all Add-Ins without restrictions</strong> and restart ArcGIS Pro. If the option is greyed out, ask your IT department.</p>
       </div></li>
       <li><div>
         <h3>Open a disposable project and the pane</h3>

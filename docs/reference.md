@@ -208,7 +208,7 @@ Codes a client should handle. The message carries the details.
 | `arcgis_host_ambiguous` | gateway | Several ArcGIS Pro hosts are running and none was selected; the message lists each PID and project. Set `ARCGIS_PRO_MCP_HOST_PID` (or `ARCGIS_PRO_MCP_PIPE`) for the gateway process, for example in the client entry's `env`. |
 | `arcgis_host_not_found` | gateway | `ARCGIS_PRO_MCP_HOST_PID` names no discovered live host (for example ArcGIS Pro restarted with a new PID), or only FakeHost development hosts are running, which automatic selection ignores. Retryable. |
 | `arcgis_host_selector_invalid` | gateway | `ARCGIS_PRO_MCP_HOST_PID` is not a positive integer process id. |
-| `bridge_disabled` | any bridge call except state | MCP access was turned off with **Disconnect** in the ArcGIS MCP pane, before or while the request was queued. Click **Connect** in the pane. |
+| `bridge_disabled` | any bridge call except state | MCP access was turned off with **Stop** in the ArcGIS MCP pane, before or while the request was queued. Click **Connect** in the pane. |
 | `approval_not_found` | approval status | Unknown or no longer retained approval id. Fails closed. |
 | `bridge_contract_mismatch` | gateway | The add-in returned a result this gateway cannot read. Install matching add-in and gateway versions. |
 | `operation_failed`, `workflow_step_failed` | invoke, workflow run | Fallback `error.code` when a failed result carries no `errorCode` (for example a workflow step failed and the run stopped), and the code of an operation failure without a more specific code. |
