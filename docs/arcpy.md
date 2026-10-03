@@ -37,3 +37,18 @@ The runner copies the approved bytes into a unique working directory and execute
 This is not an OS sandbox. An approved script runs with the signed-in user's file, network, ArcGIS, licensing, and data authority. A hostile script can cause arbitrary external effects and can deliberately detach work that best-effort process-tree termination may not stop. Custom Python paths are trusted local configuration and are not signature-verified.
 
 The runner deletes its stable script copy. If the script creates other files in the run directory, that non-empty directory is retained rather than recursively deleting unknown outputs. Operators need a retention policy for those outputs.
+
+## Live acceptance
+
+The repository ships the scripts the live acceptance harnesses expect in `tools/arcpy-scripts/`: `hello.py` (prints the ArcGIS version, licence level and its arguments as JSON; reads and writes nothing), `nonzero.py` (exits with code 7), `timeout.py` (sleeps for ten minutes) and `setup_acceptance.py` (creates a disposable `Acceptance.gdb/DesignSites` feature class in the folder given as its argument). `tools/run-live-operations.ps1` inspects `hello.py`, checks that a path outside the root is refused, and runs `hello.py` once after you approve its card. `tools/run-live-feature-gp-arcpy.ps1` uses the other three.
+
+ArcPy cases run only when the host reports the `arcpy` capability. To enable it for an acceptance session, set the variables in a PowerShell window and start ArcGIS Pro from that same window, so only this Pro process sees them:
+
+```powershell
+$env:ARCGIS_PRO_MCP_ENABLE_ARCPY = 'true'
+$env:ARCGIS_PRO_MCP_ARCPY_SCRIPT_ROOT = 'D:\_11_Git\ArcGISPro.MCP\tools\arcpy-scripts'   # <repo>\tools\arcpy-scripts
+$env:ARCGIS_PRO_MCP_ARCPY_WORKING_ROOT = 'D:\scratch\mcp-acceptance\arcpy-runs'         # <DisposableRoot>\arcpy-runs
+& 'C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.exe' 'D:\scratch\mcp-acceptance\Acceptance.aprx'
+```
+
+The script root is the repository checkout, so the hashes the run pins are those of the committed scripts. The working root must be a separate folder; it collects one run directory per execution. Without these variables the ArcPy cases are recorded as skipped, `arcpy.inspect-script` and `arcpy.run-script` stay uncovered, and the `operations` section cannot pass.

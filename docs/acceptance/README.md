@@ -17,12 +17,15 @@ One folder per run, named `<yyyy-MM-dd>-<sha7>` (local date of the run, first se
 | `smoke/result.json` | `tools/test-mcp.ps1` result (protocol, tool count, approval probe, image block) |
 | `feature-gp-arcpy/*.json` | Request/result pairs and `summary.json` from `tools/run-live-feature-gp-arcpy.ps1`, when that section ran |
 | `stress/summary.json` | `tools/run-urban-stress.ps1` summary, when that section ran |
+| `operations/summary.json` | `tools/run-live-operations.ps1` summary, when that section ran: every operation with its cases (`name`, `kind` happy or negative, `status`, `errorCode`, `durationMs`, `approval`), `covered`, `coverage` (`total`, `covered`, `uncovered`), case and approval-card counts, the message audit and `allPassed` |
+| `operations/errors.md` | Every negative case's operation, error code and message, with the message audit (no exception type names, stack traces or local paths; under 500 characters) |
+| `operations/results/*.json` | Request/result pair of every bridge and MCP gateway call of the operation matrix (`NNN-<operation>-<case>`) |
 | `audit.jsonl` | Audit records appended during the run (`%LOCALAPPDATA%\ArcGISProMCP\audit\operations.jsonl`) |
 | `images/*.png` | At most five PNGs of at most 500 KB each: final layout captures from the stress run and operator screenshots (`-Screenshot`) |
 
 JSON files larger than 1 MB are left out and listed in `manifest.json` `evidenceSkipped`.
 
-`tests/ArcGISProMCP.Core.Tests/AcceptanceManifestTests.cs` checks every folder: the manifest must match the schema, the tree must have been clean, every selected step must have passed (including `verify`, `pro-install` and `host-probe`), every built DLL hash must equal the loaded one, `autonomousMode` must be true if an autonomous-mode section passed, the folder name must match `date` and `sha`, and `SHA256SUMS` must list every file with the correct hash. For manifests with `"evidencePathsRelative": true` (written by `-Commit` since this rule was added), every path in `sections[].evidence` and `evidence[]`, and the path before `: ` in each `visuallyInspected[]` note (unless the note starts with `not committed: `), must name a file in the folder. `-Commit` rewrites working paths to the committed layout, for example `stress/tod/final-layout.png` to `images/layout-tod.png`, and drops evidence it did not copy (such as `preflight.json` and `logs/`). Older folders without the field, such as `2026-09-28-5f34f16`, list working-evidence paths and are exempt. `.gitattributes` here stores the folders byte-for-byte so the checksums survive checkout on any platform.
+`tests/ArcGISProMCP.Core.Tests/AcceptanceManifestTests.cs` checks every folder: the manifest must match the schema, the tree must have been clean, every selected step must have passed (including `verify`, `pro-install` and `host-probe`), every built DLL hash must equal the loaded one, `autonomousMode` must be true if an autonomous-mode section passed, the folder name must match `date` and `sha`, and `SHA256SUMS` must list every file with the correct hash. A folder with `operations/summary.json` must also show a live ArcGIS Pro host (not a FakeHost), no failed case, `operations/errors.md`, and every registered operation (`tests/ArcGISProMCP.Operations.Tests/Fixtures/operation-descriptors.json`) covered by a passing happy-path case. For manifests with `"evidencePathsRelative": true` (written by `-Commit` since this rule was added), every path in `sections[].evidence` and `evidence[]`, and the path before `: ` in each `visuallyInspected[]` note (unless the note starts with `not committed: `), must name a file in the folder. `-Commit` rewrites working paths to the committed layout, for example `stress/tod/final-layout.png` to `images/layout-tod.png`, and drops evidence it did not copy (such as `preflight.json` and `logs/`). Older folders without the field, such as `2026-09-28-5f34f16`, list working-evidence paths and are exempt. `.gitattributes` here stores the folders byte-for-byte so the checksums survive checkout on any platform.
 
 ## Producing an entry
 
@@ -55,10 +58,25 @@ Prerequisites: Windows PowerShell 5.1 or PowerShell 7 to run the script, PowerSh
 
    The mutating sections refuse to run unless the open project is under `-DisposableRoot`. `feature-gp-arcpy` also refuses unless the host reports the `autonomous-control` capability. Turn autonomous mode off again afterwards.
 
-5. Review `docs/acceptance/<date>-<sha7>/`. The files contain local paths, the Windows user in `%LOCALAPPDATA%` paths and audit records. Then run the Core tests and commit the folder yourself. The script never stages or commits.
+5. For the operation matrix, restart Pro in **default mode** (no `ARCGIS_PRO_MCP_AUTONOMOUS_MODE`) with ArcPy enabled for the session as described in [arcpy.md](../arcpy.md#live-acceptance), reopen the disposable project and open the MCP Studio dockpane (Add-In tab > MCP Studio). Check the ordered matrix and the cards you will decide first:
+
+   ```powershell
+   ./tools/run-live-operations.ps1 -PlanOnly
+   ```
+
+   Then run it, last, after the other default-mode sections:
+
+   ```powershell
+   ./tools/run-acceptance.ps1 -Sections smoke,stress,operations `
+       -AllowProjectMutation -DisposableRoot D:\scratch\mcp-acceptance -RunsPerCase 3 -Commit
+   ```
+
+   `operations` runs 87 cases (58 happy, 29 negative) covering all 41 operations. Near the end the console asks for eight review cards, one at a time: `Card N/8: <operation> on <target>`, followed by **click APPROVE ONCE** (seven cards) or **click DENY** (one card, a delete of the baseline feature). Read the card in the dockpane before clicking. A card expires after two minutes and is queued again; after ten minutes without a decision the case is recorded as skipped by the operator and the run continues. The last card opens a copy of the saved project (`<name>-reopen-<stamp>.aprx` under the disposable root), so Pro ends on that copy. The section is refused while the host reports `autonomous-control`, and it passes only when no case failed and all 41 operations are covered, which needs ArcPy enabled and a reachable portal (for `basemap.set`).
+
+6. Review `docs/acceptance/<date>-<sha7>/`. The files contain local paths, the Windows user in `%LOCALAPPDATA%` paths and audit records. Then run the Core tests and commit the folder yourself. The script never stages or commits.
 
 `-Commit` is refused for `-PlanOnly`, for `-SkipVerify`, for a dirty working tree, when the target folder already exists, and when any selected step did not pass. Working evidence, including failed runs, stays under `artifacts/acceptance/<timestamp>/`, which is git-ignored.
 
 ## What an entry does not prove
 
-An entry covers one commit, one ArcGIS Pro version, one machine and the sections listed in its manifest. Sections run in autonomous mode say so; they do not show that the local review flow works. Automated PNG checks are not visual inspection; only items passed with `-VisuallyInspected` count as inspected. The package is unsigned. The limits in [deployment.md](../deployment.md#known-limits) still apply.
+An entry covers one commit, one ArcGIS Pro version, one machine and the sections listed in its manifest. Sections run in autonomous mode say so; they do not show that the local review flow works. The `operations` section does exercise it, but only for the eight cards it asks for. Automated PNG checks are not visual inspection; only items passed with `-VisuallyInspected` count as inspected. The package is unsigned. The limits in [deployment.md](../deployment.md#known-limits) still apply.
