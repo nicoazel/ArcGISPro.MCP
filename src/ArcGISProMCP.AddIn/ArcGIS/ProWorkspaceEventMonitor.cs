@@ -36,8 +36,20 @@ internal sealed class ProWorkspaceEventMonitor : IDisposable
         _edits = EditCompletedEvent.Subscribe(_ => { workspace.AdvanceRevision(static () => "EditCompleted"); return Task.CompletedTask; }, true);
         _elements = ElementEvent.Subscribe(args =>
         {
-            var hint = args.Hint;
-            if (hint != ElementEventHint.SelectionChanged) workspace.AdvanceRevision(() => "ElementEvent:" + hint);
+            var hint = args.Hint.ToString();
+            var kinds = args.Elements?.Select(static element => element switch
+            {
+                global::ArcGIS.Desktop.Layouts.MapSurround => "surround",
+                global::ArcGIS.Desktop.Layouts.MapFrame => "mapframe",
+                _ => "other"
+            }).ToArray() ?? [];
+            // Legends, scale bars and north arrows redraw themselves, and map frames refresh, after
+            // map and symbology changes; frame navigation is view state. Counting those echoes as
+            // edits made the next workflow step fail with workspace_changed.
+            if (WorkspaceEventHints.IsAutomaticElementChange(hint, kinds))
+                workspace.NoteIgnoredEvent(() => "ElementEvent:" + hint + ":" + string.Join(',', kinds));
+            else
+                workspace.AdvanceRevision(() => "ElementEvent:" + hint + ":" + string.Join(',', kinds));
         }, true);
     }
 
