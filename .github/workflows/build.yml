@@ -49,7 +49,7 @@ jobs:
         run: ./tools/test-fakehost.ps1 -Configuration Release
       - name: Upload test results
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-results
           path: artifacts/test-results/*.trx
@@ -72,7 +72,7 @@ jobs:
         # build-test already ran every test project on this commit; build and package only.
         shell: pwsh
         run: ./tools/package-release.ps1 -SkipTests
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: arcgis-pro-mcp-development-preview
           path: artifacts/releases/ArcGISProMCP-*-win-x64-development-preview.zip
