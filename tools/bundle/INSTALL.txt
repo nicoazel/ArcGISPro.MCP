@@ -3,7 +3,7 @@ ArcGIS Pro MCP Studio {{VERSION}} - install steps
 
 Claude (or another MCP client) can read and edit the project you have open
 in ArcGIS Pro. Anything risky shows up as a card in ArcGIS Pro that you
-approve or deny. This is an unsigned development preview: use it on a
+approve or deny. This is a self-signed development preview: use it on a
 disposable copy of a project.
 
 Full guide, with troubleshooting, upgrade and uninstall steps:
@@ -23,7 +23,7 @@ Download the zip and SHA256SUMS from
   https://github.com/nicoazel/ArcGISPro.MCP/releases/latest
 In PowerShell, in the folder that holds both files:
 
-  $zip = 'ArcGISProMCP-{{VERSION}}-win-x64-development-preview.zip'
+  $zip = 'ArcGISProMCP-{{VERSION}}-win-x64-self-signed-preview.zip'
   $expected = (Select-String -Path .\SHA256SUMS -SimpleMatch $zip).Line.Split(' ')[0]
   if ((Get-FileHash $zip -Algorithm SHA256).Hash -eq $expected) { 'OK' } else { 'MISMATCH - do not install' }
   Unblock-File $zip
@@ -46,10 +46,10 @@ The gateway is then at:
 - Close ArcGIS Pro.
 - Double-click ArcGISProMCP.AddIn.esriAddinX (next to this file) and click
   Install Add-In.
-- The add-in is unsigned. If ArcGIS Pro reports it as blocked, or MCP Studio
-  does not appear: Project > Add-In Manager > Options,
-  choose "Load all Add-Ins without restrictions" and restart ArcGIS Pro.
-  If the option is greyed out, your IT department manages it: ask them.
+- Verify and trust publisher-self-signed.cer before loading the add-in.
+  Follow docs/signing.md in this bundle, or:
+  https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/signing.md
+- Keep signed-add-in restrictions enabled; ask IT on managed computers.
 
 4. Open the pane
 ----------------

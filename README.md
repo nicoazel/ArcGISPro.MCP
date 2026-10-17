@@ -10,7 +10,7 @@ Claude can read and edit the project you have open in ArcGIS Pro. Anything risky
 
 Technically: an ArcGIS Pro 3.7 add-in and a small stdio MCP gateway that let an MCP client (Claude Desktop, Claude Code, VS Code or any other) work inside the ArcGIS Pro session you already have open. The model sees 16 gateway tools, searches a registry of 41 typed, schema-validated operations and the 2,200+ installed geoprocessing tools, and invokes them by stable id. Every write is checked against the current workspace revision, every risky write waits for a person to approve those exact arguments in an ArcGIS Pro pane, and every invocation is audited.
 
-**Status: development preview (0.3.1, unsigned).** Supported: an interactive, same-user Windows workstation with approvals in the ArcGIS MCP pane. Autonomous mode is an opt-in expert setting and is not recommended. The latest live acceptance evidence, [`docs/acceptance/2026-10-03-e7deee2`](docs/acceptance/2026-10-03-e7deee2/summary.md), covers default mode on ArcGIS Pro 3.7.1, including all 41 operations (`e7deee2` is a private-history SHA; the public commit is `c976c51`, see [Public history](docs/acceptance/README.md#public-history)); see [Verification](#verification-and-acceptance-evidence) for what it does and does not cover.
+**Status: development preview (0.3.1, self-signed).** Supported: an interactive, same-user Windows workstation with approvals in the ArcGIS MCP pane. Autonomous mode is an opt-in expert setting and is not recommended. The latest live acceptance evidence, [`docs/acceptance/2026-10-03-e7deee2`](docs/acceptance/2026-10-03-e7deee2/summary.md), covers default mode on ArcGIS Pro 3.7.1, including all 41 operations (`e7deee2` is a private-history SHA; the public commit is `c976c51`, see [Public history](docs/acceptance/README.md#public-history)); see [Verification](#verification-and-acceptance-evidence) for what it does and does not cover.
 
 ## Why this design
 
@@ -55,16 +55,16 @@ Requirements: Windows x64, a licensed **ArcGIS Pro 3.7** (tested on 3.7.1), and 
 
 The steps below use version 0.3.1; replace it with the version you download. The full guide, with every client, troubleshooting, upgrade and uninstall, is [Install (users)](docs/deployment.md#install-users); the same steps ship as `INSTALL.txt` in the zip.
 
-1. **Download and verify.** From [the latest release](https://github.com/nicoazel/ArcGISPro.MCP/releases/latest), download `ArcGISProMCP-0.3.1-win-x64-development-preview.zip` and `SHA256SUMS`. In PowerShell, in that folder, check the zip before extracting it:
+1. **Download and verify.** From [the latest release](https://github.com/nicoazel/ArcGISPro.MCP/releases/latest), download `ArcGISProMCP-0.3.1-win-x64-self-signed-preview.zip` and `SHA256SUMS`. In PowerShell, in that folder, check the zip before extracting it:
 
    ```powershell
-   $zip = 'ArcGISProMCP-0.3.1-win-x64-development-preview.zip'
+   $zip = 'ArcGISProMCP-0.3.1-win-x64-self-signed-preview.zip'
    $expected = (Select-String -Path .\SHA256SUMS -SimpleMatch $zip).Line.Split(' ')[0]
    if ((Get-FileHash $zip -Algorithm SHA256).Hash -eq $expected) { 'OK' } else { 'MISMATCH - do not install' }
    ```
 
 2. **Unblock and extract into `C:\ArcGISProMCP\`.** In the same window, run `Unblock-File $zip` and then `Expand-Archive $zip -DestinationPath C:\ArcGISProMCP` (or right-click the zip > Properties > Unblock, then Extract All to `C:\ArcGISProMCP`, removing the folder name Explorer suggests so you do not get a nested folder). The zip has one root folder, so the gateway ends up at `C:\ArcGISProMCP\ArcGISProMCP-0.3.1-win-x64-development-preview\server\arcgis-pro-mcp.exe`.
-3. **Install the add-in.** Close ArcGIS Pro and double-click `ArcGISProMCP.AddIn.esriAddinX` in that folder. The add-in is unsigned: if ArcGIS Pro reports it as blocked or **MCP Studio** does not appear, go to **Project** > **Add-In Manager** > **Options**, choose **Load all Add-Ins without restrictions** and restart ArcGIS Pro (if it is greyed out, ask your IT department).
+3. **Trust the publisher and install.** Follow [certificate verification and trust](docs/signing.md) using the included `publisher-self-signed.cer`. Close ArcGIS Pro and double-click `ArcGISProMCP.AddIn.esriAddinX`. Keep signed-add-in restrictions enabled; managed computers may require IT approval.
 4. **Open the pane.** Open a **disposable copy** of a project. On the **Add-In** tab, click **MCP Studio** to open the **ArcGIS MCP** pane; its status should read **Ready**. Keep it open: approval cards appear there.
 5. **Connect your client.** Claude Desktop: **Settings** > **Developer** > **Edit Config** (`%APPDATA%\Claude\claude_desktop_config.json`), add the entry inside `mcpServers` (keep any servers already there), save, then quit Claude Desktop from the tray icon and start it again:
 

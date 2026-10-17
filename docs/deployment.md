@@ -16,13 +16,13 @@ The first half of this page is for people installing the release: a GIS analyst 
 **Development preview.** Supported: interactive same-user workstation with dockpane approvals. Autonomous mode is an opt-in expert setting, not recommended.
 
 - Target: ArcGIS Pro 3.7 (tested on 3.7.1) on Windows x64, one signed-in user, a model client running as that same user.
-- The add-in and bundle are unsigned. This is not a signed public release and must not be deployed as an unattended or organization-wide service.
+- The released add-in and gateway are self-signed. Explicit certificate trust is required; this preview must not be deployed as an unattended or organization-wide service.
 - By default, confirmation-gated operations (destructive and external-side-effect operations, plus `project.open`, `project.save` and `feature.update`) require a short-lived approval issued by a person in the ArcGIS MCP pane, and the gateway cannot approve its own request.
 - `ARCGIS_PRO_MCP_AUTONOMOUS_MODE=true` bypasses dockpane review for the whole host session and effectively grants the connected client the user's ArcGIS authority. It exists for trusted experimentation and is not a supported deployment mode. See [security](security.md).
 
 ## Install (users)
 
-The release is one zip, `ArcGISProMCP-<version>-win-x64-development-preview.zip`. These steps use version 0.3.1 as the example; replace `0.3.1` with the version you downloaded. The same steps are in `INSTALL.txt` inside the zip.
+The release is one zip, `ArcGISProMCP-<version>-win-x64-self-signed-preview.zip`. These steps use version 0.3.1 as the example; replace `0.3.1` with the version you downloaded. The same steps are in `INSTALL.txt` inside the zip.
 
 ### Prerequisites
 
@@ -38,10 +38,10 @@ The release is one zip, `ArcGISProMCP-<version>-win-x64-development-preview.zip`
 
 ### 1. Download and verify
 
-From [the latest release](https://github.com/nicoazel/ArcGISPro.MCP/releases/latest), download both `ArcGISProMCP-0.3.1-win-x64-development-preview.zip` and `SHA256SUMS` into the same folder. Before extracting, check the zip against `SHA256SUMS`. In PowerShell, in that folder:
+From [the latest release](https://github.com/nicoazel/ArcGISPro.MCP/releases/latest), download both `ArcGISProMCP-0.3.1-win-x64-self-signed-preview.zip` and `SHA256SUMS` into the same folder. Before extracting, check the zip against `SHA256SUMS`. In PowerShell, in that folder:
 
 ```powershell
-$zip = 'ArcGISProMCP-0.3.1-win-x64-development-preview.zip'
+$zip = 'ArcGISProMCP-0.3.1-win-x64-self-signed-preview.zip'
 $expected = (Select-String -Path .\SHA256SUMS -SimpleMatch $zip).Line.Split(' ')[0]
 if ((Get-FileHash $zip -Algorithm SHA256).Hash -eq $expected) { 'OK' } else { 'MISMATCH - do not install' }
 ```
@@ -77,7 +77,7 @@ Keep `server\skills` next to `arcgis-pro-mcp.exe`. The rest of this page calls `
 
 1. Close ArcGIS Pro.
 2. Double-click `ArcGISProMCP.AddIn.esriAddinX` in the extracted folder and click **Install Add-In**.
-3. The add-in is unsigned. ArcGIS Pro loads unsigned add-ins only when its add-in security allows it: start ArcGIS Pro, go to **Project** > **Add-In Manager** > **Options**, choose **Load all Add-Ins without restrictions**, and restart ArcGIS Pro. If the options are greyed out, your organization manages this setting: ask your IT department.
+3. Follow [certificate verification and trust](signing.md) before loading the add-in. Keep signed-add-in restrictions enabled. On managed computers, ask IT to deploy the certificate trust.
 
 ### 4. Open the ArcGIS MCP pane
 
@@ -164,7 +164,7 @@ In Claude Code, add `-e ARCGIS_PRO_MCP_HOST_PID=12345` after `--scope user`. A P
 | --- | --- |
 | The client says the server failed, or shows no ArcGIS tools | Check the command path: it must point to `server\arcgis-pro-mcp.exe` inside the `ArcGISProMCP-<version>-win-x64-development-preview` folder, with doubled backslashes in JSON. Run it once in PowerShell (`& "<gateway path>"`): if it reports that .NET is missing, install the runtime (next row); otherwise it waits silently for a client, which is correct (press Ctrl+C). Claude Desktop writes a log per server to `%APPDATA%\Claude\logs`. Restart the client completely after any change. |
 | .NET runtime missing | `dotnet --list-runtimes` shows no `Microsoft.NETCore.App 10.` line, or `dotnet` is not found. Install ".NET Runtime 10.x (x64)" (the SDK is not needed) from <https://dotnet.microsoft.com/download/dotnet/10.0>, then restart the client. |
-| No **MCP Studio** button on the **Add-In** tab | The add-in did not load. Check **Project** > **Add-In Manager**: if ArcGIS Pro MCP Studio is listed with a security message, allow unsigned add-ins (**Options** > **Load all Add-Ins without restrictions**, or ask IT if managed) and restart ArcGIS Pro. If it is not listed, install the `.esriAddinX` again with ArcGIS Pro closed. The add-in needs ArcGIS Pro 3.7. If you did not unblock the zip before extracting, unblock the `.esriAddinX` (Properties > Unblock) and install again. |
+| No **MCP Studio** button on the **Add-In** tab | The add-in did not load. Check **Project** > **Add-In Manager**: if ArcGIS Pro MCP Studio is listed with a security message, verify and trust the included publisher certificate ([instructions](signing.md), or ask IT if managed) and restart ArcGIS Pro. If it is not listed, install the `.esriAddinX` again with ArcGIS Pro closed. The add-in needs ArcGIS Pro 3.7. If you did not unblock the zip before extracting, unblock the `.esriAddinX` (Properties > Unblock) and install again. |
 | `arcgis_unavailable` | No ArcGIS Pro accepted the connection: ArcGIS Pro is not running, it is still starting, or the add-in did not load. Start ArcGIS Pro, open a project, check that the pane says **Ready**, and ask again. Retryable. |
 | `bridge_disabled` | Someone clicked **Stop** in the ArcGIS MCP pane. Click **Connect**. |
 | `arcgis_host_ambiguous` | Several ArcGIS Pro processes are running. Close the extra ones, or set `ARCGIS_PRO_MCP_HOST_PID` in the client entry to the PID shown in the pane ([several ArcGIS Pro windows](#several-arcgis-pro-windows)). |
@@ -255,12 +255,14 @@ The log contains project paths and map and layout names, so treat it like the pr
 - Process-lifetime idempotency, workflow history and resources are not a durable cross-restart job store.
 - Advanced renderers, workspace connection management and PDF export are outside the curated registry. The registry is not a complete ArcGIS SDK wrapper.
 - ArcPy and `gp.run` can execute arbitrary user code; neither is a sandbox. See [security](security.md).
-- The package is unsigned. Wider distribution requires an organizational signing certificate, publisher policy and another installed-package verification pass over the signed artifact.
+- The release is self-signed, not publicly trusted. Wider distribution still needs a trusted publisher certificate and installed-package verification. Live acceptance of the self-signed package is pending.
 - Automation that closes ArcGIS Pro must keep PID-scoped ownership, save first, request a normal close, wait, and only terminate a verified disposable process as a last resort.
 
 ## Build and release (maintainers)
 
 ### Build the bundle
+
+This builds an unsigned intermediate package. The published self-signed release adds signatures afterwards; see [signing](signing.md).
 
 Prerequisites are Windows x64, .NET SDK 10, a licensed ArcGIS Pro 3.7 installation (tested on 3.7.1), and access to the referenced ArcGIS Pro 3.7 SDK package.
 
@@ -273,7 +275,7 @@ From the repository root:
 The packager always runs `tools/verify-release.ps1` first. That performs the Release solution build, every portable test project under `tests/`, whitespace validation, add-in packaging, and exact add-in-content inspection. It then publishes the framework-dependent Windows x64 stdio server and creates:
 
 ```text
-artifacts/releases/ArcGISProMCP-<version>-win-x64-development-preview.zip
+artifacts/releases/ArcGISProMCP-<version>-win-x64-self-signed-preview.zip
 ```
 
 The archive has one versioned root directory, `ArcGISProMCP-<version>-win-x64-development-preview/`, containing:
@@ -311,7 +313,7 @@ $failures = foreach ($line in Get-Content -LiteralPath ./checksums.sha256) {
 if ($failures) { throw "Checksum failure: $($failures -join ', ')" }
 ```
 
-Inspect `release.json` too. It records compatibility, framework dependency, unsigned status, and manual acceptance gates. Checksums detect accidental corruption; they do not establish publisher trust.
+Inspect `release.json` too. It records compatibility, framework dependency, signing status, and manual acceptance gates. Checksums detect accidental corruption; they do not establish publisher trust.
 
 ### Acceptance evidence
 

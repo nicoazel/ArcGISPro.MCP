@@ -58,13 +58,13 @@
     <p class="eyebrow">MCP server for ArcGIS Pro 3.7</p>
     <h1 id="hero-title">Let a model work in the ArcGIS Pro session you already have open</h1>
     <p class="lede">An ArcGIS Pro add-in and a small stdio MCP gateway. Claude Desktop, Claude Code or any other MCP client calls typed, schema-validated operations by stable id. Every write is checked against the current workspace revision, every risky write waits for a person to approve the exact arguments in a Pro dockpane, and every invocation is audited.</p>
-    <p class="status"><span class="pill">development preview 0.3.1 &middot; unsigned</span> <span>Windows x64, licensed ArcGIS Pro 3.7 (tested on 3.7.1), .NET Runtime 10.x (x64)</span></p>
+    <p class="status"><span class="pill">development preview 0.3.1 &middot; self-signed</span> <span>Windows x64, licensed ArcGIS Pro 3.7 (tested on 3.7.1), .NET Runtime 10.x (x64)</span></p>
     <div class="ctas">
       <a class="btn primary" href="https://github.com/nicoazel/ArcGISPro.MCP/releases/latest">Download the latest release</a>
       <a class="btn secondary" href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/README.md">Read the docs</a>
       <a class="btn secondary" href="https://github.com/nicoazel/ArcGISPro.MCP">View on GitHub</a>
     </div>
-    <p class="note">The download is <code>ArcGISProMCP-&lt;version&gt;-win-x64-development-preview.zip</code>, for example <code>ArcGISProMCP-0.3.1-win-x64-development-preview.zip</code>, with <code>SHA256SUMS</code> next to it. See the <a href="#start">quick start</a>.</p>
+    <p class="note">The download is <code>ArcGISProMCP-&lt;version&gt;-win-x64-self-signed-preview.zip</code>, for example <code>ArcGISProMCP-0.3.1-win-x64-self-signed-preview.zip</code>, with <code>SHA256SUMS</code> next to it. See the <a href="#start">quick start</a>.</p>
   </div>
 </section>
 
@@ -353,8 +353,8 @@
     <ol class="steps" role="list">
       <li><div>
         <h3>Download and verify</h3>
-        <p>From <a href="https://github.com/nicoazel/ArcGISPro.MCP/releases/latest">the latest release</a>, download <code>ArcGISProMCP-0.3.1-win-x64-development-preview.zip</code> and <code>SHA256SUMS</code>. In PowerShell, in that folder, check the zip before extracting it:</p>
-<pre><code>$zip = 'ArcGISProMCP-0.3.1-win-x64-development-preview.zip'
+        <p>From <a href="https://github.com/nicoazel/ArcGISPro.MCP/releases/latest">the latest release</a>, download <code>ArcGISProMCP-0.3.1-win-x64-self-signed-preview.zip</code> and <code>SHA256SUMS</code>. In PowerShell, in that folder, check the zip before extracting it:</p>
+<pre><code>$zip = 'ArcGISProMCP-0.3.1-win-x64-self-signed-preview.zip'
 $expected = (Select-String -Path .\SHA256SUMS -SimpleMatch $zip).Line.Split(' ')[0]
 if ((Get-FileHash $zip -Algorithm SHA256).Hash -eq $expected) { 'OK' } else { 'MISMATCH - do not install' }</code></pre>
       </div></li>
@@ -366,7 +366,7 @@ Expand-Archive $zip -DestinationPath C:\ArcGISProMCP</code></pre>
       </div></li>
       <li><div>
         <h3>Install the add-in</h3>
-        <p>Close ArcGIS Pro and double-click <code>ArcGISProMCP.AddIn.esriAddinX</code> in that folder. The add-in is unsigned: if ArcGIS Pro reports it as blocked or <strong>MCP Studio</strong> does not appear, go to <strong>Project</strong> &gt; <strong>Add-In Manager</strong> &gt; <strong>Options</strong>, choose <strong>Load all Add-Ins without restrictions</strong> and restart ArcGIS Pro. If the option is greyed out, ask your IT department.</p>
+        <p>Verify and trust the included publisher certificate using the <a href="https://github.com/nicoazel/ArcGISPro.MCP/blob/main/docs/signing.md">self-signed installation guide</a>. Close ArcGIS Pro and double-click <code>ArcGISProMCP.AddIn.esriAddinX</code>. Keep signed-add-in restrictions enabled; managed computers may need IT approval.</p>
       </div></li>
       <li><div>
         <h3>Open a disposable project and the pane</h3>
@@ -413,7 +413,7 @@ claude mcp list</code></pre>
       <h2 id="limits-title">What this preview does not do</h2>
     </div>
     <ul class="list">
-      <li>The package is unsigned. Wider distribution needs an organizational signing certificate and another verification pass.</li>
+      <li>The add-in and gateway are self-signed and require explicit certificate trust. Live acceptance of the signed package is pending.</li>
       <li>Workflows cannot run confirmation-gated steps in default mode; run those operations one at a time through approval.</li>
       <li>Workflows are not transactional or resumable after a crash, and nothing is rolled back automatically.</li>
       <li>ArcPy and <code>gp.run</code> can execute arbitrary user code. Neither is a sandbox.</li>

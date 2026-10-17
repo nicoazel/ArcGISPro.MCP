@@ -93,7 +93,7 @@ Prerequisites: Windows PowerShell 5.1 or PowerShell 7 to run the script, PowerSh
 
 ## What an entry does not prove
 
-An entry covers one commit, one ArcGIS Pro version, one machine and the sections listed in its manifest. Sections run in autonomous mode say so; they do not show that the local review flow works. The `operations` section does exercise it, but only for the eight cards it asks for. Automated PNG checks are not visual inspection; only items passed with `-VisuallyInspected` count as inspected. The package is unsigned. The limits in [deployment.md](../deployment.md#known-limits) still apply.
+An entry covers one commit, one ArcGIS Pro version, one machine and the sections listed in its manifest. Sections run in autonomous mode say so; they do not show that the local review flow works. The `operations` section does exercise it, but only for the eight cards it asks for. Automated PNG checks are not visual inspection; only items passed with `-VisuallyInspected` count as inspected. The recorded acceptance package predates signing; it does not validate the later self-signed release. The limits in [deployment.md](../deployment.md#known-limits) still apply.
 
 ## Run notes
 
