@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format is based on 
 
 ## [Unreleased]
 
+### Changed
+
+- Dependencies: `ModelContextProtocol` 2.3.0, `Microsoft.Extensions.Hosting` 10.0.14 and `Microsoft.NET.Test.Sdk` 18.11.0. With the SDK bump the gateway no longer advertises the `logging` capability in `initialize`: it never sent log notifications or handled `logging/setLevel` itself, and the SDK now advertises only what the server configures. Tools, resources, prompts and the negotiated protocol version (`2026-07-28`) are unchanged.
+
 ## [0.3.1] - 2026-10-03
 
 Patch release: installation that works for a first-time user, and documentation and landing-page accessibility fixes. Operation results now use camelCase keys consistently, which changes some result key names; the gateway tools and the approval model are unchanged.

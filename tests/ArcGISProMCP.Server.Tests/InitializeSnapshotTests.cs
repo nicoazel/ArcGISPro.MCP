@@ -19,15 +19,17 @@ public sealed class InitializeSnapshotTests
         // The version follows Directory.Build.props, so it is checked against the assembly and then
         // replaced by a placeholder; a release bump must not churn the snapshot.
         var expectedVersion = typeof(McpServerSetup).Assembly.GetName().Version!.ToString(3);
-        Assert.Equal(McpServerSetup.ServerName, client.ServerInfo.Name);
-        Assert.Equal(expectedVersion, client.ServerInfo.Version);
+        var serverInfo = client.ServerInfo;
+        Assert.NotNull(serverInfo);
+        Assert.Equal(McpServerSetup.ServerName, serverInfo.Name);
+        Assert.Equal(expectedVersion, serverInfo.Version);
 
-        var serverInfo = JsonSerializer.SerializeToNode(client.ServerInfo, McpJsonUtilities.DefaultOptions)!.AsObject();
-        serverInfo["version"] = VersionPlaceholder;
+        var serverInfoNode = JsonSerializer.SerializeToNode(serverInfo, McpJsonUtilities.DefaultOptions)!.AsObject();
+        serverInfoNode["version"] = VersionPlaceholder;
         var snapshot = new JsonObject
         {
             ["protocolVersion"] = client.NegotiatedProtocolVersion,
-            ["serverInfo"] = serverInfo,
+            ["serverInfo"] = serverInfoNode,
             ["capabilities"] = JsonSerializer.SerializeToNode(client.ServerCapabilities, McpJsonUtilities.DefaultOptions),
             ["instructions"] = client.ServerInstructions
         };
